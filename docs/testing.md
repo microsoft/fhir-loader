@@ -1,0 +1,22 @@
+# Testing
+
+## Description
+
+This guide provides information on testing -------  .
+
+## What to focus on
+
+While the team remains diligent focused on security and performance, as we introduce new features there may be times where changes may impact functionality. 
+
+## What if I find an issue?
+
+You may open an [issue]() against the Github repository. We actively triage these and will work on this as best effort. 
+
+## Testing Steps
+
+
+
+## Disclaimer
+
+- There may be factors outside our normal schedule that cause releases to happen more or less frequently. These might include hotfixes, technical issues or other circumstances not mentioned.
+- There are other closed source projects and integrations that make this project possible.
