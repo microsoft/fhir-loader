@@ -1,6 +1,6 @@
 # FHIR Bulk Loader
 
-FHIR Event Processor is an Azure Function App solution that provides the following services for Bulk ingesting FHIR Resources into the FHIR Server:
+FHIR Bulk Loader is an Azure Function App solution that provides the following services for ingesting FHIR Resources into the FHIR Server:
  + Imports FHIR Bundles (compressed and non-compressed) and NDJSON files into FHIR Server 
  + High Speed Parallel Event Grid triggers from storage accounts or other event grid resources.
  + Complete Auditing, Error logging and Retry for throttled transactions 
