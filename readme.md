@@ -35,6 +35,13 @@ The containers for importing data are created during deployment.  Containers are
 
 Detailed instructions can be found [here](docs/deployment.md) 
 
+# Performance 
+The FHIR Loader deploys with a Standard App Service plan that can support tens of thousands file imports per hour.  During testing we have been able to scale the FHIR Loader performance to hundreds of thousands of files per hour.  
+
+Note:  Scaling to hundreds of thousands of files per hour requires additional scaling on the FHIR API to handle the incoming messages.  High rates of 429's at the API or Cosmos data plane indicate that additional scaling is necessary. 
+
+Detailed performance guidelines can be found [here](docs/performance.md) 
+
 # Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a

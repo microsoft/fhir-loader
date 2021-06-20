@@ -26,6 +26,10 @@ To run the code in this deployment guide do the following:
 1. Paste the code into the Cloud Shell session by selecting **Ctrl**+**Shift**+**V** on Windows and Linux or by selecting **Cmd**+**Shift**+**V** on macOS.
 1. Press **Enter** to run the code.
 
+## Deployment Considerations 
+The FHIR Bulk Loader works with the HealthArchitecture [FHIR Proxy](https://github.com/microsoft/fhir-proxy), the [Azure API for FHIR](https://docs.microsoft.com/en-us/azure/healthcare-apis/fhir/fhir-paas-portal-quickstart) and the [Microsoft FHIR OSS Server](https://github.com/microsoft/fhir-server/).
+
+When using the Bulk Loader with FHIR Proxy the bulk loader will use the Proxy Key Vault rather than deploying another key vault.   
 
 ## Deploy Bulk Loader Script (bash)
 
