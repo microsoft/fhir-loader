@@ -10,7 +10,13 @@ FHIR Bulk Loader is an Azure Function App solution that provides the following s
 
 # Prerequsites
 1. The following resources providers must be registered in your subscription and you must have the ability to create/update them:
-   + ResourceGroup, KeyVault, Storage Account, App Service Plan, Function App, EventGrid
+   + ResourceGroup, 
+   + KeyVault, 
+   + Storage Account, 
+   + App Service Plan, 
+   + Function App, 
+   + EventGrid
+
 2. You must have the policy assigned to read/write KeyVault Secrets in the speicified keyvault.
 
 # Deployment
