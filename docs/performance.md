@@ -51,10 +51,12 @@ Service Bus Messaging combines enterprise messaging capabilities with rich publi
 
 When provisioning an Azure Service Bus Premium namespace, the number of messaging units allocated must be specified. These messaging units are dedicated resources that are allocated to the namespace.  The number of messaging units allocated to the Service Bus Premium namespace can be dynamically adjusted to factor in the change (increase or decrease) in workload.
 
-Load testing was performed with the Premium ServiceBus tier using 16 Messaging Units.
+Load testing was performed with the Premium ServiceBus tier using 16 Messaging Units and a Max delivery count of 10 (per queue) 
 
 ![service bus](images/sb-env.png)
  
+![service bus queue](images/sb-queue-env.png)
+
 More information on Service Bus performance can be found [here](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-premium-messaging)
 
 
