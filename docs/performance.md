@@ -5,11 +5,11 @@ The FHIR Loader deploys with a Standard App Service plan that can support tens o
 Note:  Scaling to hundreds of thousands of files per hour requires additional scaling on the FHIR API to handle the incoming messages.  High rates of 429's at the API or Cosmos data plane indicate that additional scaling is necessary. 
 
 ## Conditions 
-_Load scaling and performance turning were done in several Azure Regions_
-_Load testing was created with [Synthea](https://github.com/synthetichealth/synthea) generator, each Patient had 1 year of data_ 
-_Load testing was measured with Patient only and Patient + Encounter bundles.  Patients only bundles performed marginally better_
-_Load testing zip (compressed-archive) bundles were limited to 300 resoruces to maintain queue depth, anything over 300 produced a growing delay for commits to the service bus_
-_For brevity, the FHIR Loader works with both the Azure API for FHIR and the Microsoft FHIR Server, this doc uses API for FHIR to represent both services_ 
+- _Load scaling and performance turning were done in several Azure Regions_
+- _Load testing was created with [Synthea](https://github.com/synthetichealth/synthea) generator, each Patient had 1 year of data_ 
+- _Load testing was measured with Patient only and Patient + Encounter bundles.  Patients only bundles performed marginally better_
+- _Load testing zip (compressed-archive) bundles were limited to 300 resoruces to maintain queue depth, anything over 300 produced a growing delay for commits to the service bus_
+- _For brevity, the FHIR Loader works with both the Azure API for FHIR and the Microsoft FHIR Server, this doc uses API for FHIR to represent both services_ 
 
 ## File Preparation 
 The Loader will process files in several formats 
@@ -53,8 +53,10 @@ When provisioning an Azure Service Bus Premium namespace, the number of messagin
 
 Load testing was performed with the Premium ServiceBus tier using 16 Messaging Units and a Max delivery count of 10 (per queue) 
 
+Environment
 ![service bus](images/sb-env.png)
  
+Queue
 ![service bus queue](images/sb-queue-env.png)
 
 More information on Service Bus performance can be found [here](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-premium-messaging)
