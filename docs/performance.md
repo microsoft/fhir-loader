@@ -61,6 +61,15 @@ Queue
 
 More information on Service Bus performance can be found [here](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-premium-messaging)
 
+### API for FHIR
+Azure API for FHIR uses database to store its data. Performance of the underlying database depends on the number of Request Units (RU) selected during service provisioning or in database settings after the service has been provisioned.  Throughput must be provisioned to ensure that sufficient system resources are available for your database at all times. How many RUs you need for your application depends on operations you perform. Operations can range from simple read and writes to more complex queries.
+
+For Loader performance testing we used 50,000 RU's and increased the API node count to 5.
+
+![fhir environment](images/fhir-env.png)
+
+More information on Azure API for FHIR performance can be found [here](https://docs.microsoft.com/en-us/azure/healthcare-apis/fhir/configure-database)
+
 
 ### Application Insights 
 The FHIR Loader is deploed with Application Insights and it is recommeneded that customers use Application Insights to monitor Loader performance. 
