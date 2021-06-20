@@ -45,12 +45,19 @@ The Loader Function app comes with a MAXCONNECTION setting of 20 processes for c
 
 Our Function code follows [Azure Best practices for performance and reliability](https://docs.microsoft.com/en-us/azure/azure-functions/functions-best-practices)
 
-### EventGrid 
 
 ### Service Bus 
+Service Bus Messaging combines enterprise messaging capabilities with rich publish-subscribe semantics at cloud scale.  The Premium tier of Service Bus Messaging addresses common customer requests around scale, performance, and availability for mission-critical applications. 
+
+Load testing was performed with the Premium ServiceBus tier.
+
+![service bus](images/sb-env.png)
+ 
+More information on Service Bus performance can be found [here](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-premium-messaging)
+
+
+### EventGrid 
 
 
 ### Application Insights 
 
-
-## Verify Bulk Loader is functioning 
