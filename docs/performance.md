@@ -13,9 +13,9 @@ Note:  Scaling to hundreds of thousands of files per hour requires additional sc
 
 ## File Preparation 
 The Loader will process files in several formats 
-_Bundles_ - Bundles are a collection of FHIR resources placed into a single file with containing context  
-_NDJSON_ - _a.k.a_ Newline delimited JSON, is a format for storing structured data that may be processed one record at a time
-_Zip_ - Compressed FHIR bundles (zip format) allows users to move large amounts of files efficienly through the Azure network
+- _Bundles_ - Bundles are a collection of FHIR resources placed into a single file with containing context  
+- _NDJSON_ - _a.k.a_ Newline delimited JSON, is a format for storing structured data that may be processed one record at a time
+- _Zip_ - Compressed FHIR bundles (zip format) allows users to move large amounts of files efficienly through the Azure network
 
 Of the three formats, _zip_ provides the fastes load time.
 
