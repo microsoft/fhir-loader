@@ -49,15 +49,14 @@ Our Function code follows [Azure Best practices for performance and reliability]
 ### Service Bus 
 Service Bus Messaging combines enterprise messaging capabilities with rich publish-subscribe semantics at cloud scale.  The Premium tier of Service Bus Messaging addresses common customer requests around scale, performance, and availability for mission-critical applications. 
 
-Load testing was performed with the Premium ServiceBus tier.
+When provisioning an Azure Service Bus Premium namespace, the number of messaging units allocated must be specified. These messaging units are dedicated resources that are allocated to the namespace.  The number of messaging units allocated to the Service Bus Premium namespace can be dynamically adjusted to factor in the change (increase or decrease) in workload.
+
+Load testing was performed with the Premium ServiceBus tier using 16 Messaging Units.
 
 ![service bus](images/sb-env.png)
  
 More information on Service Bus performance can be found [here](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-premium-messaging)
 
 
-### EventGrid 
-
-
 ### Application Insights 
-
+The FHIR Loader is deploed with Application Insights and it is recommeneded that customers use Application Insights to monitor Loader performance. 
