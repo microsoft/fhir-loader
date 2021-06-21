@@ -10,14 +10,14 @@ While the team remains diligent focused on security and performance, as we intro
 
 ## What if I find an issue?
 
-You may open an [issue]() against the Github repository. We actively triage these and will work on this as best effort. 
+You may open an [issue](https://github.com/microsoft/fhir-loader/issues) against the Github repository. We actively triage these and will work on this as best effort. 
 
 ## Testing Steps
 
 
 ## Next steps
 
-In this tutorial, you've deployed the Microsoft Open Source FHIR Server for Azure into your subscription. To learn how to access the FHIR API using Postman, you can take a look at the [Postman tutorial](https://docs.microsoft.com/en-us/azure/healthcare-apis/access-fhir-postman-tutorial) on the Azure Docs site.
+To learn how to access the FHIR API using Postman, you can take a look at the [Postman tutorial](https://docs.microsoft.com/en-us/azure/healthcare-apis/access-fhir-postman-tutorial) on the Azure Docs site.
 
 
 You can use Postman to test the FHIR server. https://github.com/microsoft/fhir-server/blob/main/docs/PostmanTesting.md
