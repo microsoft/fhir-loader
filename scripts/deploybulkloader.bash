@@ -222,7 +222,7 @@ echo "Starting FHIR Loader deployment..."
 			stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE))
 		fi
 		echo "Deploying FHIR Loader App from source repo to ["$fahost"]..."
-		stepresult=$(retry az functionapp deployment source config --branch master --manual-integration --name $faname --repo-url https://github.com/sordahl-ga/FHIRBulkImport --resource-group $resourceGroupName)
+		stepresult=$(retry az functionapp deployment source config --branch master --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 		echo "Creating Azure Event GridSubscriptions..."
 		storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
 		egndjsonresource=$faresourceid"/functions/NDJSONConverter"
