@@ -20,7 +20,7 @@ FHIR Bulk Loader is an Azure Function App solution that provides the following s
    + Function App 
    + EventGrid
 
-2. You must have the policy assigned to read/write KeyVault Secrets in the speicified keyvault.
+2. You must have the policy assigned to read/write KeyVault Secrets in the specified Key Vault.
 
 # Deployment
 1. [Open Azure Cloud Shell](https://shell.azure.com) you can also access this from [Azure Portal](https://portal.azure.com)

@@ -1,6 +1,6 @@
 # Updating FHIR Loader 
 
-By default the FHIR-Loader function stays in sync with updates posted in the Github Repo https://github.com/microsoft-fhir-loader, as new features are added customers will automatically receive them unless they disabled deployment sync or they are operating on a closed network without external access.  
+By default the FHIR-Loader function stays in sync with updates posted in the Github Repo https://github.com/microsoft/fhir-loader, as new features are added customers will automatically receive them unless they disabled deployment sync or they are operating on a closed network without external access.  
 
 ## Default Deployment 
 By default FHIR Loader 

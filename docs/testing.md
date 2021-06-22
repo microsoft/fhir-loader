@@ -6,7 +6,7 @@ This guide provides information on testing -------  .
 
 ## What to focus on
 
-While the team remains diligent focused on security and performance, as we introduce new features there may be times where changes may impact functionality. 
+While the team remains diligently focused on security and performance, as we introduce new features there may be times where changes may impact functionality. 
 
 ## What if I find an issue?
 

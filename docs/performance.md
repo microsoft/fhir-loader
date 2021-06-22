@@ -1,6 +1,6 @@
 # Enhancing Performance of the FHIR Loader
 
-The FHIR Loader deploys with a Standard App Service plan that can support tens of thousands file imports per hour.  During testing though we have been able to scale the Buil Loader performance to hundreds of thousands of files per hour.  
+The FHIR Loader deploys with a Standard App Service plan that can support tens of thousands file imports per hour.  During testing though we have been able to scale the Loader performance to hundreds of thousands of files per hour.  
 
 Note:  Scaling to hundreds of thousands of files per hour requires additional scaling on the FHIR API to handle the incoming messages.  High rates of 429's at the API or Cosmos data plane indicate that additional scaling is necessary. 
 
@@ -17,7 +17,7 @@ The Loader will process files in several formats
 - _NDJSON_ - _a.k.a_ Newline delimited JSON, is a format for storing structured data that may be processed one record at a time
 - _Zip_ - Compressed FHIR bundles (zip format) allows users to move large amounts of files efficienly through the Azure network
 
-Of the three formats, _zip_ provides the fastes load time.
+Of the three formats, _zip_ provides the fastest load time.
 
 ## Environment 
 The Loader relies heavily on Network based storage, therefore we recommend that you _deploy the Loader in the same region as your API for FHIR service_.
@@ -33,7 +33,7 @@ Storage was set to Standard / Hot Access tier.  Depending on how files are being
 Additional Storage Performance ideas can be found [here](https://docs.microsoft.com/en-us/azure/storage/blobs/storage-performance-checklist) 
 
 ### App Service Plan 
-With azn Azure App Service, the compute resources you use are determined by the App Service plan that you run your apps on.  All load testing was performed on Production scale P2V3 systems with scale out instances ranging from 5-17.  Once load testing is finished the App Service Plan can be safely scaled back to reduce costs.  
+Within an Azure App Service, the compute resources you use are determined by the App Service plan that you run your apps on.  All load testing was performed on Production scale P2V3 systems with scale out instances ranging from 5-17.  Once load testing is finished the App Service Plan can be safely scaled back to reduce costs.  
 
 ![app-env](images/app-env.png)
 
@@ -51,7 +51,7 @@ Service Bus Messaging combines enterprise messaging capabilities with rich publi
 
 When provisioning an Azure Service Bus Premium namespace, the number of messaging units allocated must be specified. These messaging units are dedicated resources that are allocated to the namespace.  The number of messaging units allocated to the Service Bus Premium namespace can be dynamically adjusted to factor in the change (increase or decrease) in workload.
 
-Load testing was performed with the Premium ServiceBus tier using 16 Messaging Units and a Max delivery count of 10 (per queue) 
+Load testing was performed with the Premium Service Bus tier using 16 Messaging Units and a Max delivery count of 10 (per queue) 
 
 Environment
 ![service bus](images/sb-env.png)
@@ -64,7 +64,7 @@ More information on Service Bus performance can be found [here](https://docs.mic
 ### API for FHIR
 Azure API for FHIR uses database to store its data. Performance of the underlying database depends on the number of Request Units (RU) selected during service provisioning or in database settings after the service has been provisioned.  Throughput must be provisioned to ensure that sufficient system resources are available for your database at all times. How many RUs you need for your application depends on operations you perform. Operations can range from simple read and writes to more complex queries.
 
-For Loader performance testing we used 50,000 RU's and increased the API node count to 5.
+For Loader performance testing we used 50,000 RU's.
 
 ![fhir environment](images/fhir-env.png)
 
