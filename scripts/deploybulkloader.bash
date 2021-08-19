@@ -244,7 +244,7 @@ if [ $(az group exists --name $resourceGroupName) = false ]; then
 	(
 		set -x
 		az group create --name $resourceGroupName --location $resourceGroupLocation 1> /dev/null
-	)
+	) ;
 else
 	echo "...Found, using existing resource group "$resourceGroupName
 fi
@@ -257,7 +257,7 @@ kvexists=$(az keyvault list --query "[?name == '$kvname'].name" --out tsv)
 if [[ -n "$kvexists" ]]; then
 	echo "...Found, using existing keyvault "$kvname
 	echo " "
-	echo "Checking $kvname for FHIR Service and/or FHIR-Proxy settings"
+	echo "Checking "$kvname" for FHIR Service and/or FHIR-Proxy settings"
 	fphost=$(az keyvault secret show --vault-name $kvname --name FP-HOST --query "value" --out tsv)
 	if [ -n "$fphost" ]; then
 		echo "...found FHIR-Proxy host "$fphost 
@@ -265,14 +265,18 @@ if [[ -n "$kvexists" ]]; then
 	fsurl=$(az keyvault secret show --vault-name $kvname --name FS-URL --query "value" --out tsv)
 	if [ -n "$fsurl" ]; then
 		echo "...found FHIR-Service URL "$fsurl
-	fi ;
-else 
+	fi
+fi
+
+# Keyvault does not exist, create it
+#
+if [[ -z "$kvexists" ]]; then
 	echo "Keyvault "$kvname" does not exist, would you like to create it? [yes/no]"
 	read createkv
 	if [[ "$createkv" == "yes" ]]; then
 		echo "Creating Keyvault "$kvname"..."
 		az keyvault create --name $kvname --resource-group $resourceGroupName --location $resourceGroupLocation
-		#az keyvault set-policy --vault-name $kvname --object-id $kvname --permissions-deployment-admin "get,set,delete,backup,restore,list"
+		az keyvault set-policy --vault-name $kvname --object-id $kvname --permissions-deployment-admin "get,set,delete,backup,restore,list"
 	fi
 fi
 
@@ -281,7 +285,7 @@ fi
 kvexists=$(az keyvault list --query "[?name == '$kvname'].name" --out tsv)
 if [[ -z "$kvexists" ]]; then
 	echo "Therer was a problem creating "$kvname" please check permissions and try again"
-	exit 1 ;
+	exit 1 
 fi
 
 #############################################
@@ -298,28 +302,28 @@ fi
 		read fsurl
 		if [ -z "$fsurl" ] ; then
 			echo "You must provide a destination FHIR Server URL"
-			exit 1;
+			exit 1
 		fi
 		
 		echo "Enter the Tenant ID of the FHIR Server Service Client (used to connect to the FHIR Service)."
 		read fstenant
 		if [ -z "$fstenant" ] ; then
 			echo "You must provide a tenant ID"
-			exit 1; 
+			exit 1
 		fi
 
 		echo "Enter the FHIR Server - Service Client Application ID (used to connecto to the FHIR Service):"
 		read fsclientid
 		if [ -z "$fsclientid" ] ; then
 			echo "You must provide a Client ID"
-			exit 1; 
+			exit 1 
 		fi
 
 		echo "Enter the FHIR Server - Service Client Secret (used to connect to the FHIR Service)."
 		read fssecret ;
 		if [ -z "$fssecret" ] ; then
 			echo "You must provide a Client Secret"
-			exit 1; 
+			exit 1
 		fi
 
 		echo "Enter the FHIR Server - Service Client Audience/Resource (FHIR Service URL) ["$fsurl"]:"
@@ -357,6 +361,7 @@ if [[ "$useproxy" == "yes" ]]; then
 	echo "Use FHIR-Proxy value is set to "$useproxy
 	if [ -z "$fphost" ]; then
 		fphost=$(az keyvault secret show --vault-name $kvname --name FP-HOST --query "value" --out tsv)
+	fi
 	if [ -z "$fphost" ]; then
 		echo $kvname" does not appear to contain fhir proxy settings..."
 		exit 1
@@ -369,7 +374,7 @@ fi
 
 
 #
-echo "Starting deployment of... $0 -i $subscriptionId -g $resourceGroupName -l $resourceGroupLocation -p $deployprefix  use FHIR-Proxy = $useproxy "
+echo "Starting deployment of... "$0 "-i" $subscriptionId "-g" $resourceGroupName "-l" $resourceGroupLocation "-p" $deployprefix  "use FHIR-Proxy = "$useproxy
 
 echo "do you wish to continue "
 read -p "enter to continue"
