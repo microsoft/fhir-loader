@@ -15,10 +15,10 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json.Linq;
 namespace FHIRBulkImport
 {
-    public static class NDJSONConverter
+    public static class ImportNDJSON
     {
       
-        [FunctionName("NDJSONConverter")]
+        [FunctionName("ImportNDJSON")]
 
         public static async Task Run([EventGridTrigger]EventGridEvent blobCreatedEvent,
                                      [Blob("{data.url}", FileAccess.Read, Connection = "FBI-STORAGEACCT")] Stream myBlob,
