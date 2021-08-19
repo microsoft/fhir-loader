@@ -405,6 +405,7 @@ echo "Starting FHIR Loader deployment..."
 	echo "Creating import containers..."
 	stepresult=$(az storage container create -n bundles --connection-string $storageConnectionString)
 	stepresult=$(az storage container create -n ndjson --connection-string $storageConnectionString)
+	stepresult=$(az storage container create -n export --connection-string $storageConnectionString)
 	
 	#---
 
