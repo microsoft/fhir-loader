@@ -25,7 +25,7 @@ declare subscriptionId=""
 declare resourceGroupName=""
 declare resourceGroupLocation=""
 declare serviceplanSuffix="asp"
-declare faname="fload"$RANDOM
+declare faname="sfload"$RANDOM
 declare deployprefix=""
 declare defdeployprefix=""
 declare storageAccountNameSuffix="store"$RANDOM
@@ -374,10 +374,10 @@ fi
 
 
 #
+echo " "
 echo "Starting deployment of... "$0 "-i" $subscriptionId "-g" $resourceGroupName "-l" $resourceGroupLocation "-p" $deployprefix  "use FHIR-Proxy = "$useproxy
 
-echo "do you wish to continue "
-read -p "enter to continue"
+read -p 'Press Enter to continue, or Ctrl+C to exit'
 
 #############################################
 #  Start FHIR-Proxy Configuration / Updates 
