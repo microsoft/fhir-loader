@@ -357,26 +357,31 @@ fi
 
 # Check for FHIR-Proxy details (see useproxy above) 
 #
-if [[ "$useproxy" == "yes" ]]; then
-	echo "Use FHIR-Proxy value is set to "$useproxy
-	if [ -z "$fphost" ]; then
-		fphost=$(az keyvault secret show --vault-name $kvname --name FP-HOST --query "value" --out tsv)
+echo " "
+if [ -n "$fphost" ]; then
+	echo "FHIR-Proxy ("$fphost") settings were found in "$kvname
+	echo "would you like to use FHIR-Proxy [yes/no]? "
+	read useproxy
+	if [[ "$useproxy" == "yes" ]]; then
+		fsurl="https://"$fphost"/fhir" 
+		echo "FHIR Service URL is set to FHIR-Proxy "$fsurl"..." ;
+	else 
+		useproxy="no"
+		echo "FHIR Service URL is set to "$fsurl"..." 
 	fi
-	if [ -z "$fphost" ]; then
-		echo $kvname" does not appear to contain fhir proxy settings..."
-		exit 1
-	fi
-	fsurl="https://"$fphost"/fhir" 
-	echo "Using FHIR-Proxy host "$fphost" and FHIR-Service URL "$fsurl"..." ;
-else 
-	useproxy="no"
 fi
+
 
 
 #
 echo " "
-echo "Starting deployment of... "$0 "-i" $subscriptionId "-g" $resourceGroupName "-l" $resourceGroupLocation "-p" $deployprefix  "use FHIR-Proxy = "$useproxy
-
+echo "Starting deployment of... "$0 
+echo "              -i" $subscriptionId 
+echo "              -g" $resourceGroupName 
+echo "              -l" $resourceGroupLocation 
+echo "              -p" $deployprefix  
+echo "use FHIR-Proxy = "$useproxy
+echo " "
 read -p 'Press Enter to continue, or Ctrl+C to exit'
 
 #############################################
