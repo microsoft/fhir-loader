@@ -70,7 +70,8 @@ namespace FHIRBulkImport
             await retryPolicy.ExecuteAsync(async () =>
             {
                 HttpRequestMessage _fhirRequest;
-                var fhirurl = $"{Environment.GetEnvironmentVariable("FS-URL")}/{path}";
+                var fhirurl = path;
+                if (!fhirurl.StartsWith("http")) fhirurl = $"{Environment.GetEnvironmentVariable("FS-URL")}/{path}";
                 _fhirRequest = new HttpRequestMessage(method, fhirurl);
                 _fhirRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _bearerToken);
                 _fhirRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
