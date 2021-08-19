@@ -271,14 +271,9 @@ else
 	read createkv
 	if [[ "$createkv" == "yes" ]]; then
 		echo "Creating Keyvault "$kvname"..."
-		(
-			stepresult=$(az keyvault create --name $kvname --resource-group $resourceGroupName --location $resourceGroupLocation)
-			stepresult=$(az keyvault set-policy --vault-name $kvname --object-id $kvname --permissions-deployment-admin "get,set,delete,backup,restore,list")
-		) ;
-	else
-		echo "Please check your Keyvault Name / Access and try again... Exiting..."
-		exit 1 ;
-	fi 
+		az keyvault create --name $kvname --resource-group $resourceGroupName --location $resourceGroupLocation
+		#az keyvault set-policy --vault-name $kvname --object-id $kvname --permissions-deployment-admin "get,set,delete,backup,restore,list"
+	fi
 fi
 
 # Sanity check Keyvault - and store settings if the keyvault is created
@@ -286,7 +281,7 @@ fi
 kvexists=$(az keyvault list --query "[?name == '$kvname'].name" --out tsv)
 if [[ -z "$kvexists" ]]; then
 	echo "Therer was a problem creating "$kvname" please check permissions and try again"
-	exit 1 
+	exit 1 ;
 fi
 
 #############################################
