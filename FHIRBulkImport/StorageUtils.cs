@@ -5,16 +5,27 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.WebJobs;
+using Azure.Storage.Blobs.Specialized;
+
 namespace FHIRBulkImport
 {
     public static class StorageUtils
     {
+        public static async Task<AppendBlobClient> GetAppendBlobClient(string saconnectionString,string container, string blobname)
+        {
+            var retVal =  new AppendBlobClient(saconnectionString, container, blobname);
+            if (!await retVal.ExistsAsync())
+            {
+                await retVal.CreateAsync();
+            }
+            return retVal;
+        }
         public static CloudBlobClient GetCloudBlobClient(string saconnectionString)
         {
             var storageAccount = CloudStorageAccount.Parse(saconnectionString);
             return storageAccount.CreateCloudBlobClient();
         }
+         
         public static async Task WriteStringToBlob(CloudBlobClient blobClient,string containerName,string filePath,string contents, ILogger log)
         {
             var sourceContainer = blobClient.GetContainerReference(containerName);
