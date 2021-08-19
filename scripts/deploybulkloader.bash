@@ -9,31 +9,17 @@ IFS=$'\n\t'
 #FHIR Loader Setup --- Author Steve Ordahl Principal Architect Health Data Platform
 #
 
-usage() { echo "Usage: $0 -i <subscriptionId> -g <resourceGroupName> -l <resourceGroupLocation> -p <prefix> -k <keyvault> -y (use FHIR Proxy)" 1>&2; exit 1; }
+# Resources Required by this script 
+# Need to add a test to see if these resource providers are enabled
+# Service Bus 
+# Function App 
+# App Insights 
 
-function fail {
-  echo $1 >&2
-  exit 1
-}
-function kvuri {
-	echo "@Microsoft.KeyVault(SecretUri=https://"$kvname".vault.azure.net/secrets/"$@"/)"
-}
-function retry {
-  local n=1
-  local max=5
-  local delay=15
-  while true; do
-    "$@" && break || {
-      if [[ $n -lt $max ]]; then
-        ((n++))
-        echo "Command failed. Retry Attempt $n/$max in $delay seconds:" >&2
-        sleep $delay;
-      else
-        fail "The command has failed after $n attempts."
-      fi
-    }
-  done
-}
+
+#########################################
+#  Script Variables 
+#########################################
+
 declare defsubscriptionId=""
 declare subscriptionId=""
 declare resourceGroupName=""
@@ -61,7 +47,68 @@ declare fpclientid=""
 declare useproxy=""
 declare egndjsonresource=""
 declare egbundleresource=""
-#Initialize parameters specified from command line
+declare createkv=""
+
+
+#########################################
+#  Script Functions 
+#########################################
+
+
+function fail {
+  echo $1 >&2
+  exit 1
+}
+function kvuri {
+	echo "@Microsoft.KeyVault(SecretUri=https://"$kvname".vault.azure.net/secrets/"$@"/)"
+}
+function retry {
+  local n=1
+  local max=5
+  local delay=15
+  while true; do
+    "$@" && break || {
+      if [[ $n -lt $max ]]; then
+        ((n++))
+        echo "Command failed. Retry Attempt $n/$max in $delay seconds:" >&2
+        sleep $delay;
+      else
+        fail "The command has failed after $n attempts."
+      fi
+    }
+  done
+}
+
+function function_create_keyvault () {
+	echo "Creating Keyvault "$kvname"..."
+
+}
+
+function intro {
+	# Display the intro - give the user a chance to cancel 
+	#
+	echo " "
+	echo "FHIR-Loader Application installation script... "
+	echo " - Prerequisite:  Azure API for FHIR of FHIR Server must be installed"
+	echo " - Prerequisite:  Client Application connection information for FHIR Service"
+	echo " - Prerequisite:  A Keyvault service"
+	echo " "
+	echo "Note: You must have rights to able to provision resources within the Subscription scope"
+	echo " "
+	read -p 'Press Enter to continue, or Ctrl+C to exit'
+}
+
+
+usage() { echo "Usage: $0 -i <subscriptionId> -g <resourceGroupName> -l <resourceGroupLocation> -p <prefix> -k <keyvault> -y (use FHIR Proxy)" 1>&2; exit 1; }
+
+
+
+#########################################
+#  Script Main Body (start here) 
+#########################################
+#
+# Initialize parameters specified from command line
+#
 while getopts ":i:g:n:l:p:y" arg; do
 	case "${arg}" in
 		p)
@@ -87,9 +134,11 @@ while getopts ":i:g:n:l:p:y" arg; do
 		esac
 done
 shift $((OPTIND-1))
-echo "Deploying FHIR Bulk Loader..."
+echo "Executing "$0"..."
 echo "Checking Azure Authentication..."
+
 #login to azure using your credentials
+#
 az account show 1> /dev/null
 
 if [ $? != 0 ];
@@ -97,9 +146,21 @@ then
 	az login
 fi
 
+# set default subscription information
+#
 defsubscriptionId=$(az account show --query "id" --out json | sed 's/"//g') 
 
+# Call the intro function - give the user a chance to exit 
+#
+intro
+
+echo " "
+echo "Begin collecting Script Parameters not supplied"
+echo " "
+
+
 #Prompt for parameters is some required parameters are missing
+#
 if [[ -z "$subscriptionId" ]]; then
 	echo "Enter your subscription ID ["$defsubscriptionId"]:"
 	read subscriptionId
@@ -117,10 +178,6 @@ if [[ -z "$resourceGroupName" ]]; then
 	[[ "${resourceGroupName:?}" ]]
 fi
 
-defdeployprefix=${resourceGroupName:0:14}
-defdeployprefix=${defdeployprefix//[^[:alnum:]]/}
-defdeployprefix=${defdeployprefix,,}
-
 if [[ -z "$resourceGroupLocation" ]]; then
 	echo "If creating a *new* resource group, you need to set a location "
 	echo "You can lookup locations with the CLI using: az account list-locations "
@@ -128,7 +185,18 @@ if [[ -z "$resourceGroupLocation" ]]; then
 	echo "Enter resource group location:"
 	read resourceGroupLocation
 fi
-#Prompt for parameters is some required parameters are missing
+
+# Prompt for acript parameters if some required parameters are missing
+#
+
+# Set Default Deployment Prefix
+#
+defdeployprefix=${resourceGroupName:0:14}
+defdeployprefix=${defdeployprefix//[^[:alnum:]]/}
+defdeployprefix=${defdeployprefix,,}
+
+# Prompt for Deployment Prefix
+#
 if [[ -z "$deployprefix" ]]; then
 	echo "Enter your deployment prefix ["$defdeployprefix"]:"
 	read deployprefix
@@ -140,30 +208,35 @@ if [[ -z "$deployprefix" ]]; then
     deployprefix=${deployprefix,,}
 	[[ "${deployprefix:?}" ]]
 fi
+
+
+# Prompt for Keyvault 
+#
 if [[ -z "$kvname" ]]; then
-	echo "Enter keyvault that contains FHIR Server or Proxy configuration (e.g. FS- or FP-SC- settings): "
+	echo "Enter keyvault name to used with FHIR-Loader"
 	read kvname
 fi
+
+
+# Ensure there are subscriptionId, resourcegroupnames and keyvault values  
+#
 if [ -z "$subscriptionId" ] || [ -z "$resourceGroupName" ] || [ -z "$kvname" ]; then
 	echo "Either one of subscriptionId, resourceGroupName or keyvault is empty"
 	usage
 fi
+
+# set the default subscription id
+#
 echo "Setting subscription id..."
-#set the default subscription id
 az account set --subscription $subscriptionId
-#Check KV exists
-echo "Checking for keyvault "$kvname"..."
-kvexists=$(az keyvault list --query "[?name == '$kvname'].name" --out tsv)
-if [[ -z "$kvexists" ]]; then
-	echo "Cannot Locate Key Vault "$kvname" this deployment requires access to a keyvault with FHIR Server configuration settings...Consider installing the FHIR Proxy or API4FHIRStarter Project"
-	exit 1
-fi
 
-echo "Checking resource groups..."
+# Begin validation checks 
+#
+echo "Checking resource group..."
 
+# Check for existing RG
+#
 set +e
-
-#Check for existing RG
 if [ $(az group exists --name $resourceGroupName) = false ]; then
 	echo "Resource group with name" $resourceGroupName "could not be found. Creating new resource group.."
 	set -e
@@ -172,70 +245,211 @@ if [ $(az group exists --name $resourceGroupName) = false ]; then
 		az group create --name $resourceGroupName --location $resourceGroupLocation 1> /dev/null
 	)
 else
-	echo "Using existing resource group..."
+	echo "Using existing resource group..."$resourceGroupName
 fi
+
+# Check for Keyvault
+#
+echo "Checking for keyvault "$kvname"..."
+kvexists=$(az keyvault list --query "[?name == '$kvname'].name" --out tsv)
+if [[ -n "$kvexists" ]]; then
+	echo "Checking $kvname for FHIR Service and/or FHIR-Proxy settings"
+	fphost=$(az keyvault secret show --vault-name $kvname --name FP-HOST --query "value" --out tsv)
+	if [ -n "$fphost" ]; then
+		echo "FHIR-Proxy host "$fphost" found in Keyvault "$kvname
+	fi
+	fsurl=$(az keyvault secret show --vault-name $kvname --name FS-URL --query "value" --out tsv)
+	if [ -n "$fsurl" ]; then
+		echo "FHIR-Service URL "$fsurl" found in Keyvault "$kvname
+	fi ;
+else 
+	echo "Keyvault "$kvname" does not exist, would you like to create it? [yes/no]"
+	read createkv
+	if [[ "$createkv" == "yes" ]]; then
+		echo "Creating Keyvault "$kvname"..."
+		(
+			stepresult=$(az keyvault create --name $kvname --resource-group $resourceGroupName --location $resourceGroupLocation)
+			stepresult=$(az keyvault set-policy --vault-name $kvname --object-id $kvname --permissions-deployment-admin "get,set,delete,backup,restore,list")
+		) ;
+	else
+		echo "Please check your Keyvault Name / Access and try again... Exiting..."
+		exit 1 
+	fi 
+fi
+
+# Sanity check Keyvault - and store settings if the keyvault is created
+#
+kvexists=$(az keyvault list --query "[?name == '$kvname'].name" --out tsv)
+if [[ -z "$kvexists" ]]; then
+	echo "Therer was a problem creating "$kvname" please check permissions and try again"
+	exit 1 
+fi
+
+#############################################
+#  Setup FHIR Service details 
+#############################################
+#
+(
+	# if not already set (see fsurl above), prompt for FHIR Service information 
+	#
+	if [[ -z "$fsurl" ]]; then
+		echo "FHIR Service settings were not found in "$kvname" please provide the following information..."
+		
+		echo "Enter the FHIR Server URL (aka Endpoint):"
+		read fsurl
+		if [ -z "$fsurl" ] ; then
+			echo "You must provide a destination FHIR Server URL"
+			exit 1;
+		fi
+		
+		echo "Enter the Tenant ID of the FHIR Server Service Client (used to connect to the FHIR Service)."
+		read fstenant
+		if [ -z "$fstenant" ] ; then
+			echo "You must provide a tenant ID"
+			exit 1; 
+		fi
+
+		echo "Enter the FHIR Server - Service Client Application ID (used to connecto to the FHIR Service):"
+		read fsclientid
+		if [ -z "$fsclientid" ] ; then
+			echo "You must provide a Client ID"
+			exit 1; 
+		fi
+
+		echo "Enter the FHIR Server - Service Client Secret (used to connect to the FHIR Service)."
+		read fssecret ;
+		if [ -z "$fssecret" ] ; then
+			echo "You must provide a Client Secret"
+			exit 1; 
+		fi
+
+		echo "Enter the FHIR Server - Service Client Audience/Resource (FHIR Service URL) ["$fsurl"]:"
+		read fsaud
+		if [ -z "$fsaud" ] ; then
+			fsaud=$fsurl
+		fi
+		[[ "${fsaud:?}" ]]
+
+	fi
+
+	# Storing the FHIR Service information in the Keyvault
+	#
+	echo "Storing FHIR Service information in Keyvault "$kvname"..."
+	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-URL" --value $fsurl)
+	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-TENANT-NAME" --value $fstenant)
+	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-CLIENT-ID" --value $fsclientid)
+	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-SECRET" --value $fssecret)
+	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-RESOURCE" --value $fsaud)
+
+)
+
+
+# Check for FHIR-Proxy details (see useproxy above) 
+#
+if [[ "$useproxy" == "yes" ]]; then
+	echo "Use FHIR-Proxy value is set to "$useproxy
+	if [ -z "$fphost" ]; then
+		fphost=$(az keyvault secret show --vault-name $kvname --name FP-HOST --query "value" --out tsv)
+	if [ -z "$fphost" ]; then
+		echo $kvname" does not appear to contain fhir proxy settings..."
+		exit 1
+	fi
+	fsurl="https://"$fphost"/fhir" 
+	echo "Using FHIR-Proxy host "$fphost" and FHIR-Service URL "$fsurl"..." ;
+else 
+	useproxy="no"
+fi
+
+
+#
+echo "Starting deployment of... $0 -i $subscriptionId -g $resourceGroupName -l $resourceGroupLocation -p $deployprefix  use FHIR-Proxy = $useproxy "
+
+#############################################
+#  Start FHIR-Proxy Configuration / Updates 
+#############################################
+#
+
 set -e
 #Start deployment
 echo "Starting FHIR Loader deployment..."
 (
-		echo "Checking configuration settings in key vault "$kvname"..."
-		if [ -n "$useproxy" ]; then
-			fphost=$(az keyvault secret show --vault-name $kvname --name FP-HOST --query "value" --out tsv)
-			if [ -z "$fphost" ]; then
-					echo $kvname" does not appear to contain fhir proxy settings...Is the Proxy Installed?"
-					exit 1
-			fi
-			fsurl="https://"$fphost"/fhir"
-		else
-			fsurl=$(az keyvault secret show --vault-name $kvname --name FS-URL --query "value" --out tsv)
-			if [ -z "$fsurl" ]; then
-					echo $kvname" does not appear to contain fhir server settings...FS-URL"
-					exit 1
-			fi
-		fi
-		#Create Storage Account
-		echo "Creating Storage Account ["$deployprefix$storageAccountNameSuffix"]..."
-		stepresult=$(az storage account create --name $deployprefix$storageAccountNameSuffix --resource-group $resourceGroupName --location  $resourceGroupLocation --sku Standard_LRS --encryption-services blob)
-		echo "Retrieving Storage Account Connection String..."
-		storageConnectionString=$(az storage account show-connection-string -g $resourceGroupName -n $deployprefix$storageAccountNameSuffix --query "connectionString" --out tsv)
-		stepresult=$(az keyvault secret set --vault-name $kvname --name "FBI-STORAGEACCT" --value $storageConnectionString)
-		echo "Creating import containers..."
-		stepresult=$(az storage container create -n bundles --connection-string $storageConnectionString)
-		stepresult=$(az storage container create -n ndjson --connection-string $storageConnectionString)
-		#Create Service Plan
-		echo "Creating FHIR Loader Function App Serviceplan ["$deployprefix$serviceplanSuffix"]..."
-		stepresult=$(az appservice plan create -g  $resourceGroupName -n $deployprefix$serviceplanSuffix --number-of-workers 2 --sku B1)
-		#Create the function app
-		echo "Creating FHIR Loader Function App ["$faname"]..."
-		fahost=$(az functionapp create --name $faname --storage-account $deployprefix$storageAccountNameSuffix  --plan $deployprefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 3 --query defaultHostName --output tsv)
-		echo "Creating MSI for FHIR Loader Function App..."
-		msi=$(az functionapp identity assign -g $resourceGroupName -n $faname --query "principalId" --out tsv)
-		echo "Setting KeyVault Policy to allow secret access for FHIR Loader App..."
-		stepresult=$(az keyvault set-policy -n $kvname --secret-permissions list get set --object-id $msi)
-		echo "Retrieving FHIR Loader Function App Host Key..."
-		faresourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Web/sites/"$faname
-		fakey=$(retry az rest --method post --uri "https://management.azure.com"$faresourceid"/host/default/listKeys?api-version=2018-02-01" --query "functionKeys.default" --output tsv)
-		echo "Configuring FHIR Loader App ["$faname"]..."
-		if [ -n "$useproxy" ]; then
-			stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE))
-		else
-			stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE))
-		fi
-		echo "Deploying FHIR Loader App from source repo to ["$fahost"]..."
-		stepresult=$(retry az functionapp deployment source config --branch master --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
-		echo "Creating Azure Event GridSubscriptions..."
-		storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
-		egndjsonresource=$faresourceid"/functions/NDJSONConverter"
-		egbundleresource=$faresourceid"/functions/ImportFHIRBundles"
-		stepresult=$(az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
-		stepresult=$(az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
-		echo " "
-		echo "************************************************************************************************************"
-		echo "FHIR Loader has successfully been deployed to group "$resourceGroupName" on "$(date)
-		echo "Please note the following reference information for future use:"
-		echo "Your FHIRLoader URL is: "$fahost
-		echo "Your FHIRLoader Function App Key is: "$fakey
-		echo "Your FHIRLoader Storage Account name is: "$deployprefix$storageAccountNameSuffix
-		echo "************************************************************************************************************"
-		echo " "
+	# Create Storage Account
+	echo "Creating Storage Account ["$deployprefix$storageAccountNameSuffix"]..."
+	stepresult=$(az storage account create --name $deployprefix$storageAccountNameSuffix --resource-group $resourceGroupName --location  $resourceGroupLocation --sku Standard_LRS --encryption-services blob)
+
+	echo "Retrieving Storage Account Connection String..."
+	storageConnectionString=$(az storage account show-connection-string -g $resourceGroupName -n $deployprefix$storageAccountNameSuffix --query "connectionString" --out tsv)
+	
+	stepresult=$(az keyvault secret set --vault-name $kvname --name "FBI-STORAGEACCT" --value $storageConnectionString)
+	
+	echo "Creating import containers..."
+	stepresult=$(az storage container create -n bundles --connection-string $storageConnectionString)
+	stepresult=$(az storage container create -n ndjson --connection-string $storageConnectionString)
+	
+	#---
+
+	# Create Service Plan
+	echo "Creating FHIR Loader Function App Serviceplan ["$deployprefix$serviceplanSuffix"]..."
+	stepresult=$(az appservice plan create -g  $resourceGroupName -n $deployprefix$serviceplanSuffix --number-of-workers 2 --sku B1)
+	
+	# Create the function app
+	echo "Creating FHIR Loader Function App ["$faname"]..."
+	fahost=$(az functionapp create --name $faname --storage-account $deployprefix$storageAccountNameSuffix  --plan $deployprefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 3 --query defaultHostName --output tsv)
+	
+	# Setup Auth 
+	echo "Creating MSI for FHIR Loader Function App..."
+	msi=$(az functionapp identity assign -g $resourceGroupName -n $faname --query "principalId" --out tsv)
+	
+	# Setup Keyvault Access 
+	echo "Setting KeyVault Policy to allow secret access for FHIR Loader App..."
+	stepresult=$(az keyvault set-policy -n $kvname --secret-permissions list get set --object-id $msi)
+	
+	# Obtain Function Application Key 
+	echo "Retrieving FHIR Loader Function App Host Key..."
+	faresourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Web/sites/"$faname
+	fakey=$(retry az rest --method post --uri "https://management.azure.com"$faresourceid"/host/default/listKeys?api-version=2018-02-01" --query "functionKeys.default" --output tsv)
+	
+	# Apply App settings 
+	echo "Configuring FHIR Loader App ["$faname"]..."
+	if [[ "$useproxy" == "yes" ]]; then
+		stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE))
+	else
+		stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE))
+	fi
+	
+	# Deploy Function Application code
+	echo "Deploying FHIR Loader App from source repo to ["$fahost"]..."
+	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
+	
+	#---
+
+	# Creating Event Grid Subscription 
+	echo "Creating Azure Event GridSubscriptions..."
+	storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
+	
+	egndjsonresource=$faresourceid"/functions/NDJSONConverter"
+	
+	egbundleresource=$faresourceid"/functions/ImportFHIRBundles"
+	
+	stepresult=$(az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+	
+	stepresult=$(az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+
+	#---
+
+	echo " "
+	echo "**************************************************************************************"
+	echo "FHIR Loader has successfully been deployed to group "$resourceGroupName" on "$(date)
+	echo "Please note the following reference information for future use:"
+	echo "Your FHIRLoader URL is: "$fahost
+	echo "Your FHIRLoader Function App Key is: "$fakey
+	echo "Your FHIRLoader Storage Account name is: "$deployprefix$storageAccountNameSuffix
+	echo "***************************************************************************************"
+	echo " "
+
 )
+
+if [ $?  != 0 ];
+ then
+	echo "FHIR-Loader deployment had errors. Consider deleting the resources and trying again..."
+fi
