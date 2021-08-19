@@ -172,7 +172,6 @@ fi
 
 if [[ -z "$resourceGroupName" ]]; then
 	echo "This script will look for an existing resource group, otherwise a new one will be created "
-	echo "You can create new resource groups with the CLI using: az group create "
 	echo "Enter a resource group name"
 	read resourceGroupName
 	[[ "${resourceGroupName:?}" ]]
@@ -227,11 +226,13 @@ fi
 
 # set the default subscription id
 #
+echo " "
 echo "Setting subscription id..."
 az account set --subscription $subscriptionId
 
 # Begin validation checks 
 #
+echo " "
 echo "Checking resource group..."
 
 # Check for existing RG
@@ -245,22 +246,24 @@ if [ $(az group exists --name $resourceGroupName) = false ]; then
 		az group create --name $resourceGroupName --location $resourceGroupLocation 1> /dev/null
 	)
 else
-	echo "Using existing resource group..."$resourceGroupName
+	echo "...Found, using existing resource group "$resourceGroupName
 fi
 
 # Check for Keyvault
 #
+echo " "
 echo "Checking for keyvault "$kvname"..."
 kvexists=$(az keyvault list --query "[?name == '$kvname'].name" --out tsv)
 if [[ -n "$kvexists" ]]; then
+	echo "...Found, using existing keyvault "$kvname
 	echo "Checking $kvname for FHIR Service and/or FHIR-Proxy settings"
 	fphost=$(az keyvault secret show --vault-name $kvname --name FP-HOST --query "value" --out tsv)
 	if [ -n "$fphost" ]; then
-		echo "FHIR-Proxy host "$fphost" found in Keyvault "$kvname
+		echo "...found FHIR-Proxy host "$fphost 
 	fi
 	fsurl=$(az keyvault secret show --vault-name $kvname --name FS-URL --query "value" --out tsv)
 	if [ -n "$fsurl" ]; then
-		echo "FHIR-Service URL "$fsurl" found in Keyvault "$kvname
+		echo "...found FHIR-Service URL "$fsurl
 	fi ;
 else 
 	echo "Keyvault "$kvname" does not exist, would you like to create it? [yes/no]"
@@ -330,16 +333,24 @@ fi
 		fi
 		[[ "${fsaud:?}" ]]
 
+		# Storing the FHIR Service information in the Keyvault
+		#
+		echo "Storing FHIR Service information in Keyvault "$kvname"..."
+		echo "...storing FS-URL"
+		stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-URL" --value $fsurl)
+		
+		echo "...storing FS-TENANT-NAME"
+		stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-TENANT-NAME" --value $fstenant)
+		
+		echo "...storing FS-CLIENT-ID"
+		stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-CLIENT-ID" --value $fsclientid)
+		
+		echo "...storing FS-SECRET"
+		stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-SECRET" --value $fssecret)
+		
+		echo "...storing FS-RESURCE"
+		stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-RESOURCE" --value $fsaud)
 	fi
-
-	# Storing the FHIR Service information in the Keyvault
-	#
-	echo "Storing FHIR Service information in Keyvault "$kvname"..."
-	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-URL" --value $fsurl)
-	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-TENANT-NAME" --value $fstenant)
-	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-CLIENT-ID" --value $fsclientid)
-	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-SECRET" --value $fssecret)
-	stepresult=$(az keyvault secret set --vault-name $kvname --name "FS-RESOURCE" --value $fsaud)
 
 )
 
