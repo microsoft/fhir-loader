@@ -256,6 +256,7 @@ echo "Checking for keyvault "$kvname"..."
 kvexists=$(az keyvault list --query "[?name == '$kvname'].name" --out tsv)
 if [[ -n "$kvexists" ]]; then
 	echo "...Found, using existing keyvault "$kvname
+	echo " "
 	echo "Checking $kvname for FHIR Service and/or FHIR-Proxy settings"
 	fphost=$(az keyvault secret show --vault-name $kvname --name FP-HOST --query "value" --out tsv)
 	if [ -n "$fphost" ]; then
@@ -276,7 +277,7 @@ else
 		) ;
 	else
 		echo "Please check your Keyvault Name / Access and try again... Exiting..."
-		exit 1 
+		exit 1 ;
 	fi 
 fi
 
@@ -375,6 +376,9 @@ fi
 #
 echo "Starting deployment of... $0 -i $subscriptionId -g $resourceGroupName -l $resourceGroupLocation -p $deployprefix  use FHIR-Proxy = $useproxy "
 
+echo "do you wish to continue "
+read -p "enter to continue"
+
 #############################################
 #  Start FHIR-Proxy Configuration / Updates 
 #############################################
@@ -423,7 +427,7 @@ echo "Starting FHIR Loader deployment..."
 	# Apply App settings 
 	echo "Configuring FHIR Loader App ["$faname"]..."
 	if [[ "$useproxy" == "yes" ]]; then
-		stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE))
+		stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE)) ;
 	else
 		stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE))
 	fi
@@ -460,7 +464,6 @@ echo "Starting FHIR Loader deployment..."
 
 )
 
-if [ $?  != 0 ];
- then
+if [ $?  != 0 ] ; then
 	echo "FHIR-Loader deployment had errors. Consider deleting the resources and trying again..."
 fi
