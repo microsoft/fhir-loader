@@ -61,8 +61,8 @@ function fail {
   exit 1
 }
 
-}
-function retry {
+
+function retry () {
   local n=1
   local max=5
   local delay=30
@@ -71,7 +71,7 @@ function retry {
       if [[ $n -lt $max ]]; then
         ((n++))
         echo "Command failed. Retry Attempt $n/$max in $delay seconds:" >&2
-        sleep $delay;
+        sleep $delay ;
       else
         fail "The command has failed after $n attempts."
       fi
