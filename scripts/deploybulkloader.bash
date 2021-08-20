@@ -170,6 +170,7 @@ if [[ -z "$subscriptionId" ]]; then
 fi
 
 if [[ -z "$resourceGroupName" ]]; then
+	echo " "
 	echo "This script will look for an existing resource group, otherwise a new one will be created "
 	echo "Enter a resource group name"
 	read resourceGroupName
@@ -177,9 +178,9 @@ if [[ -z "$resourceGroupName" ]]; then
 fi
 
 if [[ -z "$resourceGroupLocation" ]]; then
-	echo "If creating a *new* resource group, you need to set a location "
-	echo "You can lookup locations with the CLI using: az account list-locations "
-	
+	echo " "
+	echo "...IF you are creating a new resource group, you need to set a location "
+	echo "...You can lookup locations with the CLI using: az account list-locations "
 	echo "Enter resource group location:"
 	read resourceGroupLocation
 fi
@@ -363,10 +364,10 @@ if [ -n "$fphost" ]; then
 	read useproxy
 	if [[ "$useproxy" == "yes" ]]; then
 		fsurl="https://"$fphost"/fhir" 
-		echo "FHIR Service URL is set to FHIR-Proxy "$fsurl"..." ;
+		echo "...ok...FHIR Service URL is set to FHIR-Proxy "$fsurl"..." ;
 	else 
 		useproxy="no"
-		echo "FHIR Service URL is set to "$fsurl"..." 
+		echo "...ok...FHIR Service URL is set to "$fsurl"..." 
 	fi
 fi
 
@@ -374,12 +375,12 @@ fi
 
 #
 echo " "
-echo "Starting deployment of... "$0 
-echo "              -i" $subscriptionId 
-echo "              -g" $resourceGroupName 
-echo "              -l" $resourceGroupLocation 
-echo "              -p" $deployprefix  
-echo "use FHIR-Proxy = "$useproxy
+echo "Starting deployment of... "$0 "with the following options:"
+echo "  -i" $subscriptionId 
+echo "  -g" $resourceGroupName 
+echo "  -l" $resourceGroupLocation 
+echo "  -p" $deployprefix  
+echo "  use FHIR-Proxy = "$useproxy
 echo " "
 read -p 'Press Enter to continue, or Ctrl+C to exit'
 
@@ -441,7 +442,7 @@ echo "Starting Function App Deployment"
 	fi
 	
 	# Deploy Function Application code
-	echo "Deploying FHIR Loader App from source repo to ["$fahost"]..."
+	echo "Deploying FHIR Loader App from source repo to ["$fahost"]...  this may take a while"
 	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 	
 	#---
@@ -457,11 +458,11 @@ echo "Creating Event Grid Subscription"
 
 	echo " "
 	echo "Setting NDJSON Resource to function NDJSON"
-	egndjsonresource=$faresourceid"/functions/NDJSONConverter"
+	egndjsonresource=$storesourceid"/functions/NDJSONConverter"
 	
 	echo " "
 	echo "Setting NDJSON Resource to function NDJSON"
-	egbundleresource=$faresourceid"/functions/ImportFHIRBundles"
+	egbundleresource=$storesourceid"/functions/ImportFHIRBundles"
 	
 	echo " "
 	echo "Creating NDJSON Subscription "
