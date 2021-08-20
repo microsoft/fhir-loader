@@ -457,11 +457,11 @@ echo "Creating Event Grid Subscription"
 	sleep 30
 
 	echo " "
-	echo "Setting NDJSON Resource to function NDJSON"
+	echo "Setting NDJSON Resource to function NDJSONConverter"
 	egndjsonresource=$storesourceid"/functions/NDJSONConverter"
 	
 	echo " "
-	echo "Setting NDJSON Resource to function NDJSON"
+	echo "Setting Bundle Resource to function ImportFhirBundles"
 	egbundleresource=$storesourceid"/functions/ImportFHIRBundles"
 	
 	echo " "
