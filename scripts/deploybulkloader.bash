@@ -202,6 +202,8 @@ echo "Starting FHIR Loader deployment..."
 		echo "Creating import containers..."
 		stepresult=$(az storage container create -n bundles --connection-string $storageConnectionString)
 		stepresult=$(az storage container create -n ndjson --connection-string $storageConnectionString)
+		stepresult=$(az storage container create -n "export" --connection-string $storageConnectionString)
+		stepresult=$(az storage container create -n "export-trigger" --connection-string $storageConnectionString)
 		#Create Service Plan
 		echo "Creating FHIR Loader Function App Serviceplan ["$deployprefix$serviceplanSuffix"]..."
 		stepresult=$(az appservice plan create -g  $resourceGroupName -n $deployprefix$serviceplanSuffix --number-of-workers 2 --sku B1)
@@ -222,7 +224,7 @@ echo "Starting FHIR Loader deployment..."
 			stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE))
 		fi
 		echo "Deploying FHIR Loader App from source repo to ["$fahost"]..."
-		stepresult=$(retry az functionapp deployment source config --branch master --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
+		stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 		echo "Creating Azure Event GridSubscriptions..."
 		storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
 		egndjsonresource=$faresourceid"/functions/NDJSONConverter"
