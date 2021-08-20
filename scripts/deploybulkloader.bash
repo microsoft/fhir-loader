@@ -227,8 +227,8 @@ echo "Starting FHIR Loader deployment..."
 		stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 		echo "Creating Azure Event GridSubscriptions..."
 		storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
-		egndjsonresource=$faresourceid"/functions/NDJSONConverter"
-		egbundleresource=$faresourceid"/functions/ImportFHIRBundles"
+		egndjsonresource=$faresourceid"/functions/ImportNDJSON"
+		egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
 		stepresult=$(az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
 		stepresult=$(az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
 		echo " "
