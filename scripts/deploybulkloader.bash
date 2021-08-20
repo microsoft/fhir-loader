@@ -55,17 +55,17 @@ declare createkv=""
 #########################################
 
 
+
 function fail {
   echo $1 >&2
   exit 1
 }
-function kvuri {
-	echo "@Microsoft.KeyVault(SecretUri=https://"$kvname".vault.azure.net/secrets/"$@"/)"
+
 }
 function retry {
   local n=1
   local max=5
-  local delay=15
+  local delay=30
   while true; do
     "$@" && break || {
       if [[ $n -lt $max ]]; then
@@ -79,10 +79,9 @@ function retry {
   done
 }
 
-function function_create_keyvault () {
-	echo "Creating Keyvault "$kvname"..."
+function kvuri {
+	echo "@Microsoft.KeyVault(SecretUri=https://"$kvname".vault.azure.net/secrets/"$@"/)"
 
-}
 
 function intro {
 	# Display the intro - give the user a chance to cancel 
@@ -445,16 +444,26 @@ echo "Starting FHIR Loader deployment..."
 	#---
 
 	# Creating Event Grid Subscription 
-	echo "Creating Azure Event GridSubscriptions..."
+	echo "Creating Azure Event GridSubscriptions...   this may take some time"
 	storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
 	
-	egndjsonresource=$faresourceid"/functions/NDJSONConverter"
+	sleep 30
+
+	echo " "
+	echo "Setting NDJSON Resource to function NDJSON"
+	stepresult=$(retry egndjsonresource=$faresourceid"/functions/NDJSONConverter")
 	
-	egbundleresource=$faresourceid"/functions/ImportFHIRBundles"
+	echo " "
+	echo "Setting NDJSON Resource to function NDJSON"
+	stepresult=$(retry egbundleresource=$faresourceid"/functions/ImportFHIRBundles")
 	
-	stepresult=$(az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+	echo " "
+	echo "Creating NDJSON Subscription "
+	stepresult=$(retry az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
 	
-	stepresult=$(az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+	echo " "
+	echo "Creating BUNDLE Subscription "
+	stepresult=$(retry az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
 
 	#---
 
