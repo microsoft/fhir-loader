@@ -56,7 +56,7 @@ declare createkv=""
 
 
 
-function fail {
+function fail () {
   echo $1 >&2
   exit 1
 }
@@ -81,7 +81,7 @@ function retry () {
 
 function kvuri {
 	echo "@Microsoft.KeyVault(SecretUri=https://"$kvname".vault.azure.net/secrets/"$@"/)"
-
+}
 
 function intro {
 	# Display the intro - give the user a chance to cancel 
@@ -435,9 +435,9 @@ echo "Starting Function App Deployment"
 	# Apply App settings 
 	echo "Configuring FHIR Loader App ["$faname"]..."
 	if [[ "$useproxy" == "yes" ]]; then
-		stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE)) ;
+		az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE) ;
 	else
-		stepresult=$(az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE))
+		az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE)
 	fi
 	
 	# Deploy Function Application code
@@ -457,11 +457,11 @@ echo "Creating Event Grid Subscription"
 
 	echo " "
 	echo "Setting NDJSON Resource to function NDJSON"
-	stepresult=$(egndjsonresource=$faresourceid"/functions/NDJSONConverter")
+	egndjsonresource=$faresourceid"/functions/NDJSONConverter"
 	
 	echo " "
 	echo "Setting NDJSON Resource to function NDJSON"
-	stepresult=$(egbundleresource=$faresourceid"/functions/ImportFHIRBundles")
+	egbundleresource=$faresourceid"/functions/ImportFHIRBundles"
 	
 	echo " "
 	echo "Creating NDJSON Subscription "
