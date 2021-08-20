@@ -405,7 +405,10 @@ echo "Starting FHIR Loader deployment..."
 	stepresult=$(az storage container create -n bundles --connection-string $storageConnectionString)
 	stepresult=$(az storage container create -n ndjson --connection-string $storageConnectionString)
 	stepresult=$(az storage container create -n export --connection-string $storageConnectionString)
-	
+)
+
+echo "Starting Function App Deployment"
+(
 	#---
 
 	# Create Service Plan
@@ -442,7 +445,10 @@ echo "Starting FHIR Loader deployment..."
 	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 	
 	#---
+)
 
+echo "Creating Event Grid Subscription"
+(
 	# Creating Event Grid Subscription 
 	echo "Creating Azure Event GridSubscriptions...   this may take some time"
 	storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
@@ -479,6 +485,6 @@ echo "Starting FHIR Loader deployment..."
 
 )
 
-if [ $?  != 0 ] ; then
+if [ $? != 0 ] ; then
 	echo "FHIR-Loader deployment had errors. Consider deleting the resources and trying again..."
 fi
