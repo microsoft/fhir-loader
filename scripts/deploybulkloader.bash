@@ -451,11 +451,11 @@ echo "Starting FHIR Loader deployment..."
 
 	echo " "
 	echo "Setting NDJSON Resource to function NDJSON"
-	stepresult=$(retry egndjsonresource=$faresourceid"/functions/NDJSONConverter")
+	stepresult=$(egndjsonresource=$faresourceid"/functions/NDJSONConverter")
 	
 	echo " "
 	echo "Setting NDJSON Resource to function NDJSON"
-	stepresult=$(retry egbundleresource=$faresourceid"/functions/ImportFHIRBundles")
+	stepresult=$(egbundleresource=$faresourceid"/functions/ImportFHIRBundles")
 	
 	echo " "
 	echo "Creating NDJSON Subscription "

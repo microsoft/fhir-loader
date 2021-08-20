@@ -26,6 +26,8 @@ Information needed by this script
  - Keyvault Name 
  - 
 
+add FBI-POOLEDCON-MAXCONNECTIONS = 20
+WEBSITE_RUN_FROM_PACKAGE=1
 
  
 
