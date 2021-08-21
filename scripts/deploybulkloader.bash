@@ -406,6 +406,8 @@ echo "Starting FHIR Loader deployment..."
 	stepresult=$(az storage container create -n bundles --connection-string $storageConnectionString)
 	stepresult=$(az storage container create -n ndjson --connection-string $storageConnectionString)
 	stepresult=$(az storage container create -n export --connection-string $storageConnectionString)
+	stepresult=$(az storage container create -n export-trigger --connection-string $storageConnectionString)
+	stepresult=$(az storage container create -n zip --connection-string $storageConnectionString)
 )
 
 echo "Starting Function App Deployment"
@@ -433,7 +435,7 @@ echo "Starting Function App Deployment"
 	faresourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Web/sites/"$faname
 	fakey=$(retry az rest --method post --uri "https://management.azure.com"$faresourceid"/host/default/listKeys?api-version=2018-02-01" --query "functionKeys.default" --output tsv)
 	
-	# Apply App settings 
+	# Apply App Auth and Connection settings 
 	echo "Configuring FHIR Loader App ["$faname"]..."
 	if [[ "$useproxy" == "yes" ]]; then
 		az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE) ;
@@ -441,6 +443,12 @@ echo "Starting Function App Deployment"
 		az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE)
 	fi
 	
+	# Apply App Setting (static)
+	# Note:  We need to by default disable the ImportBlobTrigger as that will conflict with the EventGridTrigger
+	echo "Configuring Static App settings for FHIR Loader App ["$faname"]..."
+	az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings AzureWebJobs.ImportBundleBlobTrigger.Disabled=1 FBI-TRANSFORMBUNDLES=true
+
+
 	# Deploy Function Application code
 	echo "Deploying FHIR Loader App from source repo to ["$fahost"]...  this may take a while"
 	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
@@ -457,12 +465,12 @@ echo "Creating Event Grid Subscription"
 	sleep 30
 
 	echo " "
-	echo "Setting NDJSON Resource to function NDJSONConverter"
-	egndjsonresource=$faresourceid"/functions/NDJSONConverter"
+	echo "Setting NDJSON Resource to function ImportNDJson"
+	egndjsonresource=$faresourceid"/functions/ImportNDJSON"
 	
 	echo " "
 	echo "Setting Bundle Resource to function ImportFhirBundles"
-	egbundleresource=$faresourceid"/functions/ImportFHIRBundles"
+	egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
 	
 	echo " "
 	echo "Creating NDJSON Subscription "
