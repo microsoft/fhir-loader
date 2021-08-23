@@ -111,7 +111,6 @@ function intro {
 usage() { echo "Usage: $0 -i <subscriptionId> -g <resourceGroupName> -l <resourceGroupLocation> -p <prefix> -k <keyvault> -y (use FHIR Proxy)" 1>&2; exit 1; }
 
 
-
 #########################################
 #  Script Main Body (start here) 
 #########################################
@@ -551,3 +550,4 @@ if [ -z "$eventGridEndpointBundle" ]; then
 if [ $? != 0 ] ; then
 	echo "FHIR-Loader deployment had errors. Consider deleting the resources and trying again..."
 fi
+
