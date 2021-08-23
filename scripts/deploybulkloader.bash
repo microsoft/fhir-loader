@@ -465,7 +465,6 @@ echo "Starting Function App Deployment"
 	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 
 	sleep 30	
-	export $faname
 	#---
 )
 
