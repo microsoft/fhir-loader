@@ -465,10 +465,11 @@ echo "Starting Function App Deployment"
 	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 
 	sleep 30	
+	export $fahost
 	#---
 )
 
-echo "Creating Event Grid Subscription"
+echo "Creating Event Grid Subscription for $fahost"
 (
 	# Creating Event Grid Subscription 
 	echo "...this may take some time"
@@ -481,16 +482,24 @@ echo "Creating Event Grid Subscription"
 	egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
 	
 	# ignoring the assignements above, retreive the Function Name from the Function App
+	echo "Assigning Endpoint for "...$importNdjsonvar
 	eventGridEndpointNDJSON=$(az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importNdjsonvar --query id --output tsv)
 
 	if [ -z "$eventGridEndpointNDJSON" ]; then
 		echo "Function App ImportNDJSON not found, retrying"
 		sleep 30
-		eventGridEndpointNDJSON=$(az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importNdjsonvar --query id --output tsv)
+		eventGridEndpointNDJSON=$(retry az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importNdjsonvar --query id --output tsv)
 	fi
 	
+	echo "Assigning Endpoint for "...$importBundle
 	eventGridEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $fahost --function-name $importBundle --query id --output tsv)
 
+if [ -z "$eventGridEndpointBundle" ]; then
+		echo "Function App ImportBundle not found, retrying"
+		sleep 30
+		eventGridEndpointBundle=$(retry az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importBundle --query id --output tsv)
+	fi
+	
 	
 	echo " "
 	echo "Creating NDJSON Subscription "
