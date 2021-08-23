@@ -465,11 +465,11 @@ echo "Starting Function App Deployment"
 	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 
 	sleep 30	
-	export $fahost
+	export $faname
 	#---
 )
 
-echo "Creating Event Grid Subscription for $fahost"
+echo "Creating Event Grid Subscription for $faname"
 (
 	# Creating Event Grid Subscription 
 	echo "...this may take some time"
@@ -483,21 +483,21 @@ echo "Creating Event Grid Subscription for $fahost"
 	
 	# ignoring the assignements above, retreive the Function Name from the Function App
 	echo "Assigning Endpoint for "...$importNdjsonvar
-	eventGridEndpointNDJSON=$(az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importNdjsonvar --query id --output tsv)
+	eventGridEndpointNDJSON=$(az functionapp function show --resource-group $resourceGroupName --name $faname --function-name $importNdjsonvar --query id --output tsv)
 
 	if [ -z "$eventGridEndpointNDJSON" ]; then
 		echo "Function App ImportNDJSON not found, retrying"
 		sleep 30
-		eventGridEndpointNDJSON=$(retry az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importNdjsonvar --query id --output tsv)
+		eventGridEndpointNDJSON=$(retry az functionapp function show --resource-group $resourceGroupName --name $faname --function-name $importNdjsonvar --query id --output tsv)
 	fi
 	
 	echo "Assigning Endpoint for "...$importBundle
-	eventGridEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $fahost --function-name $importBundle --query id --output tsv)
+	eventGridEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $faname --function-name $importBundle --query id --output tsv)
 
 if [ -z "$eventGridEndpointBundle" ]; then
 		echo "Function App ImportBundle not found, retrying"
 		sleep 30
-		eventGridEndpointBundle=$(retry az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importBundle --query id --output tsv)
+		eventGridEndpointBundle=$(retry az functionapp function show --resource-group $resourceGroupName --name $faname --function-name $importBundle --query id --output tsv)
 	fi
 	
 	
@@ -524,6 +524,7 @@ if [ -z "$eventGridEndpointBundle" ]; then
 
 	echo "Source input: $storesourceid"
 	echo "Topic name: $egbundleresource"
+	echo "Function name: $importBundle"
 	echo "Endpoint: $eventGridEndpointBundle"
 
 	sleep 30
