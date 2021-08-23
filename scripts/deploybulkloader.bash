@@ -21,8 +21,8 @@ IFS=$'\n\t'
 # the import variables and Subscription variables should come from the source code.  The eg endpoints variables are placeholders  
 declare importNdjsonvar="ImportNDJSON"
 declare importBundle="ImportBundleEventGrid"
-declare egEndpointNdjson=""
-declare egEndpointBundle=""
+declare eventGridEndpointNDJSON=""
+declare eventGridEndpointBundle=""
 declare egNdjsonSubscription="ndjsoncreated"
 declare egBundleSubscription="bundlecreated"
 
@@ -190,7 +190,7 @@ fi
 if [[ -z "$resourceGroupLocation" ]]; then
 	echo " "
 	echo "...IF you are creating a new resource group, you need to set a location "
-	echo "...You can lookup locations with the CLI using: az account list-locations "
+	echo " "
 	echo "Enter resource group location:"
 	read resourceGroupLocation
 fi
@@ -206,6 +206,7 @@ defdeployprefix=${defdeployprefix,,}
 
 # Prompt for Deployment Prefix
 #
+echo " "
 if [[ -z "$deployprefix" ]]; then
 	echo "Enter your deployment prefix ["$defdeployprefix"]:"
 	read deployprefix
@@ -470,7 +471,7 @@ echo "Starting Function App Deployment"
 echo "Creating Event Grid Subscription"
 (
 	# Creating Event Grid Subscription 
-	echo "Creating Azure Event GridSubscriptions...   this may take some time"
+	echo "...this may take some time"
 
 	# assigning source input / id 
 	storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
@@ -480,14 +481,15 @@ echo "Creating Event Grid Subscription"
 	egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
 	
 	# ignoring the assignements above, retreive the Function Name from the Function App
-	egEndpointNdjson=$(az functionapp function show -g $resourceGroupName -n $fahost --function-name $importNdjsonvar --query id --output tsv)
-	if [ -z "$egEndpointNdjson" ]; then
+	eventGridEndpointNDJSON=$(az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importNdjsonvar --query id --output tsv)
+
+	if [ -z "$eventGridEndpointNDJSON" ]; then
 		echo "Function App ImportNDJSON not found, retrying"
 		sleep 30
-		egEndpointNdjson=$(az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importNdjsonvar --query id --output tsv)
+		eventGridEndpointNDJSON=$(az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importNdjsonvar --query id --output tsv)
 	fi
 	
-	egEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $fahost --function-name $importBundle --query id --output tsv)
+	eventGridEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $fahost --function-name $importBundle --query id --output tsv)
 
 	
 	echo " "
@@ -497,13 +499,13 @@ echo "Creating Event Grid Subscription"
 	echo "Source input: $storesourceid"
 	echo "Topic name: $egndjsonresource"
 	echo "Function name: $importNdjsonvar"
-	echo "Endpoint: $egEndpointNdjson"
+	echo "Endpoint: $eventGridEndpointNDJSON"
 
 	sleep 30
 
 	stepresult=$(az eventgrid event-subscription create --name $egNdjsonSubscription \
      --source-resource-id $storesourceid \
-     --endpoint $egEndpointNdjson  \
+     --endpoint $eventGridEndpointNDJSON  \
      --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
 
 	
@@ -513,13 +515,13 @@ echo "Creating Event Grid Subscription"
 
 	echo "Source input: $storesourceid"
 	echo "Topic name: $egbundleresource"
-	echo "Endpoint: $egEndpointBundle"
+	echo "Endpoint: $eventGridEndpointBundle"
 
 	sleep 30
 
 	stepresult=$(az eventgrid event-subscription create --name $egBundleSubscription \
      --source-resource-id $storesourceid \
-     --endpoint $egEndpointBundle  \
+     --endpoint $eventGridEndpointBundle  \
      --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
 
 
