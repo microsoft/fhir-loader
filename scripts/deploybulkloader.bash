@@ -476,9 +476,9 @@ echo "Creating Event Grid Subscription for $faname"
 	# assigning source input / id 
 	storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
 	
-	egndjsonresource=$faresourceid"/functions/ImportNDJSON"
+	#egndjsonresource=$faresourceid"/functions/ImportNDJSON"
 	
-	egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
+	#egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
 	
 	# ignoring the assignements above, retreive the Function Name from the Function App
 	echo "Assigning Endpoint for "...$importNdjsonvar
@@ -541,7 +541,6 @@ if [ -z "$eventGridEndpointBundle" ]; then
 	echo "FHIR Loader has successfully been deployed to group "$resourceGroupName" on "$(date)
 	echo "Please note the following reference information for future use:"
 	echo "Your FHIRLoader URL is: "$fahost
-	echo "Your FHIRLoader Function App Key is: "$fakey
 	echo "Your FHIRLoader Storage Account name is: "$deployprefix$storageAccountNameSuffix
 	echo "***************************************************************************************"
 	echo " "
