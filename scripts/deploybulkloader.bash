@@ -15,6 +15,16 @@ IFS=$'\n\t'
 # Function App 
 # App Insights 
 
+#########################################
+#  Function Variables 
+#########################################
+# the import variables and Subscription variables should come from the source code.  The eg endpoints variables are placeholders  
+declare importNdjson="ImportNDJSON"
+declare importBundle="ImportBundleEventGrid"
+declare egEndpointNdjson=""
+declare egEndpointBundle=""
+declare egNdjsonSubscription="ndjsoncreated"
+declare egBundleSubscription="bundlecreated"
 
 #########################################
 #  Script Variables 
@@ -436,7 +446,7 @@ echo "Starting Function App Deployment"
 	fakey=$(retry az rest --method post --uri "https://management.azure.com"$faresourceid"/host/default/listKeys?api-version=2018-02-01" --query "functionKeys.default" --output tsv)
 	
 	# Apply App Auth and Connection settings 
-	echo "Configuring FHIR Loader App ["$faname"]..."
+	echo "Configuring FHIR Loader App settings ["$faname"]..."
 	if [[ "$useproxy" == "yes" ]]; then
 		az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fsurl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE) ;
 	else
@@ -452,7 +462,8 @@ echo "Starting Function App Deployment"
 	# Deploy Function Application code
 	echo "Deploying FHIR Loader App from source repo to ["$fahost"]...  this may take a while"
 	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $faname --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
-	
+
+	sleep 30	
 	#---
 )
 
@@ -460,25 +471,39 @@ echo "Creating Event Grid Subscription"
 (
 	# Creating Event Grid Subscription 
 	echo "Creating Azure Event GridSubscriptions...   this may take some time"
+
+	# assigning source input / id 
 	storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
 	
-	sleep 30
-
-	echo " "
-	echo "Setting NDJSON Resource to function ImportNDJson"
 	egndjsonresource=$faresourceid"/functions/ImportNDJSON"
 	
-	echo " "
-	echo "Setting Bundle Resource to function ImportFhirBundles"
 	egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
+	
+	# ignoring the assignements above, retreive the Function Name from the Function App
+	egEndpointNdjson=$(retry az functionapp function show -g $resourceGroupName -n $fahost --function-name $importNdjson --query id --output tsv)
+	
+	egEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $fahost --function-name $importBundle --query id --output tsv)
+
 	
 	echo " "
 	echo "Creating NDJSON Subscription "
-	stepresult=$(retry az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+	#stepresult=$(retry az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+
+	stepresult=$(az eventgrid event-subscription create --name $egNdjsonSubscription \
+     --source-resource-id $storesourceid \
+     --endpoint $egEndpointNdjson  \
+     --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
+
 	
 	echo " "
 	echo "Creating BUNDLE Subscription "
-	stepresult=$(retry az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+	#stepresult=$(retry az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+
+	stepresult=$(az eventgrid event-subscription create --name $egBundleSubscription \
+     --source-resource-id $storesourceid \
+     --endpoint $egEndpointBundle  \
+     --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
+
 
 	#---
 
