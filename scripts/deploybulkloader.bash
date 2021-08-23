@@ -19,7 +19,7 @@ IFS=$'\n\t'
 #  Function Variables 
 #########################################
 # the import variables and Subscription variables should come from the source code.  The eg endpoints variables are placeholders  
-declare importNdjson="ImportNDJSON"
+declare importNdjsonvar="ImportNDJSON"
 declare importBundle="ImportBundleEventGrid"
 declare egEndpointNdjson=""
 declare egEndpointBundle=""
@@ -480,7 +480,12 @@ echo "Creating Event Grid Subscription"
 	egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
 	
 	# ignoring the assignements above, retreive the Function Name from the Function App
-	egEndpointNdjson=$(retry az functionapp function show -g $resourceGroupName -n $fahost --function-name $importNdjson --query id --output tsv)
+	egEndpointNdjson=$(az functionapp function show -g $resourceGroupName -n $fahost --function-name $importNdjsonvar --query id --output tsv)
+	if [ -z "$egEndpointNdjson" ]; then
+		echo "Function App ImportNDJSON not found, retrying"
+		sleep 30
+		egEndpointNdjson=$(az functionapp function show --resource-group $resourceGroupName --name $fahost --function-name $importNdjsonvar --query id --output tsv)
+	fi
 	
 	egEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $fahost --function-name $importBundle --query id --output tsv)
 
@@ -488,6 +493,13 @@ echo "Creating Event Grid Subscription"
 	echo " "
 	echo "Creating NDJSON Subscription "
 	#stepresult=$(retry az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+
+	echo "Source input: $storesourceid"
+	echo "Topic name: $egndjsonresource"
+	echo "Function name: $importNdjsonvar"
+	echo "Endpoint: $egEndpointNdjson"
+
+	sleep 30
 
 	stepresult=$(az eventgrid event-subscription create --name $egNdjsonSubscription \
      --source-resource-id $storesourceid \
@@ -498,6 +510,12 @@ echo "Creating Event Grid Subscription"
 	echo " "
 	echo "Creating BUNDLE Subscription "
 	#stepresult=$(retry az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+
+	echo "Source input: $storesourceid"
+	echo "Topic name: $egbundleresource"
+	echo "Endpoint: $egEndpointBundle"
+
+	sleep 30
 
 	stepresult=$(az eventgrid event-subscription create --name $egBundleSubscription \
      --source-resource-id $storesourceid \
