@@ -393,7 +393,6 @@ echo "  -l" $resourceGroupLocation
 echo "  -p" $deployprefix  
 echo "  use FHIR-Proxy = "$useproxy
 echo " "
-echo " Please validate the settings above and... "
 read -p 'Press Enter to continue, or Ctrl+C to exit'
 
 #############################################
