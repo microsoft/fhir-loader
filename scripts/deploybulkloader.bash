@@ -531,7 +531,7 @@ if [ -z "$eventGridEndpointBundle" ]; then
 	stepresult=$(az eventgrid event-subscription create --name $egBundleSubscription \
      --source-resource-id $storesourceid \
      --endpoint $eventGridEndpointBundle  \
-     --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
+     --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
 
 
 	#---
