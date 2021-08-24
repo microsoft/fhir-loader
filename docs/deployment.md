@@ -31,7 +31,7 @@ The FHIR Bulk Loader works with the HealthArchitecture [FHIR Proxy](https://gith
 
 When using the Bulk Loader with FHIR Proxy the bulk loader will use the Proxy Key Vault rather than deploying another key vault.   
 
-## Deploy Bulk Loader Script (bash)
+## Deploy FHIR Bulk Loader Script (bash)
 
 1. Clone this repo to your Cloudshell environment 
 
@@ -45,57 +45,33 @@ cd ./fhir-loader/scripts
 ```
 3. Enable Execute permissions on the deploybulkloader.bash script 
 ```azurecli-interactive
-chmod +x ./deploybulkloader.bash
+chmod +x ./deployFhirBulkLoader.bash
 ```
-4. Run the deploybulkloader.bash script (__without HealthArchitectures fhir-proxy__) 
+Alternatively you can run the script with command line attributes   
 ```azurecli-interactive
-./deploybulkloader.bash 
+./deployFhirBulkLoader.bash --i <subscriptionId> -g <resourceGroupName> -l <resourceGroupLocation> -p <install prefix> -k <keyvault> -y <use FHIR Proxy=yes> 
 ```
-4. Run the deploybulkloader.bash script (__with HealthArchitectures fhir-proxy__) (_recommended production approach_)
+4. Run the deploybulkloader.bash script 
 ```azurecli-interactive
-./deploybulkloader.bash -y
+./deploybulkloader.bash
 ```
 
-## Information Input / Needs 
+Upon successful completion you will see the following information 
+```azurecli
+    **************************************************************************************
+	"FHIR Loader has successfully been deployed to group "resourceGroupName" on "$(date)
+	"Please note the following reference information for future use:"
+	"Your FHIRLoader URL is: " host
+	"Your FHIRLoader Storage Account name is: "storageAccountName
+	 ***************************************************************************************
 
+```
+Should instllation fail at anytime the follow error will be shown 
 
+```azurecli
+FHIR-Loader deployment had errors. Consider deleting the resources and trying again...
 
-## Environment 
-
-ResourceGroup,
-KeyVault,
-Storage Account,
-App Service Plan,
-Function App,
-EventGrid
-
-### Resource Group 
-
-### Key Vault 
-
-### Storage Containers 
-
-### App Service Plan 
-he free app service plan and Cosmos Db account have restrictions that can be seen on their respective doc pages: App Service plan overview, Cosmos DB free tier
-
-https://docs.microsoft.com/en-us/azure/app-service/overview-hosting-plans 
-
-### Function App
-
-### EventGrid 
-
-
-### Application Insights 
-
-
-## Verify Bulk Loader is functioning 
-
-Obtain a capability statement from the FHIR server with:
-
-```azurecli-interactive
-metadataurl="https://${servicename}.azurewebsites.net/metadata"
-curl --url $metadataurl
 ```
 
-It will take a minute or so for the server to respond the first time.
+
 

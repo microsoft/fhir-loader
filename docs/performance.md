@@ -46,21 +46,6 @@ The Loader Function app comes with a MAXCONNECTION setting of 20 processes for c
 Our Function code follows [Azure Best practices for performance and reliability](https://docs.microsoft.com/en-us/azure/azure-functions/functions-best-practices)
 
 
-### Service Bus 
-Service Bus Messaging combines enterprise messaging capabilities with rich publish-subscribe semantics at cloud scale.  The Premium tier of Service Bus Messaging addresses common customer requests around scale, performance, and availability for mission-critical applications. 
-
-When provisioning an Azure Service Bus Premium namespace, the number of messaging units allocated must be specified. These messaging units are dedicated resources that are allocated to the namespace.  The number of messaging units allocated to the Service Bus Premium namespace can be dynamically adjusted to factor in the change (increase or decrease) in workload.
-
-Load testing was performed with the Premium Service Bus tier using 16 Messaging Units and a Max delivery count of 10 (per queue) 
-
-Environment
-![service bus](images/sb-env.png)
- 
-Queue
-![service bus queue](images/sb-queue-env.png)
-
-More information on Service Bus performance can be found [here](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-premium-messaging)
-
 ### API for FHIR
 Azure API for FHIR uses database to store its data. Performance of the underlying database depends on the number of Request Units (RU) selected during service provisioning or in database settings after the service has been provisioned.  Throughput must be provisioned to ensure that sufficient system resources are available for your database at all times. How many RUs you need for your application depends on operations you perform. Operations can range from simple read and writes to more complex queries.
 
