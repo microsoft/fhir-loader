@@ -6,7 +6,7 @@ This guide provides information on testing FHIR Loader capabilities
 
 ## What to focus on
 
-While the team remains diligently focused on security and [performance](./performance.md), as we introduce new features there may be times where changes may impact functionality.  The tests below are focused on functionality, please see the performance link above for questions on performance.  
+We remain diligently focused on security and performance. As we introduce new features, there may be times where changes may impact functionality and / or performance." The tests below are focused on functionality, please see the [performance](./performance.md) for questions on performance.  
 
 ## What if I find an issue?
 

@@ -63,7 +63,7 @@ FHIR-Loader - Application Configuration values - unique values
 Name                                              | Value  | Used For              
 --------------------------------------------------|--------|-----------------------------------
 AzureWebJobs.ImportBundleBlobTrigger.Disabled     | 1      | Prevents Conflicts wit Event Grid 
-FBI-POOLEDCON-MAXCONNECTIONS                      | 20     | Limitis service timeouts
+FBI-POOLEDCON-MAXCONNECTIONS                      | 20     | Limits service timeouts
 WEBSITE_RUN_FROM_PACKAGE                          | 1      | Optional - sets app to read only
  
  

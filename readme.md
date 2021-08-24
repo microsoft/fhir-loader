@@ -25,8 +25,11 @@ FHIR Bulk Loader is an Azure Function App solution that provides the following s
 # Deployment
 1. [Open Azure Cloud Shell](https://shell.azure.com) you can also access this from [Azure Portal](https://portal.azure.com)
 2. Select Bash Shell for the environment 
-3. Clone this repo ```git clone https://github.com/microsoft/fhir-loader```
-4. Execute ```deploybulkloader.bash``` for direct FHIR Server access or ```deploybulkloader.bash -y``` to use FHIR Proxy access
+3. Clone this repo
+```azurecli
+git clone https://github.com/microsoft/fhir-loader
+```
+4. Execute ```deployFhirBulkLoader.bash``` for direct FHIR Server access or ```deployFhirBulkLoader.bash -y``` to use FHIR Proxy access
 
 Detailed instructions can be found [here](docs/deployment.md)
 
@@ -36,7 +39,7 @@ The containers for importing data are created during deployment.  Containers are
 - for NDJSON formated FHIR Bunldles use the "ndjson" container
 - for Compressed (zip) formatted FHIR Bundles, use the "zip" container
 
-Detailed instructions can be found [here](docs/deployment.md) 
+Detailed configurations can be found [here](scripts/gettingStartedFhirLoader.md) 
 
 # Performance 
 The FHIR Loader deploys with a Standard App Service plan that can support tens of thousands file imports per hour.  During testing we have been able to scale the FHIR Loader performance to hundreds of thousands of files per hour.  
