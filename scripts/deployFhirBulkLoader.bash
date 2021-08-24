@@ -111,7 +111,6 @@ function intro {
 usage() { echo "Usage: $0 -i <subscriptionId> -g <resourceGroupName> -l <resourceGroupLocation> -p <prefix> -k <keyvault> -y (use FHIR Proxy)" 1>&2; exit 1; }
 
 
-
 #########################################
 #  Script Main Body (start here) 
 #########################################
@@ -393,6 +392,7 @@ echo "  -l" $resourceGroupLocation
 echo "  -p" $deployprefix  
 echo "  use FHIR-Proxy = "$useproxy
 echo " "
+echo " Please validate the settings above and... "
 read -p 'Press Enter to continue, or Ctrl+C to exit'
 
 #############################################
@@ -432,6 +432,8 @@ echo "Starting Function App Deployment"
 	# Create the function app
 	echo "Creating FHIR Loader Function App ["$faname"]..."
 	fahost=$(az functionapp create --name $faname --storage-account $deployprefix$storageAccountNameSuffix  --plan $deployprefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 3 --query defaultHostName --output tsv)
+
+	echo "FHIR Loader Function hostname is: "$fahost
 	
 	# Setup Auth 
 	echo "Creating MSI for FHIR Loader Function App..."
@@ -457,7 +459,7 @@ echo "Starting Function App Deployment"
 	# Apply App Setting (static)
 	# Note:  We need to by default disable the ImportBlobTrigger as that will conflict with the EventGridTrigger
 	echo "Configuring Static App settings for FHIR Loader App ["$faname"]..."
-	az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings AzureWebJobs.ImportBundleBlobTrigger.Disabled=1 FBI-TRANSFORMBUNDLES=true
+	az functionapp config appsettings set --name $faname --resource-group $resourceGroupName --settings AzureWebJobs.ImportBundleBlobTrigger.Disabled=1 FBI-TRANSFORMBUNDLES=true FBI-POOLEDCON-MAXCONNECTIONS=20
 
 
 	# Deploy Function Application code
@@ -476,25 +478,28 @@ echo "Creating Event Grid Subscription for $faname"
 	# assigning source input / id 
 	storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployprefix$storageAccountNameSuffix
 	
+	# Replaced these with a call to the function app below
 	#egndjsonresource=$faresourceid"/functions/ImportNDJSON"
-	
 	#egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
 	
-	# ignoring the assignements above, retreive the Function Name from the Function App
+	# Replacing the assignements above, retreive the Function Name from the Function App
 	echo "Assigning Endpoint for "...$importNdjsonvar
 	eventGridEndpointNDJSON=$(az functionapp function show --resource-group $resourceGroupName --name $faname --function-name $importNdjsonvar --query id --output tsv)
 
 	if [ -z "$eventGridEndpointNDJSON" ]; then
 		echo "Function App ImportNDJSON not found, retrying"
+		# some times the Region may be slow to provision the apps - pushing this into the retry function 
 		sleep 30
 		eventGridEndpointNDJSON=$(retry az functionapp function show --resource-group $resourceGroupName --name $faname --function-name $importNdjsonvar --query id --output tsv)
 	fi
 	
+	# Replacing the assignements above, retreive the Function Name from the Function App
 	echo "Assigning Endpoint for "...$importBundle
 	eventGridEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $faname --function-name $importBundle --query id --output tsv)
 
 if [ -z "$eventGridEndpointBundle" ]; then
 		echo "Function App ImportBundle not found, retrying"
+		# some times the Region may be slow to provision the apps - pushing this into the retry function 
 		sleep 30
 		eventGridEndpointBundle=$(retry az functionapp function show --resource-group $resourceGroupName --name $faname --function-name $importBundle --query id --output tsv)
 	fi
@@ -502,6 +507,7 @@ if [ -z "$eventGridEndpointBundle" ]; then
 	
 	echo " "
 	echo "Creating NDJSON Subscription "
+	# step is still valid, it is simply re-written below for ease of readability 
 	#stepresult=$(retry az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
 
 	echo "Source input: $storesourceid"
@@ -519,6 +525,7 @@ if [ -z "$eventGridEndpointBundle" ]; then
 	
 	echo " "
 	echo "Creating BUNDLE Subscription "
+	# step is still valid, it is simply re-written below for ease of readability 
 	#stepresult=$(retry az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
 
 	echo "Source input: $storesourceid"
@@ -550,3 +557,4 @@ if [ -z "$eventGridEndpointBundle" ]; then
 if [ $? != 0 ] ; then
 	echo "FHIR-Loader deployment had errors. Consider deleting the resources and trying again..."
 fi
+
