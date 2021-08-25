@@ -39,7 +39,7 @@ namespace FHIRBulkImport
             JObject retVal = new JObject();
             retVal["instanceid"] = context.InstanceId;
             retVal["configuration"] = config;
-            retVal["started"] = System.DateTime.UtcNow;
+            retVal["started"] = context.CurrentUtcDateTime;
 
             string query = config["query"].ToString();
             string patreffield = config["patientreferencefield"].ToString();
@@ -107,7 +107,7 @@ namespace FHIRBulkImport
                 var callResults = tasks
                     .Where(t => t.Status == TaskStatus.RanToCompletion)
                     .Select(t => t.Result);
-                retVal["finished"] = System.DateTime.UtcNow;
+                retVal["finished"] = context.CurrentUtcDateTime;
                 foreach (JObject j in callResults)
                 {
                     foreach (JProperty property in j.Properties())
@@ -177,44 +177,46 @@ namespace FHIRBulkImport
                 JArray arr = (JArray)resource["entry"];
                 if (arr != null)
                 {
-                        foreach (JToken entry in arr)
+                    foreach (JToken entry in arr)
+                    {
+                        var r = entry["resource"];
+                        if (rt.Equals("Patient"))
                         {
-                            var r = entry["resource"];
-                            if (rt.Equals("Patient"))
+                            ids.Add(r.FHIRResourceId());
+                        }
+                        else
+                        {
+                            if (!r[patreffield].IsNullOrEmpty())
                             {
-                                ids.Add(r.FHIRResourceId());
-                            }
-                            else
-                            {
-                                if (!r[patreffield].IsNullOrEmpty())
+                                string patref = (string)r[patreffield]["reference"];
+                                if (patref != null && patref.StartsWith("Patient") && patref.IndexOf("/") > 0)
                                 {
-                                    string patref = (string)r[patreffield]["reference"];
-                                    if (patref != null && patref.StartsWith("Patient") && patref.IndexOf("/") > 0)
-                                    {
-                                        string pid = patref.Split("/")[1];
-                                        ids.Add(pid);
-                                    }
+                                    string pid = patref.Split("/")[1];
+                                    ids.Add(pid);
                                 }
                             }
                         }
-                }
-                string qids = string.Join(",", ids);
-                //Just use bundle to gather patient resources if source query is patient based
-                if (rt.Equals("Patient"))
-                    subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", SetContextVariables(vars["instanceId"].ToString(), resource,"Patient")));
-                if (include != null)
-                {
-                    foreach (JToken t in include)
-                    {
-                        string sq = t.ToString();
-                        sq = sq.Replace("$IDS", qids);
-                        subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", SetContextVariables(vars["instanceId"].ToString(), null, sq)));
                     }
                 }
-                await Task.WhenAll(subtasks);
-                var callResults = subtasks
-                    .Where(t => t.Status == TaskStatus.RanToCompletion)
-                    .Select(t => t.Result);
+                if (ids.Count > 0)
+                {
+                    string qids = string.Join(",", ids);
+                    //Just use bundle to gather patient resources if source query is patient based
+                    if (rt.Equals("Patient"))
+                        subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", SetContextVariables(vars["instanceId"].ToString(), resource, "Patient")));
+                    if (include != null)
+                    {
+                        foreach (JToken t in include)
+                        {
+                            string sq = t.ToString();
+                            sq = sq.Replace("$IDS", qids);
+                            subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", SetContextVariables(vars["instanceId"].ToString(), null, sq)));
+                        }
+                    }
+                    await Task.WhenAll(subtasks);
+                    var callResults = subtasks
+                        .Where(t => t.Status == TaskStatus.RanToCompletion)
+                        .Select(t => t.Result);
 
                     foreach (string s in callResults)
                     {
@@ -235,6 +237,7 @@ namespace FHIRBulkImport
 
                     }
                 }
+            }
             
             return retVal;
         }
