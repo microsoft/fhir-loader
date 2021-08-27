@@ -18,14 +18,54 @@ namespace FHIRBulkImport
 {
     public static class ExportOrchestrator
     {
-        private static JObject SetContextVariables(string instanceId, JToken token = null, string query = null, JArray include = null,string patientreffield=null)
+        private static string IdentifyUniquePatientReferences(JObject resource, string patreffield, HashSet<string> uniquePats)
+        {
+            List<string> retVal = new List<string>();
+           
+            if (resource.FHIRResourceType().Equals("Bundle")) 
+            {
+                JArray arr = (JArray)resource["entry"];
+                if (arr != null)
+                {
+                    foreach (JToken entry in arr)
+                    {
+                        var r = entry["resource"];
+                        if (r == null)
+                        {
+                            continue;
+                        }
+                        string id = null;
+                        if (patreffield.Equals("id"))
+                        {
+                            id = r.FHIRResourceId();
+                        }
+                        else
+                        {
+                            if (!r[patreffield].IsNullOrEmpty())
+                            {
+                                string patref = (string)r[patreffield]["reference"];
+                                if (patref != null && patref.StartsWith("Patient") && patref.IndexOf("/") > 0)
+                                {
+                                    id = patref.Split("/")[1];
+                                }
+                            }
+                        }
+                        if (!uniquePats.Contains(id))
+                        {
+                            uniquePats.Add(id);
+                            retVal.Add(id);
+                        }
+                    }
+                }
+            }
+            return string.Join(",", retVal);
+        }
+        private static JObject SetContextVariables(string instanceId, string ids = null, JArray include = null)
         {
             JObject o = new JObject();
             o["instanceId"] = instanceId;
-            if(token != null) o["resource"] = token;
-            if (query != null) o["query"] = query;
+            if( ids != null) o["ids"] = ids;
             if (include != null) o["include"] = include;
-            if (patientreffield != null) o["patientreffield"] = patientreffield;
             return o;
         }
        
@@ -34,26 +74,39 @@ namespace FHIRBulkImport
             [OrchestrationTrigger] IDurableOrchestrationContext context,
             ILogger log)
         {
-            string inputs = context.GetInput<string>();
-            JObject config = JObject.Parse(inputs);
+            JObject config = null;
             JObject retVal = new JObject();
+            HashSet<string> uniquePats = new HashSet<string>();
             retVal["instanceid"] = context.InstanceId;
-            retVal["configuration"] = config;
             retVal["started"] = context.CurrentUtcDateTime;
-
-            string query = config["query"].ToString();
-            string patreffield = config["patientreferencefield"].ToString();
+            string inputs = context.GetInput<string>();
+            try
+            {
+                config = JObject.Parse(inputs);
+            }
+            catch (Newtonsoft.Json.JsonReaderException jre)
+            {
+                retVal["error"] = "Not a valid JSON Object from starter input";
+                log.LogError("ExportOrchestrator: Not a valid JSON Object from starter input");
+                return retVal.ToString();
+            }
+            retVal["configuration"] = config;
+            string query = (string)config["query"];
+            string patreffield = (string)config["patientreferencefield"];
             JArray include = (JArray)config["include"];
-            var rt = query.Split("?")[0];
+            if (query==null || patreffield==null)
+            {
+                retVal["error"] = "query and/or patientreferencefield is empty";
+                return retVal.ToString();
+            }
             //get a list of N work items to process in parallel
-
             var tasks = new List<Task<JObject>>();
             var fhirresp = await context.CallActivityAsync<FHIRResponse>("QueryFHIR", query);
             if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
             {
                 var resource = JObject.Parse(fhirresp.Content);
                 //For group resource loop through the member array
-                if (rt.StartsWith("Group"))
+                if (resource.FHIRResourceType().Equals("Group"))
                 {
                     JArray ga = (JArray)resource["member"];
                     if (!ga.IsNullOrEmpty())
@@ -71,19 +124,22 @@ namespace FHIRBulkImport
                             cnt++;
                             if (cnt % 50 == 0)
                             {
-                                tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, bundle, query, include, "entity")));
+                                string ids = IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
+                                tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId,ids,include)));
                                 bundle = ImportNDJSON.initBundle();                           
                             }
                         }
                         if (((JArray)bundle["entry"]).Count > 0)
                         {
-                            tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, bundle, query, include, "entity")));
+                            string ids= IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
+                            tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, ids, include)));
                         }
 
                     }
                 } else {
                     //Page through query results fo everything else          
-                    tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, resource, query, include, patreffield)));
+                    var ids = IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
+                    tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, ids, include)));
                     bool nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                     while (nextlink)
                     {
@@ -98,12 +154,14 @@ namespace FHIRBulkImport
                         {
 
                             resource = JObject.Parse(fhirresp.Content);
-                            tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, resource, query, include)));
+                            ids = IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
+                            tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId,ids, include)));
                             nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                         }
                     }
                 }
                 await Task.WhenAll(tasks);
+                uniquePats.Clear();
                 var callResults = tasks
                     .Where(t => t.Status == TaskStatus.RanToCompletion)
                     .Select(t => t.Result);
@@ -124,7 +182,7 @@ namespace FHIRBulkImport
                     }
                 }
                 string rm = retVal.ToString(Newtonsoft.Json.Formatting.None);
-                await context.CallActivityAsync<bool>("AppendBlob", SetContextVariables(context.InstanceId, null, rm));
+                await context.CallActivityAsync<bool>("AppendBlob", SetContextVariables(context.InstanceId,rm));
                 log.LogInformation($"ExportOrchestrator:Instance {context.InstanceId} Completed:\r\n{rm}");
                 return rm;
             }
@@ -141,7 +199,7 @@ namespace FHIRBulkImport
            ILogger log)
         {
             string instanceid = (string)ctx["instanceId"];
-            string rm = (string)ctx["query"];
+            string rm = (string)ctx["ids"];
             var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", "_completed_run.xjson");
             using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(rm)))
             {
@@ -162,81 +220,54 @@ namespace FHIRBulkImport
         [FunctionName("ExportOrchestrator_ProcessPatientQueryPage")]
         public static async Task<JObject> ProcessPatientQueryPage([OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
-            
+           
             JObject retVal = new JObject();
             var vars = context.GetInput<JToken>();
-            var resource = vars["resource"];
-            string patreffield = (string)vars["patientreffield"];
-            JArray include = (JArray)vars["include"];
-            string sourcequery = (string)vars["query"];
-            var rt = sourcequery.Split("?")[0];
-            if (resource.FHIRResourceType().Equals("Bundle"))
+            try
             {
-                var subtasks = new List<Task<string>>();
-                HashSet<string> ids = new HashSet<string>();
-                JArray arr = (JArray)resource["entry"];
-                if (arr != null)
+                string ids = (string)vars["ids"];
+                JArray include = (JArray)vars["include"];
+                if (string.IsNullOrEmpty(ids)) log.LogWarning("ExportOrchestrator_ProcessPatientQueryPage: Null/Empty Check IDS is null or empty");
+                if (include == null) log.LogWarning("ExportOrchestrator_ProcessPatientQueryPage: Null Check include is null");
+                if (!string.IsNullOrEmpty(ids))
                 {
-                    foreach (JToken entry in arr)
-                    {
-                        var r = entry["resource"];
-                        if (rt.Equals("Patient"))
+                        if (include != null)
                         {
-                            ids.Add(r.FHIRResourceId());
-                        }
-                        else
-                        {
-                            if (!r[patreffield].IsNullOrEmpty())
+                            var subtasks = new List<Task<string>>();
+                            foreach (JToken t in include)
                             {
-                                string patref = (string)r[patreffield]["reference"];
-                                if (patref != null && patref.StartsWith("Patient") && patref.IndexOf("/") > 0)
+                                string sq = t.ToString();
+                                sq = sq.Replace("$IDS", ids);
+                                subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", SetContextVariables(vars["instanceId"].ToString(),sq)));
+                            }
+                        
+                            await Task.WhenAll(subtasks);
+                            var callResults = subtasks
+                                .Where(t => t.Status == TaskStatus.RanToCompletion)
+                                .Select(t => t.Result);
+                            foreach (string s in callResults)
+                            {
+                                string[] sa = s.Split(":");
+                                string prop = sa[0];
+                                int added = int.Parse(sa[1]);
+                                JToken p = retVal[prop];
+                                if (p == null)
                                 {
-                                    string pid = patref.Split("/")[1];
-                                    ids.Add(pid);
+                                    retVal[prop] = added;
                                 }
+                                else
+                                {
+                                    int val = (int)p;
+                                    val += added;
+                                    p = val;
+                                }
+
                             }
                         }
-                    }
                 }
-                if (ids.Count > 0)
-                {
-                    string qids = string.Join(",", ids);
-                    //Just use bundle to gather patient resources if source query is patient based
-                    if (rt.Equals("Patient"))
-                        subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", SetContextVariables(vars["instanceId"].ToString(), resource, "Patient")));
-                    if (include != null)
-                    {
-                        foreach (JToken t in include)
-                        {
-                            string sq = t.ToString();
-                            sq = sq.Replace("$IDS", qids);
-                            subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", SetContextVariables(vars["instanceId"].ToString(), null, sq)));
-                        }
-                    }
-                    await Task.WhenAll(subtasks);
-                    var callResults = subtasks
-                        .Where(t => t.Status == TaskStatus.RanToCompletion)
-                        .Select(t => t.Result);
-
-                    foreach (string s in callResults)
-                    {
-                        string[] sa = s.Split(":");
-                        string prop = sa[0];
-                        int added = int.Parse(sa[1]);
-                        JToken p = retVal[prop];
-                        if (p == null)
-                        {
-                            retVal[prop] = added;
-                        }
-                        else
-                        {
-                            int val = (int)p;
-                            val += added;
-                            p = val;
-                        }
-
-                    }
-                }
+            } catch (Exception e)
+            {
+                log.LogError($"ExportOrchestrator Process Patient Page Exception:{e.Message}\r\nTrace:{e.ToString()}");
             }
             
             return retVal;
@@ -247,22 +278,15 @@ namespace FHIRBulkImport
 
             JToken vars = context.GetInput<JToken>();
             int total = 0;
-            JToken resource = vars["resource"];
-            string query = vars["query"].ToString();
+            string query = vars["ids"].ToString();
             string instanceid = vars["instanceId"].ToString();
             var rt = query.Split("?")[0];
             var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", rt + ".xndjson");
-            if (resource != null)
+            var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
+            if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
             {
-                total = total + await ConvertToNDJSON(resource, appendBlobClient);
-            }
-            else
-            {
-                var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
-                if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
-                {
 
-                    resource = JObject.Parse(fhirresp.Content);
+                    var resource = JObject.Parse(fhirresp.Content);
                     total = total + await ConvertToNDJSON(resource, appendBlobClient);
                     bool nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                     while (nextlink)
@@ -281,12 +305,11 @@ namespace FHIRBulkImport
                             nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                         }
                     }
-                } else
-                {
-                    log.LogError($"ExportOrchestrator: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{query}");
-                  
-                }
+            } else
+            {
+                log.LogError($"ExportOrchestrator: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{query}");
             }
+            
             return $"{rt}:{total}";
         }
        
