@@ -13,6 +13,9 @@ using Newtonsoft.Json.Linq;
 using System.Linq;
 using System;
 using System.Threading;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.AspNetCore.Mvc;
+using System.Net.Http.Headers;
 
 namespace FHIRBulkImport
 {
@@ -78,7 +81,7 @@ namespace FHIRBulkImport
             JObject retVal = new JObject();
             HashSet<string> uniquePats = new HashSet<string>();
             retVal["instanceid"] = context.InstanceId;
-            retVal["started"] = context.CurrentUtcDateTime;
+           
             string inputs = context.GetInput<string>();
             try
             {
@@ -99,6 +102,7 @@ namespace FHIRBulkImport
                 retVal["error"] = "query and/or patientreferencefield is empty";
                 return retVal.ToString();
             }
+            retVal["extractstarted"] = context.CurrentUtcDateTime;
             //get a list of N work items to process in parallel
             var tasks = new List<Task<JObject>>();
             var fhirresp = await context.CallActivityAsync<FHIRResponse>("QueryFHIR", query);
@@ -165,24 +169,52 @@ namespace FHIRBulkImport
                 var callResults = tasks
                     .Where(t => t.Status == TaskStatus.RanToCompletion)
                     .Select(t => t.Result);
-                retVal["finished"] = context.CurrentUtcDateTime;
+                retVal["extractcompleted"] = context.CurrentUtcDateTime;
+                List<string> blobNames = new List<string>();
+                JObject extractresult = new JObject();
                 foreach (JObject j in callResults)
                 {
                     foreach (JProperty property in j.Properties())
                     {
-                        if (retVal[property.Name] != null)
+                        if (extractresult[property.Name] != null)
                         {
-                            int total = (int)retVal[property.Name];
+                            int total = (int)extractresult[property.Name];
                             total +=(int)property.Value;
-                            retVal[property.Name] = total;
+                            extractresult[property.Name] = total;
                         } else
                         {
-                            retVal[property.Name] = property.Value;
+                            extractresult[property.Name] = property.Value;
                         }
+                        if (!blobNames.Contains(property.Name)) blobNames.Add(property.Name);
                     }
                 }
+                retVal["extractresults"] = extractresult;
+                tasks.Clear();
+                var splittasks = new List<Task<string>>();
+                log.LogInformation("ExportOrchestrator:Splitting Data Files into defined chunks");
+                //Split Up Data Files into defined Chunks
+                retVal["splitstarted"] = context.CurrentUtcDateTime;
+                foreach (string bn in blobNames)
+                {
+                        JObject jo = new JObject();
+                        jo["instanceId"] = context.InstanceId;
+                        jo["blobname"] = bn;
+                        splittasks.Add(context.CallActivityAsync<string>("SplitFiles", jo));
+                    
+                }
+                await Task.WhenAll(splittasks);
+                retVal["splitcompleted"] = context.CurrentUtcDateTime;
+                var splitResults = splittasks
+                    .Where(t => t.Status == TaskStatus.RanToCompletion)
+                    .Select(t => t.Result);
+                JArray jarr = new JArray();
+                foreach (string s in splitResults)
+                {
+                    jarr.Add(s);
+                }
+                retVal["splitresults"] = jarr;
                 string rm = retVal.ToString(Newtonsoft.Json.Formatting.None);
-                await context.CallActivityAsync<bool>("AppendBlob", SetContextVariables(context.InstanceId,rm));
+                await context.CallActivityAsync<bool>("AppendBlob", SetContextVariables(context.InstanceId, rm));
                 log.LogInformation($"ExportOrchestrator:Instance {context.InstanceId} Completed:\r\n{rm}");
                 return rm;
             }
@@ -192,6 +224,69 @@ namespace FHIRBulkImport
                 log.LogError(m);
                 return m;
             }
+        }
+        [FunctionName("SplitFiles")]
+        public static async Task<string> SplitFiles(
+         [ActivityTrigger] JToken ctx,
+         ILogger log)
+        {
+
+            int maxfilesizeinmb = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "0");
+            long maxfilesizeinbytes = maxfilesizeinmb * 1024000;
+            string instanceid = (string)ctx["instanceId"];
+            string blobname = (string)ctx["blobname"];
+            int totalbytes = 0;
+            int seqno = 1;
+            string destfilepath = $"{blobname}-{seqno}.xndjson";
+            var appendBlobSource = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", $"{blobname}.xndjson");
+            await appendBlobSource.SealAsync();
+            var props = await appendBlobSource.GetPropertiesAsync();
+            if (props.Value==null)
+            {
+                return $"{blobname} could not determine file size.";
+            }
+            long curlength = props.Value.ContentLength;
+            //If maxfilesizeinmb is not set or set to zero just seal the append blob and return
+            //Break Apart files into maxfilesizemb
+            log.LogInformation($"SplitFiles: Splitting blob {blobname} into {maxfilesizeinmb} MB Chunks...");
+            var destBlobClient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+            var destContainer = destBlobClient.GetContainerReference($"export-split-{instanceid}");
+            await destContainer.CreateIfNotExistsAsync();
+            CloudBlockBlob destBlob = destContainer.GetBlockBlobReference(destfilepath);
+            using (var stream = appendBlobSource.OpenRead())
+            {
+                var outstream = destBlob.OpenWrite();
+                StreamWriter writer = new StreamWriter(outstream);
+                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        string line = reader.ReadLine();
+                        if (totalbytes + line.Length > maxfilesizeinbytes)
+                        {
+                            writer.Flush();
+                            writer.Close();
+                            destBlob = null;
+                            seqno++;
+                            destfilepath = $"{blobname}-{seqno}.xndjson";
+                            destBlob = destContainer.GetBlockBlobReference(destfilepath);
+                            outstream = destBlob.OpenWrite();
+                            writer = new StreamWriter(outstream);
+                            totalbytes = 0;
+                        }
+                        line = line + "\n";
+                        writer.Write(line);
+                        totalbytes += line.Length;
+
+                    }
+
+
+                }
+                writer.Flush();
+                writer.Close();
+
+            }
+            return $"{blobname} was split into {seqno} files";
         }
         [FunctionName("AppendBlob")]
         public static async Task<bool> AppendBlob(
@@ -349,6 +444,15 @@ namespace FHIRBulkImport
         {
 
             string config = await req.Content.ReadAsStringAsync();
+            var state  = await runningInstances(starter, log);
+            int running = state.Count();
+            int maxinstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
+            if (maxinstances > 0 && running >= maxinstances)
+            {
+                string msg = $"Unable to start export there are {running} exports the max concurrent allowed is {maxinstances}";
+                StringContent sc = new StringContent("{\"error\":\"" + msg + "\"");
+                return new HttpResponseMessage() { Content = sc, StatusCode = System.Net.HttpStatusCode.TooManyRequests};
+            }
             // Function input comes from the request content.
             string instanceId = await starter.StartNewAsync("ExportOrchestrator",null,config);
 
@@ -356,16 +460,94 @@ namespace FHIRBulkImport
 
             return starter.CreateCheckStatusResponse(req, instanceId);
         }
+        [FunctionName("ExportOrchestrator_InstanceAction")]
+        public static async Task<HttpResponseMessage> InstanceAction(
+          [HttpTrigger(AuthorizationLevel.Function, "get", Route = "$alt-export-manage/{instanceid}")] HttpRequestMessage req,
+          [DurableClient] IDurableOrchestrationClient starter,string instanceid,
+          ILogger log)
+        {
+
+            var parms = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+            string action = parms["action"];
+            await starter.TerminateAsync(instanceid, "Terminated by User");
+            StringContent sc = new StringContent($"Terminated {instanceid}");
+            var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+            response.Content = sc;
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+            return response;
+        }
+        [FunctionName("ExportOrchestrator_ExportStatus")]
+        public static async Task<HttpResponseMessage> ExportStatus(
+           [HttpTrigger(AuthorizationLevel.Function, "get", Route = "$alt-export-status")] HttpRequestMessage req,
+           [DurableClient] IDurableOrchestrationClient starter,
+           ILogger log)
+        {
+
+            string config = await req.Content.ReadAsStringAsync();
+            var state = await runningInstances(starter, log);
+            JArray retVal = new JArray();
+            foreach (DurableOrchestrationStatus status in state)
+            {
+                JObject o = new JObject();
+                o["instanceId"] = status.InstanceId;
+                o["createdDateTime"] = status.CreatedTime;
+                o["status"] = status.RuntimeStatus.ToString();
+                TimeSpan span = (DateTime.UtcNow - status.CreatedTime);
+                o["elapsedtimeinminutes"] = span.TotalMinutes;
+                o["input"] = status.Input;
+                retVal.Add(o);
+            }
+            StringContent sc = new StringContent(retVal.ToString());
+            var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+            response.Content = sc;
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            return response;
+        }
         [FunctionName("ExportBlobTrigger")]
         public static async Task RunBlobTrigger([BlobTrigger("export-trigger/{name}", Connection = "FBI-STORAGEACCT")] Stream myBlob, string name, [DurableClient] IDurableOrchestrationClient starter, ILogger log)
         {
 
             StreamReader reader = new StreamReader(myBlob);
             var text = await reader.ReadToEndAsync();
+            var state = await runningInstances(starter, log);
+            int running = state.Count();
+            int maxinstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
+            if (maxinstances > 0 && running >= maxinstances)
+            {
+                string msg = $"Unable to start export there are {running} exports the max concurrent allowed is {maxinstances}";
+                log.LogError($"ExportBlobTrigger:{msg}");
+                return;
+            }
             string instanceId = await starter.StartNewAsync("ExportOrchestrator", null, text);
             var bc = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
             await StorageUtils.MoveTo(bc, "export-trigger", "export-trigger-processed", name, name, log);
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
+        }
+        public static async Task<IEnumerable<DurableOrchestrationStatus>> runningInstances(IDurableOrchestrationClient client,ILogger log)
+        {
+            var queryFilter = new OrchestrationStatusQueryCondition
+            {
+                RuntimeStatus = new[]
+                {
+                    OrchestrationRuntimeStatus.Pending,
+                    OrchestrationRuntimeStatus.Running,
+                }
+                
+            };
+
+            OrchestrationStatusQueryResult result = await client.ListInstancesAsync(
+                queryFilter,
+                CancellationToken.None);
+            var retVal = new List<DurableOrchestrationStatus>();
+            foreach (DurableOrchestrationStatus status in result.DurableOrchestrationState)
+            {
+                if (!status.InstanceId.Contains(":"))
+                {
+                    retVal.Add(status);
+                }
+            }
+            return retVal;
+            
         }
     }
     
