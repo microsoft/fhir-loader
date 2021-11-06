@@ -21,6 +21,8 @@ namespace FHIRBulkImport
 {
     public static class ExportOrchestrator
     {
+        private static ConcurrentDictionary<string, SemaphoreSlim> _locks = new ConcurrentDictionary<string, SemaphoreSlim>();
+        private static ConcurrentDictionary<string, AppendBlobInfoHolder> _holders = new ConcurrentDictionary<string, AppendBlobInfoHolder>();
         private static string IdentifyUniquePatientReferences(JObject resource, string patreffield, HashSet<string> uniquePats)
         {
             List<string> retVal = new List<string>();
@@ -71,9 +73,30 @@ namespace FHIRBulkImport
             if (include != null) o["include"] = include;
             return o;
         }
-       
+        [FunctionName("CountFiles")]
+        public static async Task<JArray> CountFiles(
+         [ActivityTrigger] string instanceid,
+         ILogger log)
+        {
+            JArray retVal = new JArray();
+            string key = $"{instanceid}";
+            var enumerator = _holders.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                if (enumerator.Current.Key.StartsWith(key))
+                {
+                    JArray arr = enumerator.Current.Value.FileInfo;
+                    foreach (JToken t in arr)
+                    {
+                        retVal.Add(t);
+                    }
+                    _holders.TryRemove(enumerator.Current.Key, out var nop);
+                }
+            }
+            return retVal;
+        }
         [FunctionName("ExportOrchestrator")]
-        public static async Task<string> RunOrchestrator(
+        public static async Task<JArray> RunOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context,
             ILogger log)
         {
@@ -89,9 +112,9 @@ namespace FHIRBulkImport
             }
             catch (Newtonsoft.Json.JsonReaderException jre)
             {
-                retVal["error"] = "Not a valid JSON Object from starter input";
+                retVal["error"] = $"Not a valid JSON Object from starter input:{jre.Message}";
                 log.LogError("ExportOrchestrator: Not a valid JSON Object from starter input");
-                return retVal.ToString();
+                return new JArray(retVal);
             }
             retVal["configuration"] = config;
             string query = (string)config["query"];
@@ -100,9 +123,10 @@ namespace FHIRBulkImport
             if (query==null || patreffield==null)
             {
                 retVal["error"] = "query and/or patientreferencefield is empty";
-                return retVal.ToString();
+                return new JArray(retVal);
             }
             retVal["extractstarted"] = context.CurrentUtcDateTime;
+            context.SetCustomStatus(retVal);
             //get a list of N work items to process in parallel
             var tasks = new List<Task<JObject>>();
             var fhirresp = await context.CallActivityAsync<FHIRResponse>("QueryFHIR", query);
@@ -189,105 +213,24 @@ namespace FHIRBulkImport
                     }
                 }
                 retVal["extractresults"] = extractresult;
+                context.SetCustomStatus(retVal);
                 tasks.Clear();
-                var splittasks = new List<Task<string>>();
-                log.LogInformation("ExportOrchestrator:Splitting Data Files into defined chunks");
-                //Split Up Data Files into defined Chunks
-                retVal["splitstarted"] = context.CurrentUtcDateTime;
-                foreach (string bn in blobNames)
-                {
-                        JObject jo = new JObject();
-                        jo["instanceId"] = context.InstanceId;
-                        jo["blobname"] = bn;
-                        splittasks.Add(context.CallActivityAsync<string>("SplitFiles", jo));
-                    
-                }
-                await Task.WhenAll(splittasks);
-                retVal["splitcompleted"] = context.CurrentUtcDateTime;
-                var splitResults = splittasks
-                    .Where(t => t.Status == TaskStatus.RanToCompletion)
-                    .Select(t => t.Result);
-                JArray jarr = new JArray();
-                foreach (string s in splitResults)
-                {
-                    jarr.Add(s);
-                }
-                retVal["splitresults"] = jarr;
+                var s = await context.CallActivityAsync<JArray>("CountFiles", context.InstanceId);
+                retVal["output"] = s;
+                context.SetCustomStatus(retVal);
                 string rm = retVal.ToString(Newtonsoft.Json.Formatting.None);
                 await context.CallActivityAsync<bool>("AppendBlob", SetContextVariables(context.InstanceId, rm));
-                log.LogInformation($"ExportOrchestrator:Instance {context.InstanceId} Completed:\r\n{rm}");
-                return rm;
+                //log.LogInformation($"ExportOrchestrator:Instance {context.InstanceId} Completed:\r\n{rm}");
+                return s;
             }
             else
             {
                 var m = $"ExportOrchestrator:Failed to communicate with FHIR Server: Status {fhirresp.Status} Response {fhirresp.Content}";
                 log.LogError(m);
-                return m;
+                return new JArray(m);
             }
         }
-        [FunctionName("SplitFiles")]
-        public static async Task<string> SplitFiles(
-         [ActivityTrigger] JToken ctx,
-         ILogger log)
-        {
-
-            int maxfilesizeinmb = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "0");
-            long maxfilesizeinbytes = maxfilesizeinmb * 1024000;
-            string instanceid = (string)ctx["instanceId"];
-            string blobname = (string)ctx["blobname"];
-            int totalbytes = 0;
-            int seqno = 1;
-            string destfilepath = $"{blobname}-{seqno}.xndjson";
-            var appendBlobSource = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", $"{blobname}.xndjson");
-            await appendBlobSource.SealAsync();
-            var props = await appendBlobSource.GetPropertiesAsync();
-            if (props.Value==null)
-            {
-                return $"{blobname} could not determine file size.";
-            }
-            long curlength = props.Value.ContentLength;
-            //If maxfilesizeinmb is not set or set to zero just seal the append blob and return
-            //Break Apart files into maxfilesizemb
-            log.LogInformation($"SplitFiles: Splitting blob {blobname} into {maxfilesizeinmb} MB Chunks...");
-            var destBlobClient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
-            var destContainer = destBlobClient.GetContainerReference($"export-split-{instanceid}");
-            await destContainer.CreateIfNotExistsAsync();
-            CloudBlockBlob destBlob = destContainer.GetBlockBlobReference(destfilepath);
-            using (var stream = appendBlobSource.OpenRead())
-            {
-                var outstream = destBlob.OpenWrite();
-                StreamWriter writer = new StreamWriter(outstream);
-                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
-                {
-                    while (!reader.EndOfStream)
-                    {
-                        string line = reader.ReadLine();
-                        if (totalbytes + line.Length > maxfilesizeinbytes)
-                        {
-                            writer.Flush();
-                            writer.Close();
-                            destBlob = null;
-                            seqno++;
-                            destfilepath = $"{blobname}-{seqno}.xndjson";
-                            destBlob = destContainer.GetBlockBlobReference(destfilepath);
-                            outstream = destBlob.OpenWrite();
-                            writer = new StreamWriter(outstream);
-                            totalbytes = 0;
-                        }
-                        line = line + "\n";
-                        writer.Write(line);
-                        totalbytes += line.Length;
-
-                    }
-
-
-                }
-                writer.Flush();
-                writer.Close();
-
-            }
-            return $"{blobname} was split into {seqno} files";
-        }
+        
         [FunctionName("AppendBlob")]
         public static async Task<bool> AppendBlob(
            [ActivityTrigger] JToken ctx,
@@ -376,13 +319,12 @@ namespace FHIRBulkImport
             string query = vars["ids"].ToString();
             string instanceid = vars["instanceId"].ToString();
             var rt = query.Split("?")[0];
-            var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", rt + ".xndjson");
             var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
             if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
             {
 
                     var resource = JObject.Parse(fhirresp.Content);
-                    total = total + await ConvertToNDJSON(resource, appendBlobClient);
+                    total = total + await ConvertToNDJSON(resource,rt,instanceid,log);
                     bool nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                     while (nextlink)
                     {
@@ -396,7 +338,7 @@ namespace FHIRBulkImport
                         else
                         {
                             resource = JObject.Parse(fhirresp.Content);
-                            total = total + await ConvertToNDJSON(resource, appendBlobClient);
+                            total = total + await ConvertToNDJSON(resource, rt, instanceid,log);
                             nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                         }
                     }
@@ -408,32 +350,92 @@ namespace FHIRBulkImport
             return $"{rt}:{total}";
         }
        
-        private static async Task<int> ConvertToNDJSON(JToken bundle, Azure.Storage.Blobs.Specialized.AppendBlobClient appendBlobClient)
+        private static async Task<int> ConvertToNDJSON(JToken bundle, string resourceType,string instanceId,ILogger log)
         {
+            string key = $"{instanceId}-{resourceType}"; 
+            SemaphoreSlim semaphore = new SemaphoreSlim(1);
+            semaphore = _locks.GetOrAdd(key, semaphore);
+            await semaphore.WaitAsync();
             int cnt = 0;
-            StringBuilder sb = new StringBuilder();
-            if (!bundle.IsNullOrEmpty() && bundle.FHIRResourceType().Equals("Bundle"))
+            try
             {
-                JArray arr = (JArray)bundle["entry"];
-                if (arr != null)
+                AppendBlobInfoHolder holder = null;
+                
+                if (!_holders.TryGetValue(key, out holder))
                 {
-                    foreach(JToken tok in arr)
+                    holder = new AppendBlobInfoHolder();
+                    holder.LastFileNum = 1;
+                    holder.ResourceType = resourceType;
+                    holder.instanceId = instanceId;
+                    holder.FileInfo = new JArray();
+                    var filename = resourceType + "-" + holder.LastFileNum + ".xndjson";
+                    var client = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
+                    holder.CurrentClient = client;
+                    JObject info = new JObject();
+                    info["type"] = resourceType;
+                    info["url"] = holder.CurrentClient.Uri.ToString();
+                    info["count"] = 0;
+                    info["sizebytes"] = 0;
+                    info["commitedblocks"] = 0;
+                    holder.FileInfo.Add(info);
+                    _holders.TryAdd(key, holder);
+                } else
+                {
+                    long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "-1") * 1024000;
+                    var props = await holder.CurrentClient.GetPropertiesAsync();
+                    holder.FileInfo[holder.LastFileNum - 1]["sizebytes"] = props.Value.ContentLength;
+                    holder.FileInfo[holder.LastFileNum - 1]["commitedblocks"] = props.Value.BlobCommittedBlockCount;
+                    if (props.Value.BlobCommittedBlockCount > 49500 || (maxfilesizeinbytes > 0 && props.Value.ContentLength >= maxfilesizeinbytes))
                     {
-                        JToken res = tok["resource"];
-                        sb.Append(res.ToString(Newtonsoft.Json.Formatting.None));
-                        sb.Append("\n");
-                        cnt++;
+                        
+                        holder.LastFileNum++;
+                        var filename = resourceType + "-" + holder.LastFileNum + ".xndjson";
+                        var client = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
+                        holder.CurrentClient = client;
+                        JObject info = new JObject();
+                        info["type"] = resourceType;
+                        info["url"] = holder.CurrentClient.Uri.ToString();
+                        info["count"] = 0;
+                        info["sizebytes"] = 0;
+                        info["commitedblocks"] = 0;
+                        holder.FileInfo.Add(info);
+
                     }
                 }
-
-            }
-            if (sb.Length > 0)
-            {
-                using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(sb.ToString())))
+                
+                StringBuilder sb = new StringBuilder();
+                if (!bundle.IsNullOrEmpty() && bundle.FHIRResourceType().Equals("Bundle"))
                 {
-                    await appendBlobClient.AppendBlockAsync(ms);
+                    JArray arr = (JArray)bundle["entry"];
+                    if (arr != null)
+                    {
+                        foreach (JToken tok in arr)
+                        {
+                            JToken res = tok["resource"];
+                            sb.Append(res.ToString(Newtonsoft.Json.Formatting.None));
+                            sb.Append("\n");
+                            cnt++;
+                        }
+                    }
+
                 }
+                if (sb.Length > 0)
+                {
+                    using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(sb.ToString())))
+                    {
+                        await holder.CurrentClient.AppendBlockAsync(ms);
+                    }
+                }
+                int prev = (int)holder.FileInfo[holder.LastFileNum-1]["count"];
+                holder.FileInfo[holder.LastFileNum - 1]["count"] = prev + cnt;
+                log.LogInformation($"Current {resourceType} results:\n{holder.FileInfo.ToString()}");
             }
+
+            finally
+            {
+                semaphore.Release();
+            }
+            
             return cnt;
         }
         [FunctionName("ExportOrchestrator_HttpStart")]
@@ -549,6 +551,14 @@ namespace FHIRBulkImport
             return retVal;
             
         }
+ 
     }
-    
+    public class AppendBlobInfoHolder
+    {
+        public string instanceId { get; set; }
+        public Azure.Storage.Blobs.Specialized.AppendBlobClient CurrentClient { get; set; }
+        public int LastFileNum { get; set; }
+        public string ResourceType { get; set; }
+        public JArray FileInfo { get; set; }
+    }
 }

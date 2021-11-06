@@ -1,9 +1,10 @@
 # FHIR Bulk Loader
 
-FHIR Bulk Loader is an Azure Function App solution that provides the following services for ingesting FHIR Resources into the FHIR Server:
+FHIR Bulk Loader is an Azure Function App solution that provides the following services for ingesting and exporting FHIR Resources:
  + Imports FHIR Bundles (compressed and non-compressed) and NDJSON files into FHIR Server 
  + High Speed Parallel Event Grid triggers from storage accounts or other event grid resources.
- + Complete Auditing, Error logging and Retry for throttled transactions 
+ + Complete Auditing, Error logging and Retry for throttled transactions
+ + High Speed Parallel Orchestrated Patient Centric Export Capability 
 
 # Architecture Overview
 ![Bulk Loader](docs/images/architecture/bulkloadarch.png)
@@ -40,7 +41,8 @@ The containers for importing data are created during deployment.  Containers are
 - for Compressed (zip) formatted FHIR Bundles, use the "zip" container
 
 Detailed configurations can be found [here](scripts/gettingStartedFhirLoader.md) 
-
+# Exporting Bulk Patient Centric FHIR Data
+The FHIR Loader also provides
 # Performance 
 The FHIR Loader deploys with a Standard App Service plan that can support tens of thousands file imports per hour.  During testing we have been able to scale the FHIR Loader performance to hundreds of thousands of files per hour.  
 

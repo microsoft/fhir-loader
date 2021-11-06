@@ -6,11 +6,15 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Azure.Storage.Blobs.Specialized;
+using System.Collections.Concurrent;
 
 namespace FHIRBulkImport
 {
     public static class StorageUtils
     {
+       
+        
+
         public static async Task<AppendBlobClient> GetAppendBlobClient(string saconnectionString,string container, string blobname)
         {
             var retVal =  new AppendBlobClient(saconnectionString, container, blobname);
@@ -18,6 +22,7 @@ namespace FHIRBulkImport
             {
                 await retVal.CreateAsync();
             }
+        
             return retVal;
         }
         public static CloudBlobClient GetCloudBlobClient(string saconnectionString)
@@ -78,4 +83,5 @@ namespace FHIRBulkImport
             }
         }
     }
+   
 }
