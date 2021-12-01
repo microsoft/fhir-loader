@@ -39,7 +39,7 @@ namespace FHIRBulkImport
                               
                                 //Replace all NO digits, letters, or "-" by a "-" Azure storage is specific on valid characters
                                 string validname = Regex.Replace(entry.Name, @"[^a-zA-Z0-9\-]", "-").ToLower();
-                                log.LogInformation($"ImportCompressedFiles: Now processing {entry.FullName} size {FormatSize(entry.Length)}");
+                                //log.LogInformation($"ImportCompressedFiles: Now processing {entry.FullName} size {FormatSize(entry.Length)}");
                                 CloudBlobContainer destination = null;
                                 if (validname.ToLower().EndsWith("ndjson"))
                                 {

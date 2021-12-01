@@ -16,14 +16,13 @@ using System.Threading;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
+using DurableTask.Core;
 
 namespace FHIRBulkImport
 {
     public static class ExportOrchestrator
     {
-        private static ConcurrentDictionary<string, SemaphoreSlim> _locks = new ConcurrentDictionary<string, SemaphoreSlim>();
-        private static ConcurrentDictionary<string, AppendBlobInfoHolder> _holders = new ConcurrentDictionary<string, AppendBlobInfoHolder>();
-        private static string IdentifyUniquePatientReferences(JObject resource, string patreffield, HashSet<string> uniquePats)
+         private static string IdentifyUniquePatientReferences(JObject resource, string patreffield, HashSet<string> uniquePats)
         {
             List<string> retVal = new List<string>();
            
@@ -78,22 +77,7 @@ namespace FHIRBulkImport
          [ActivityTrigger] string instanceid,
          ILogger log)
         {
-            JArray retVal = new JArray();
-            string key = $"{instanceid}";
-            var enumerator = _holders.GetEnumerator();
-            while (enumerator.MoveNext())
-            {
-                if (enumerator.Current.Key.StartsWith(key))
-                {
-                    JArray arr = enumerator.Current.Value.FileInfo;
-                    foreach (JToken t in arr)
-                    {
-                        retVal.Add(t);
-                    }
-                    _holders.TryRemove(enumerator.Current.Key, out var nop);
-                }
-            }
-            return retVal;
+            return FileHolderManager.CountFiles(instanceid,log);
         }
         [FunctionName("ExportOrchestrator")]
         public static async Task<JArray> RunOrchestrator(
@@ -352,57 +336,11 @@ namespace FHIRBulkImport
        
         private static async Task<int> ConvertToNDJSON(JToken bundle, string resourceType,string instanceId,ILogger log)
         {
-            string key = $"{instanceId}-{resourceType}"; 
-            SemaphoreSlim semaphore = new SemaphoreSlim(1);
-            semaphore = _locks.GetOrAdd(key, semaphore);
-            await semaphore.WaitAsync();
+          
             int cnt = 0;
             try
             {
-                AppendBlobInfoHolder holder = null;
-                
-                if (!_holders.TryGetValue(key, out holder))
-                {
-                    holder = new AppendBlobInfoHolder();
-                    holder.LastFileNum = 1;
-                    holder.ResourceType = resourceType;
-                    holder.instanceId = instanceId;
-                    holder.FileInfo = new JArray();
-                    var filename = resourceType + "-" + holder.LastFileNum + ".xndjson";
-                    var client = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
-                    holder.CurrentClient = client;
-                    JObject info = new JObject();
-                    info["type"] = resourceType;
-                    info["url"] = holder.CurrentClient.Uri.ToString();
-                    info["count"] = 0;
-                    info["sizebytes"] = 0;
-                    info["commitedblocks"] = 0;
-                    holder.FileInfo.Add(info);
-                    _holders.TryAdd(key, holder);
-                } else
-                {
-                    long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "-1") * 1024000;
-                    var props = await holder.CurrentClient.GetPropertiesAsync();
-                    holder.FileInfo[holder.LastFileNum - 1]["sizebytes"] = props.Value.ContentLength;
-                    holder.FileInfo[holder.LastFileNum - 1]["commitedblocks"] = props.Value.BlobCommittedBlockCount;
-                    if (props.Value.BlobCommittedBlockCount > 49500 || (maxfilesizeinbytes > 0 && props.Value.ContentLength >= maxfilesizeinbytes))
-                    {
-                        
-                        holder.LastFileNum++;
-                        var filename = resourceType + "-" + holder.LastFileNum + ".xndjson";
-                        var client = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
-                        holder.CurrentClient = client;
-                        JObject info = new JObject();
-                        info["type"] = resourceType;
-                        info["url"] = holder.CurrentClient.Uri.ToString();
-                        info["count"] = 0;
-                        info["sizebytes"] = 0;
-                        info["commitedblocks"] = 0;
-                        holder.FileInfo.Add(info);
-
-                    }
-                }
-                
+                var info = FileHolderManager.GetCurrentHolderClient(instanceId, resourceType);
                 StringBuilder sb = new StringBuilder();
                 if (!bundle.IsNullOrEmpty() && bundle.FHIRResourceType().Equals("Bundle"))
                 {
@@ -423,19 +361,15 @@ namespace FHIRBulkImport
                 {
                     using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(sb.ToString())))
                     {
-                        await holder.CurrentClient.AppendBlockAsync(ms);
+                        await info.CurrentClient.AppendBlockAsync(ms);
                     }
                 }
-                int prev = (int)holder.FileInfo[holder.LastFileNum-1]["count"];
-                holder.FileInfo[holder.LastFileNum - 1]["count"] = prev + cnt;
-                log.LogInformation($"Current {resourceType} results:\n{holder.FileInfo.ToString()}");
+                
             }
-
-            finally
+            catch (Exception e)
             {
-                semaphore.Release();
+                log.LogError($"ExportNDJSON Exception: {e.Message}\r\n{e.StackTrace}");
             }
-            
             return cnt;
         }
         [FunctionName("ExportOrchestrator_HttpStart")]
@@ -532,7 +466,7 @@ namespace FHIRBulkImport
                 RuntimeStatus = new[]
                 {
                     OrchestrationRuntimeStatus.Pending,
-                    OrchestrationRuntimeStatus.Running,
+                    OrchestrationRuntimeStatus.Running
                 }
                 
             };
@@ -551,14 +485,25 @@ namespace FHIRBulkImport
             return retVal;
             
         }
- 
+        [FunctionName("ExportHistoryCleanUp")]
+        public static async Task CleanupOldRuns(
+        [TimerTrigger("0 0 0 * * *")] TimerInfo timerInfo,
+        [DurableClient] IDurableOrchestrationClient orchestrationClient,
+        ILogger log)
+        {
+                var createdTimeFrom = DateTime.MinValue;
+                var createdTimeTo = DateTime.UtcNow.Subtract(TimeSpan.FromDays(Utils.GetIntEnvironmentVariable("FBI-EXPORTPURGEAFTERDAYS", "30")));
+                var runtimeStatus = new List<OrchestrationStatus>
+                {
+                    OrchestrationStatus.Completed,
+                    OrchestrationStatus.Canceled,
+                    OrchestrationStatus.Failed,
+                    OrchestrationStatus.Terminated
+                };
+                var result = await orchestrationClient.PurgeInstanceHistoryAsync(createdTimeFrom, createdTimeTo, runtimeStatus);
+                log.LogInformation($"Scheduled cleanup done, {result.InstancesDeleted} instances deleted");
+        }
+
     }
-    public class AppendBlobInfoHolder
-    {
-        public string instanceId { get; set; }
-        public Azure.Storage.Blobs.Specialized.AppendBlobClient CurrentClient { get; set; }
-        public int LastFileNum { get; set; }
-        public string ResourceType { get; set; }
-        public JArray FileInfo { get; set; }
-    }
+    
 }

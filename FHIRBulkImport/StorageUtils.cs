@@ -13,8 +13,16 @@ namespace FHIRBulkImport
     public static class StorageUtils
     {
        
-        
+        public static AppendBlobClient GetAppendBlobClientSync(string saconnectionString, string container, string blobname)
+        {
+            var retVal = new AppendBlobClient(saconnectionString, container, blobname);
+            if (!retVal.Exists())
+            {
+                retVal.Create();
+            }
 
+            return retVal;
+        }
         public static async Task<AppendBlobClient> GetAppendBlobClient(string saconnectionString,string container, string blobname)
         {
             var retVal =  new AppendBlobClient(saconnectionString, container, blobname);
