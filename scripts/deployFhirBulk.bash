@@ -420,16 +420,15 @@ if [[ -n "$keyVaultExists" ]]; then
 				echo "  FHIR Proxy Client ID: "$fhirProxySCClientId
 				
 				fhirProxySCClientSecret=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-SECRET --query "value" --out tsv)
-				echo "  FHIR Proxy Service Client - Client Secret: *****"
+				echo "  FHIR Proxy Client Secret: *****"
 				
 				fhirProxySCResourceId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-RESOURCE --query "value" --out tsv) 
 				echo "  FHIR Proxy Resource: "$fhirProxySCResourceId ;
 			else
 				echo "  FHIR Proxy URL not found.  With the FHIR Proxy option selected, you must provide a FHIR Proxy URL."
-				usage
+				exit 1 ;
 			fi
 		fi
-
 		useExistingKeyVault="yes"
     	createNewKeyVault="no" ;
 	else	
@@ -437,7 +436,7 @@ if [[ -n "$keyVaultExists" ]]; then
         echo "  setting script to create new FHIR Service Entry in existing Key Vault ["$keyVaultName"]"
         useExistingKeyVault="yes"
 		storeFHIRServiceConfig="yes"
-        createNewKeyVault="no"
+        createNewKeyVault="no" ;
 	fi 
 else
 	echo "  Script will deploy new Key Vault ["$keyVaultName"]" 
