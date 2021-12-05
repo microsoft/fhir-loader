@@ -419,14 +419,17 @@ if [[ -n "$keyVaultExists" ]]; then
 				echo "  FHIR Proxy Client Secret: *****"
 				
 				fhirProxySCResourceId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-RESOURCE --query "value" --out tsv) 
-				echo "  FHIR Proxy Resource: "$fhirProxySCResourceId ;
+				echo "  FHIR Proxy Resource: "$fhirProxySCResourceId 
+				
+				storeProxyServiceConfig="no" ;
 			else
 				echo "  Unable to read FHIR Proxy Service configuration"
 				storeProxyServiceConfig="yes"
 			fi
 		fi
 		useExistingKeyVault="yes"
-		createNewKeyVault="no" ;
+		createNewKeyVault="no"
+		storeFHIRServiceConfig="no"	;
 	else	
 		echo "  unable to read FHIR Service URL from ["$keyVaultName"]" 
         echo "  setting script to create new FHIR Service Entry in existing Key Vault ["$keyVaultName"]"
@@ -646,12 +649,17 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	echo "Storing Storage Account Connection String in Key Vault..."
 	stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FBI-STORAGEACCT" --value $storageConnectionString)
 	
-	echo "Creating import containers..."
+	echo "Creating containers..."
+	echo "  Import bundles"
 	stepresult=$(az storage container create -n bundles --connection-string $storageConnectionString)
+	echo "  Import ndjson"
 	stepresult=$(az storage container create -n ndjson --connection-string $storageConnectionString)
-	stepresult=$(az storage container create -n export --connection-string $storageConnectionString)
-	stepresult=$(az storage container create -n export-trigger --connection-string $storageConnectionString)
+	echo "  Import zip"
 	stepresult=$(az storage container create -n zip --connection-string $storageConnectionString)
+	echo "  Export"
+	stepresult=$(az storage container create -n export --connection-string $storageConnectionString)
+	echo "  Export trigger"
+	stepresult=$(az storage container create -n export-trigger --connection-string $storageConnectionString)
 
 
 	# Create Service Plan
@@ -674,7 +682,8 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	stepresult=$(az keyvault set-policy -n $keyVaultName --secret-permissions list get set --object-id $msi)
 	
 	# Obtain Function Application Key 
-	echo "Retrieving FHIR Bulk Loader & Export Function App Host Key..."
+	echo "Retrieving FHIR Bulk Loader & Export Function App Host Key...  note - ths will retry 5 times before failing"
+	sleep 3
 	faresourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Web/sites/"$bulkAppName
 	fakey=$(retry az rest --method post --uri "https://management.azure.com"$faresourceid"/host/default/listKeys?api-version=2018-02-01" --query "functionKeys.default" --output tsv)
 	
@@ -694,7 +703,7 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 
 
 	# Deploy Function Application code
-	echo "Deploying FHIR Bulk Loader & Export App from source repo to ["$bulkAppName"]...  this may take a while"
+	echo "Deploying FHIR Bulk Loader & Export App from source repo to ["$bulkAppName"]...  note - this can take a while"
 	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $bulkAppName --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 
 	sleep 30	
