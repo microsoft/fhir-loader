@@ -429,6 +429,8 @@ if [[ -n "$keyVaultExists" ]]; then
 				storeProxyServiceConfig="yes"
 			fi
 		fi
+		useExistingKeyVault="yes"
+		createNewKeyVault="no" ;
 	else	
 		echo "  unable to read FHIR Service URL from ["$keyVaultName"]" 
         echo "  setting script to create new FHIR Service Entry in existing Key Vault ["$keyVaultName"]"
