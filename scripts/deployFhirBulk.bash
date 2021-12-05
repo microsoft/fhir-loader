@@ -405,8 +405,29 @@ if [[ -n "$keyVaultExists" ]]; then
 		echo "  FHIR Service Client Secret: *****"
 		
 		fhirServiceAudience=$(az keyvault secret show --vault-name $keyVaultName --name FS-RESOURCE --query "value" --out tsv) 
-		echo "  FHIR Service Audience: "$fhirServiceAudience ;
+		echo "  FHIR Service Audience: "$fhirServiceAudience 
 		
+		if [[ "$option" == "proxy" ]] ; then 
+			echo "Checking for FHIR Proxy configuration..."
+			fhirProxySCUrl=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-URL --query "value" --out tsv)
+			if [ -n "$fhirProxySCUrl" ] ; then 
+				echo "  FHIR Proxy URL: "$fhirProxySCUrl
+				fhirProxySCTenant=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-TENANT-NAME --query "value" --out tsv)
+				echo "  FHIR Proxy Tenant ID: "$fhirProxySCTenant 
+				
+				fhirProxySCClientId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-CLIENT-ID --query "value" --out tsv)
+				echo "  FHIR Proxy Client ID: "$fhirProxySCClientId
+		
+				fhirProxySCClientSecret=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-SECRET --query "value" --out tsv)
+				echo "  FHIR Proxy Client Secret: *****"
+				
+				fhirProxySCResourceId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-RESOURCE --query "value" --out tsv) 
+				echo "  FHIR Proxy Resource: "$fhirProxySCResourceId ;
+			else
+				echo "  Unable to read FHIR Proxy Service configuration"
+				storeProxyServiceConfig="yes"
+			fi
+		fi
 	else	
 		echo "  unable to read FHIR Service URL from ["$keyVaultName"]" 
         echo "  setting script to create new FHIR Service Entry in existing Key Vault ["$keyVaultName"]"
@@ -420,42 +441,23 @@ else
     createNewKeyVault="yes"
 fi
 
-if [[ "$option" == "proxy" ]] ; then 
-	echo "Checking for FHIR Proxy configuration..."
-	fhirProxySCUrl=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-URL --query "value" --out tsv)
-	if [ -n "$fhirProxySCUrl" ] ; then 
-		echo "  FHIR Proxy URL: "$fhirProxySCUrl
-		fhirProxySCTenant=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-TENANT-NAME --query "value" --out tsv)
-		echo "  FHIR Proxy Tenant ID: "$fhirProxySCTenant 
-				
-		fhirProxySCClientId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-CLIENT-ID --query "value" --out tsv)
-		echo "  FHIR Proxy Client ID: "$fhirProxySCClientId
-		
-		fhirProxySCClientSecret=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-SECRET --query "value" --out tsv)
-		echo "  FHIR Proxy Client Secret: *****"
-				
-		fhirProxySCResourceId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-RESOURCE --query "value" --out tsv) 
-		echo "  FHIR Proxy Resource: "$fhirProxySCResourceId ;
-	else
-		echo "  FHIR Proxy URL not found.  With the FHIR Proxy option selected, you must provide a FHIR Proxy URL."
-		exit 1 ;
-	fi
-fi
+
 
 
 # Setup Auth type based on input 
 # 
 if [[ "$createNewKeyVault" == "yes" ]] ; then 
 	if [[ "$option" == "proxy" ]] ; then 
-		echo "Creating a new Key Vault requires manual input of FHIR Proxy Service Client Information"
 		if [ -z "$fhirProxySCUrl" ] ; then
+			echo "Creating a new Key Vault requires manual input of FHIR Proxy Service Client Information"
 			echo "  Enter the FHIR Proxy Service URL (aka Endpoint)"
-		read fhirProxySCUrl
-		if [ -z "$fhirProxySCUrl" ] ; then
-			echo "You must provide a FHIR Proxy URL"
-			exit 1;
+			read fhirProxySCUrl
+			if [ -z "$fhirProxySCUrl" ] ; then
+				echo "You must provide a FHIR Proxy URL"
+				exit 1;
+			fi
+			[[ "${fhirProxySCUrl:?}" ]]
 		fi
-		[[ "${fhirProxySCUrl:?}" ]]
 
 		if [ -z "$fhirProxySCTenant" ] ; then
 			echo "  Enter the FHIR Proxy Service Client - Tenant ID (GUID)"
@@ -464,8 +466,8 @@ if [[ "$createNewKeyVault" == "yes" ]] ; then
 				echo "You must provide a FHIR Proxy Service Client  - Tenant ID (GUID)"
 				exit 1;
 			fi
+			[[ "${fhirProxySCTenant:?}" ]]
 		fi 
-		[[ "${fhirProxySCTenant:?}" ]]
 
 		if [ -z "$fhirProxySCClientId" ] ; then 
 			echo "  Enter the FHIR Proxy Service Client ID (GUID)"
@@ -474,8 +476,8 @@ if [[ "$createNewKeyVault" == "yes" ]] ; then
 				echo "You must provide a FHIR Proxy Service Client ID (GUID)"
 				exit 1;
 			fi
+			[[ "${fhirProxySCClientId:?}" ]]
 		fi 
-		[[ "${fhirProxySCClientId:?}" ]]
 
 		if [ -z "$fhirProxySCClientSecret" ] ; then 
 			echo "  Enter the FHIR Proxy Service Client Secret"
@@ -484,8 +486,8 @@ if [[ "$createNewKeyVault" == "yes" ]] ; then
 				echo "You must provide a FHIR Proxy Service Client Secret"
 				exit 1;
 			fi
+			[[ "${fhirProxySCClientSecret:?}" ]]
 		fi 
-		[[ "${fhirProxySCClientSecret:?}" ]]
 
 		if [ -z "$fhirProxySCResourceId" ] ; then 
 			echo "  Enter the FHIR Proxy Service Resource ID (GUID)"
@@ -494,20 +496,21 @@ if [[ "$createNewKeyVault" == "yes" ]] ; then
 				echo "You must provide a FHIR Proxy Service Resource ID (GUID)"
 				exit 1;
 			fi
+			[[ "${fhirProxySCResourceId:?}" ]]
 		fi 
-		[[ "${fhirProxySCResourceId:?}" ]]
 	fi
 	storeProxyServiceConfig="yes" ; 
 else 	
 	if [ -z "$fhirServiceURL" ] ; then
+		echo "Creating a new Key Vault requires manual input of FHIR Service Client Information"
 		echo "  Enter the FHIR Service URL (aka Endpoint)"
 		read fhirServiceURL
 		if [ -z "$fhirServiceURL" ] ; then
 			echo "You must provide a FHIR Service URL"
 			exit 1;
 		fi
+		[[ "${fhirServiceURL:?}" ]]
 	fi 
-	[[ "${fhirServiceURL:?}" ]]
 
 	if [ -z "$fhirServiceTenant" ] ; then
 		echo "  Enter the FHIR Service - Tenant ID (GUID)"
@@ -516,8 +519,8 @@ else
 			echo "You must provide a FHIR Service - Tenant ID (GUID)"
 			exit 1;
 		fi
+		[[ "${fhirServiceTenant:?}" ]]
 	fi 
-	[[ "${fhirServiceTenant:?}" ]]
 
 	if [ -z "$fhirServiceClientId" ] ; then 
 		echo "  Enter the FHIR Service - Client ID (GUID)"
@@ -526,8 +529,8 @@ else
 			echo "You must provide a FHIR Service - Client ID (GUID)"
 			exit 1;
 		fi
+		[[ "${fhirServiceClientId:?}" ]]
 	fi 
-	[[ "${fhirServiceClientId:?}" ]]
 
 	if [ -z "$fhirServiceClientSecret" ] ; then 
 		echo "  Enter the FHIR Service - Client Secret"
@@ -536,8 +539,8 @@ else
 			echo "You must provide a FHIR Service - Client Secret"
 			exit 1;
 		fi
+		[[ "${fhirServiceClientSecret:?}" ]]
 	fi 
-	[[ "${fhirServiceClientSecret:?}" ]]
 
 	if [ -z "$fhirServiceAudience" ] ; then 
 		echo "  Enter the FHIR Service - Audience (URL)"
@@ -546,9 +549,8 @@ else
 			echo "You must provide a FHIR Service - Audience (URL)"
 			exit 1;
 		fi
+		[[ "${fhirServiceAudience:?}" ]]
 	fi 
-	[[ "${fhirServiceAudience:?}" ]]
-
 	storeFHIRServiceConfig="yes"
 fi
 
