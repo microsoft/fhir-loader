@@ -408,6 +408,7 @@ if [[ -n "$keyVaultExists" ]]; then
 		echo "  FHIR Service Audience: "$fhirServiceAudience 
 		
 		if [[ "$option" == "proxy" ]] ; then 
+			echo " "
 			echo "Checking for FHIR Proxy configuration..."
 			fhirProxySCUrl=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-URL --query "value" --out tsv)
 			if [ -n "$fhirProxySCUrl" ] ; then 
@@ -501,15 +502,15 @@ if [[ "$createNewKeyVault" == "yes" ]] ; then
 	fi
 	storeProxyServiceConfig="yes" ; 
 else 	
-	if [ -z "$fhirServiceURL" ] ; then
+	if [ -z "$fhirServiceUrl" ] ; then
 		echo "Creating a new Key Vault requires manual input of FHIR Service Client Information"
 		echo "  Enter the FHIR Service URL (aka Endpoint)"
-		read fhirServiceURL
-		if [ -z "$fhirServiceURL" ] ; then
+		read fhirServiceUrl
+		if [ -z "$fhirServiceUrl" ] ; then
 			echo "You must provide a FHIR Service URL"
 			exit 1;
 		fi
-		[[ "${fhirServiceURL:?}" ]]
+		[[ "${fhirServiceUrl:?}" ]]
 	fi 
 
 	if [ -z "$fhirServiceTenant" ] ; then
