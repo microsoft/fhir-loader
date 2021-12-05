@@ -689,9 +689,12 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	# Apply App Auth and Connection settings 
 	echo "Applying FHIR Bulk Loader & Export App settings ["$bulkAppName"]..."
 	if [[ "$option" == "proxy" ]]; then
-		stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$(kvuri FP-SC-URL) FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE)) ;
+		echo " Proxy URL will be referenced directly in App Settings for readability"
+		fhirProxySCUrl=$fhirProxySCUrl"/fhir"
+		stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fhirProxySCUrl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE)) ;
 	else
-		stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$(kvuri FS-URL) FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE))
+		echo " Fhir Service URL will be referenced directly in App Settings for readability"
+		stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fhirServiceUrl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE))
 	fi
 	
 	# Apply App Setting (static)
