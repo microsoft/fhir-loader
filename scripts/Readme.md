@@ -1,4 +1,4 @@
-# FHIR-Loader Getting startd scripts Readme
+# FHIR-Bulk Loader Getting startd scripts Readme
 Script purpose, order of execution and other steps necessary to get up and running with FHIR-Loader
 
 ## Errata 
@@ -13,7 +13,7 @@ __Note__
 A Keyvault is necessary for securing Service Client Credentials used with the FHIR Service and FHIR-Proxy.  Only 1 Keyvault should be used as this script scans the keyvault for FHIR Service and FHIR-Proxy values. If multiple Keyvaults have been used, please use the [backup and restore](https://docs.microsoft.com/en-us/azure/key-vault/general/backup?tabs=azure-cli) option to copy values to 1 keyvault.
 
 __Note__ 
-The FHIR-loader scripts are designed for and tested from the Azure Cloud Shell - Bash Shell environment.
+The FHIR-Bulk Loader & Export scripts are designed for and tested from the Azure Cloud Shell - Bash Shell environment.
 
 
 ### Naming & Tagging
@@ -28,7 +28,7 @@ Resources are tagged with their deployment script and origin.  Customers are abl
 
 Origin              |  Deployment       
 --------------------|-----------------
-HealthArchitectures | FHIR-Loader   
+HealthArchitectures | FHIR-Bulk   
 
 ---
 
