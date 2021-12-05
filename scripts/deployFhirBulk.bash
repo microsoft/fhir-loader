@@ -371,10 +371,10 @@ fi
 # Obtain Keyvault Name 
 #
 if [[ -z "$keyVaultName" ]]; then
-	echo "Enter a Key Vault name <press Enter to accept default> ["$defKeyVaultName"]:"
+	echo "Enter a Key Vault name <press Enter to accept default> ["$defkeyVaultName"]:"
 	read keyVaultName
 	if [ -z "$keyVaultName" ] ; then
-		keyVaultName=$defKeyVaultName
+		keyVaultName=$defkeyVaultName
 	fi
 	[[ "${keyVaultName:?}" ]]
 fi
