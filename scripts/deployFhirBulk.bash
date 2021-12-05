@@ -405,32 +405,8 @@ if [[ -n "$keyVaultExists" ]]; then
 		echo "  FHIR Service Client Secret: *****"
 		
 		fhirServiceAudience=$(az keyvault secret show --vault-name $keyVaultName --name FS-RESOURCE --query "value" --out tsv) 
-		echo "  FHIR Service Audience: "$fhirServiceAudience 
+		echo "  FHIR Service Audience: "$fhirServiceAudience ;
 		
-		if [[ "$option" == "proxy" ]] ; then 
-			echo "Checking for FHIR Proxy configuration..."
-			fhirProxySCUrl=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-URL --query "value" --out tsv)
-			if [ -n "$fhirProxySCUrl" ] ; then 
-				echo "  FHIR Proxy URL: "$fhirProxySCUrl
-
-				fhirProxySCTenant=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-TENANT-NAME --query "value" --out tsv)
-				echo "  FHIR Proxy Tenant ID: "$fhirProxySCTenant 
-				
-				fhirProxySCClientId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-CLIENT-ID --query "value" --out tsv)
-				echo "  FHIR Proxy Client ID: "$fhirProxySCClientId
-				
-				fhirProxySCClientSecret=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-SECRET --query "value" --out tsv)
-				echo "  FHIR Proxy Client Secret: *****"
-				
-				fhirProxySCResourceId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-RESOURCE --query "value" --out tsv) 
-				echo "  FHIR Proxy Resource: "$fhirProxySCResourceId ;
-			else
-				echo "  FHIR Proxy URL not found.  With the FHIR Proxy option selected, you must provide a FHIR Proxy URL."
-				exit 1 ;
-			fi
-		fi
-		useExistingKeyVault="yes"
-    	createNewKeyVault="no" ;
 	else	
 		echo "  unable to read FHIR Service URL from ["$keyVaultName"]" 
         echo "  setting script to create new FHIR Service Entry in existing Key Vault ["$keyVaultName"]"
@@ -443,6 +419,29 @@ else
     useExistingKeyVault="no"
     createNewKeyVault="yes"
 fi
+
+if [[ "$option" == "proxy" ]] ; then 
+	echo "Checking for FHIR Proxy configuration..."
+	fhirProxySCUrl=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-URL --query "value" --out tsv)
+	if [ -n "$fhirProxySCUrl" ] ; then 
+		echo "  FHIR Proxy URL: "$fhirProxySCUrl
+		fhirProxySCTenant=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-TENANT-NAME --query "value" --out tsv)
+		echo "  FHIR Proxy Tenant ID: "$fhirProxySCTenant 
+				
+		fhirProxySCClientId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-CLIENT-ID --query "value" --out tsv)
+		echo "  FHIR Proxy Client ID: "$fhirProxySCClientId
+		
+		fhirProxySCClientSecret=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-SECRET --query "value" --out tsv)
+		echo "  FHIR Proxy Client Secret: *****"
+				
+		fhirProxySCResourceId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-RESOURCE --query "value" --out tsv) 
+		echo "  FHIR Proxy Resource: "$fhirProxySCResourceId ;
+	else
+		echo "  FHIR Proxy URL not found.  With the FHIR Proxy option selected, you must provide a FHIR Proxy URL."
+		exit 1 ;
+	fi
+fi
+
 
 # Setup Auth type based on input 
 # 
