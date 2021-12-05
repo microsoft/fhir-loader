@@ -25,6 +25,11 @@
 
 3. You must have the policy assigned to read/write KeyVault Secrets in the specified Key Vault.
 
+## Deployment Components
+_Larger image [here](./docs/images/architecture/install-components.png)_
+
+![install-componenents-small](./docs/images/architecture/install-components-small.png)
+
 ## Deployment
 1. [Open Azure Cloud Shell](https://shell.azure.com) you can also access this from [Azure Portal](https://portal.azure.com)
 2. Select Bash Shell for the environment 
