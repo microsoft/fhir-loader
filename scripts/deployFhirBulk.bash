@@ -113,16 +113,12 @@ declare stepresult=""
 declare bulkAppName=""
 declare option=""
 declare defOption="proxy"
-
-declare script_dir="$( cd -P -- "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd -P )"
 declare defsubscriptionId=""
 declare subscriptionId=""
 declare resourceGroupName=""
 declare resourceGroupLocation=""
-declare serviceplanSuffix="asp"
-declare bulkAppName="sfload"$RANDOM
+declare bulkAppName=""
 declare deployPrefix=""
-declare storageAccountNameSuffix="store"$RANDOM
 declare storageConnectionString=""
 declare storesourceid=""
 declare faresourceid=""
