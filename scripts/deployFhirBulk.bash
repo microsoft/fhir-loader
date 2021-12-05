@@ -33,7 +33,7 @@ declare defresourceGroupLocation="westus2"
 declare defresourceGroupName="bulk-fhir-"$suffix
 declare defdeployPrefix="bulk"$suffix
 declare defAppName="sfb-"$defdeployPrefix
-declare defkeyVaultName="kv-"$defAppName
+declare defkeyVaultName="kv-"$defdeployPrefix
 declare genPostmanEnv="yes"
 
 #########################################
@@ -410,8 +410,8 @@ if [[ -n "$keyVaultExists" ]]; then
 		if [[ "$option" == "proxy" ]] ; then 
 			echo "Checking for FHIR Proxy configuration..."
 			fhirProxySCUrl=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-URL --query "value" --out tsv)
-			if [ -n "$fhirProxyUrl" ] ; then 
-				echo "  FHIR Proxy URL: "$fhirProxyUrl
+			if [ -n "$fhirProxySCUrl" ] ; then 
+				echo "  FHIR Proxy URL: "$fhirProxySCUrl
 
 				fhirProxySCTenant=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-TENANT-NAME --query "value" --out tsv)
 				echo "  FHIR Proxy Tenant ID: "$fhirProxySCTenant 
@@ -450,14 +450,14 @@ fi
 if [[ "$createNewKeyVault" == "yes" ]] ; then 
 	if [[ "$option" == "proxy" ]] ; then 
 		echo "Creating a new Key Vault requires manual input of FHIR Proxy Service Client Information"
-		if [ -z "$fhirProxyURL" ] ; then
+		if [ -z "$fhirProxySCUrl" ] ; then
 			echo "  Enter the FHIR Proxy Service URL (aka Endpoint)"
-		read fhirProxyURL
-		if [ -z "$fhirProxyURL" ] ; then
+		read fhirProxySCUrl
+		if [ -z "$fhirProxySCUrl" ] ; then
 			echo "You must provide a FHIR Proxy URL"
 			exit 1;
 		fi
-		[[ "${fhirProxyURL:?}" ]]
+		[[ "${fhirProxySCUrl:?}" ]]
 
 		if [ -z "$fhirProxySCTenant" ] ; then
 			echo "  Enter the FHIR Proxy Service Client - Tenant ID (GUID)"
