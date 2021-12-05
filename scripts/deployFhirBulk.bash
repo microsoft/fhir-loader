@@ -616,7 +616,6 @@ echo "Starting Deployments... "
 
 echo "Creating FHIR Bulk Loader & Export Function Application"
 (
-	echo "Storing Connection information in keyVault"
 
 	if [[ "$storeFHIRServiceConfig" == "yes" ]] ; then 
 		echo "Storing FHIR Service Values in ["$keyVaultName"]"
