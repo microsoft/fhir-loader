@@ -500,60 +500,60 @@ if [[ "$createNewKeyVault" == "yes" ]] ; then
 			fi
 			[[ "${fhirProxySCResourceId:?}" ]]
 		fi 
-	fi
-	storeProxyServiceConfig="yes" ; 
-else 	
-	if [ -z "$fhirServiceUrl" ] ; then
-		echo "Creating a new Key Vault requires manual input of FHIR Service Client Information"
-		echo "  Enter the FHIR Service URL (aka Endpoint)"
-		read fhirServiceUrl
+		storeProxyServiceConfig="yes" ;
+	else 	
 		if [ -z "$fhirServiceUrl" ] ; then
-			echo "You must provide a FHIR Service URL"
-			exit 1;
-		fi
-		[[ "${fhirServiceUrl:?}" ]]
-	fi 
+			echo "Creating a new Key Vault requires manual input of FHIR Service Client Information"
+			echo "  Enter the FHIR Service URL (aka Endpoint)"
+			read fhirServiceUrl
+			if [ -z "$fhirServiceUrl" ] ; then
+				echo "You must provide a FHIR Service URL"
+				exit 1;
+			fi
+			[[ "${fhirServiceUrl:?}" ]]
+		fi 
 
-	if [ -z "$fhirServiceTenant" ] ; then
-		echo "  Enter the FHIR Service - Tenant ID (GUID)"
-		read fhirServiceTenant
 		if [ -z "$fhirServiceTenant" ] ; then
-			echo "You must provide a FHIR Service - Tenant ID (GUID)"
-			exit 1;
-		fi
-		[[ "${fhirServiceTenant:?}" ]]
-	fi 
+			echo "  Enter the FHIR Service - Tenant ID (GUID)"
+			read fhirServiceTenant
+			if [ -z "$fhirServiceTenant" ] ; then
+				echo "You must provide a FHIR Service - Tenant ID (GUID)"
+				exit 1;
+			fi
+			[[ "${fhirServiceTenant:?}" ]]
+		fi 
 
-	if [ -z "$fhirServiceClientId" ] ; then 
-		echo "  Enter the FHIR Service - Client ID (GUID)"
-		read fhirServiceClientId
-		if [ -z "$fhirServiceClientId" ] ; then
-			echo "You must provide a FHIR Service - Client ID (GUID)"
-			exit 1;
-		fi
-		[[ "${fhirServiceClientId:?}" ]]
-	fi 
+		if [ -z "$fhirServiceClientId" ] ; then 
+			echo "  Enter the FHIR Service - Client ID (GUID)"
+			read fhirServiceClientId
+			if [ -z "$fhirServiceClientId" ] ; then
+				echo "You must provide a FHIR Service - Client ID (GUID)"
+				exit 1;
+			fi
+			[[ "${fhirServiceClientId:?}" ]]
+		fi 
 
-	if [ -z "$fhirServiceClientSecret" ] ; then 
-		echo "  Enter the FHIR Service - Client Secret"
-		read fhirServiceClientSecret
-		if [ -z "$fhirServiceClientSecret" ] ; then
-			echo "You must provide a FHIR Service - Client Secret"
-			exit 1;
-		fi
-		[[ "${fhirServiceClientSecret:?}" ]]
-	fi 
+		if [ -z "$fhirServiceClientSecret" ] ; then 
+			echo "  Enter the FHIR Service - Client Secret"
+			read fhirServiceClientSecret
+			if [ -z "$fhirServiceClientSecret" ] ; then
+				echo "You must provide a FHIR Service - Client Secret"
+				exit 1;
+			fi
+			[[ "${fhirServiceClientSecret:?}" ]]
+		fi 
 
-	if [ -z "$fhirServiceAudience" ] ; then 
-		echo "  Enter the FHIR Service - Audience (URL)"
-		read fhirServiceAudience
-		if [ -z "$fhirServiceAudience" ] ; then
-			echo "You must provide a FHIR Service - Audience (URL)"
-			exit 1;
-		fi
-		[[ "${fhirServiceAudience:?}" ]]
-	fi 
-	storeFHIRServiceConfig="yes"
+		if [ -z "$fhirServiceAudience" ] ; then 
+			echo "  Enter the FHIR Service - Audience (URL)"
+			read fhirServiceAudience
+			if [ -z "$fhirServiceAudience" ] ; then
+				echo "You must provide a FHIR Service - Audience (URL)"
+				exit 1;
+			fi
+			[[ "${fhirServiceAudience:?}" ]]
+		fi 
+		storeFHIRServiceConfig="yes"
+	fi
 fi
 
 
