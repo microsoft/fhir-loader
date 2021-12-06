@@ -17,7 +17,7 @@ The FHIR-Bulk Loader & Export scripts are designed for and tested from the Azure
 
 
 ### Naming & Tagging
-All Azure resource types have a scope that defines the level that resource names must be unique.  Some resource names, such as PaaS services with public endpoints have global scopes so they must be unique across the entire Azure platform.    Our deployment scripts strive to suggest naming standards that group logial connections while aligning with Azure Best Practices.  Customers are prompted to accept a default or suppoly their own names during installation, examples include:
+All Azure resource types have a scope that defines the level that resource names must be unique.  Some resource names, such as PaaS services with public endpoints have global scopes so they must be unique across the entire Azure platform.    Our deployment scripts strive to suggest naming standards that group logial connections while aligning with Azure Best Practices.  Customers are prompted to accept a default or supply their own names during installation, examples include:
 
 Prefix      | Workload        |  Number     | Resource Type 
 ------------|-----------------|-------------|---------------
@@ -33,7 +33,7 @@ HealthArchitectures | FHIR-Bulk
 ---
 
 ## Setup 
-Please note you should deploy these components into a tenant and subscriotion where you have appropriate permissions to create and manage Application Registrations (ie Application Adminitrator RBAC Role), and can deploy Resources at the Subscription Scope. 
+Please note you should deploy these components into a tenant and subscription where you have appropriate permissions to create and manage Application Registrations (ie Application Adminitrator RBAC Role or Global Administrator), and can deploy Resources at the Subscription Scope. 
 
 Launch Azure Cloud Shell (Bash Environment)  
   
