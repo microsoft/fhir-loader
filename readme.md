@@ -1,16 +1,18 @@
-# FHIR Bulk Loader
+# FHIR Bulk Loader & Export
 
-FHIR Bulk Loader is an Azure Function App solution that provides the following services for ingesting and exporting FHIR Resources:
+## Introduction 
+
+**FHIR Bulk Loader & Export** is an Azure Function App solution that provides the following services for ingesting and exporting FHIR Resources:
  + Imports FHIR Bundles (compressed and non-compressed) and NDJSON files into FHIR Server 
  + High Speed Parallel Event Grid triggers from storage accounts or other event grid resources.
  + Complete Auditing, Error logging and Retry for throttled transactions
  + High Speed Parallel Orchestrated Patient Centric Export Capability 
 
-# Architecture Overview
+## Architecture Overview
 ![Bulk Loader](docs/images/architecture/bulkloadarch.png)
 
-# Prerequsites
-1. The FHIR Loader requires the following compoentns 
+## Prerequsites
+1. The FHIR Bulk Loader & Export requires the following compoentns 
    + an API for FHIR Service or OSS FHIR Server
    + the Microsoft FHIR Proxy (with Keyvault)
 
@@ -23,26 +25,32 @@ FHIR Bulk Loader is an Azure Function App solution that provides the following s
 
 3. You must have the policy assigned to read/write KeyVault Secrets in the specified Key Vault.
 
-# Deployment
+## Deployment Components
+_Larger image [here](./docs/images/architecture/install-components.png)_
+
+![install-componenents-small](./docs/images/architecture/install-components-small.png)
+
+## Deployment
 1. [Open Azure Cloud Shell](https://shell.azure.com) you can also access this from [Azure Portal](https://portal.azure.com)
 2. Select Bash Shell for the environment 
 3. Clone this repo
 ```azurecli
 git clone https://github.com/microsoft/fhir-loader
 ```
-4. Execute ```deployFhirBulkLoader.bash``` for direct FHIR Server access or ```deployFhirBulkLoader.bash -y``` to use FHIR Proxy access
+4. Execute ```deployFhirBulk.bash``` for direct FHIR Server access or ```deployFhirBulk.bash -o proxy``` to use FHIR Proxy access
 
-Detailed instructions can be found [here](docs/deployment.md)
+Detailed instructions can be found [here](./scripts/Readme.md)
 
-# Importing FHIR Data
+## Importing FHIR Data
 The containers for importing data are created during deployment.  Containers are created by input file type
 - for FHIR Bundles (transactional or batch), use the "bundles" container
 - for NDJSON formated FHIR Bunldles use the "ndjson" container
 - for Compressed (zip) formatted FHIR Bundles, use the "zip" container
 
-Detailed configurations can be found [here](scripts/gettingStartedFhirLoader.md) 
-# Exporting Bulk Patient Centric FHIR Data
+
+## Exporting Bulk Patient Centric FHIR Data
 The FHIR Loader also provides an endpoint to execute a high speed Parallel patient centric bulk export of data.  It is similar to the capabilities provided by the built in FHIR Server $export function but uses multiple connections to invoke FHIR API Calls using user defined criteria and standard FHIR Query parameters.  This can offer performance advantages and more precise resource inclusion than the specified $export facility.  The data for your export is written to the ```export``` container of the storage account created with the fhir-loader installation.  Each export job creates it's own subcontainer using the instanceid of the triggered export job. 
+
 ## Defining a query definition object
 This is a JSON Object that defines the targeted export resources in the system.  You will POST this object to the orchestration endpoint to begin the bulk export proecess. The query JSON Object format is:</br>
  ```
@@ -122,12 +130,15 @@ You can view the results of an export job either using the status query get uri 
 ...
 ]
 ```
-# Performance 
+
+## Performance 
 The FHIR Loader deploys with a Standard App Service plan that can support tens of thousands file imports per hour.  During testing we have been able to scale the FHIR Loader performance to hundreds of thousands of files per hour.  
 
 Note:  Scaling to hundreds of thousands of files per hour requires additional scaling on the FHIR API to handle the incoming messages.  High rates of 429's at the API or Cosmos data plane indicate that additional scaling is necessary. 
 
 Detailed performance guidelines can be found [here](docs/performance.md) 
+
+---
 
 # Contributing
 
