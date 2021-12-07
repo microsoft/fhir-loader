@@ -151,7 +151,7 @@ function intro {
 	#
 	echo " "
 	echo "FHIR-Loader Bulk Import and Export Application installation script... "
-	echo " - Prerequisite:  Azure API for FHIR of FHIR Server must be installed"
+	echo " - Prerequisite:  Azure API for FHIR or FHIR Server must be installed"
 	echo " - Prerequisite:  Client Application connection information for FHIR Service"
 	echo " - Prerequisite:  A Keyvault service"
 	echo " "

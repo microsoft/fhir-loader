@@ -4,26 +4,26 @@
 
 **FHIR Bulk Loader & Export** is an Azure Function App solution that provides the following services for ingesting and exporting FHIR Resources:
  + Imports FHIR Bundles (compressed and non-compressed) and NDJSON files into FHIR Server 
- + High Speed Parallel Event Grid triggers from storage accounts or other event grid resources.
+ + High Speed Parallel Event Grid that triggers from storage accounts or other event grid resources
  + Complete Auditing, Error logging and Retry for throttled transactions
- + High Speed Parallel Orchestrated Patient Centric Export Capability 
+ + High Speed Parallel Orchestrated Patient-centric Export Capability 
 
 ## Architecture Overview
 ![Bulk Loader](docs/images/architecture/bulkloadarch.png)
 
 ## Prerequsites
-1. The FHIR Bulk Loader & Export requires the following compoentns 
-   + an API for FHIR Service or OSS FHIR Server
-   + the Microsoft FHIR Proxy (with Keyvault)
+1. The FHIR Bulk Loader & Export requires the following components: 
+   + Azure API for FHIR, Azure Healthcare APIs FHIR service, or OSS FHIR Server
+   + the Microsoft FHIR Proxy (with Key Vault)
 
-2. The following resources providers must be registered in your subscription and you must have the ability to create/update them:
+2. You must have at least a Contributor role in your Azure subscription so that you can create/update the following resources:
    + ResourceGroup
    + Storage Account 
    + App Service Plan 
    + Function App 
    + EventGrid
 
-3. You must have the policy assigned to read/write KeyVault Secrets in the specified Key Vault.
+3. You must be assigned a Key Vault access policy to read/write secrets in the specified Key Vault.
 
 ## Deployment Components
 _Larger image [here](./docs/images/architecture/install-components.png)_
@@ -42,17 +42,17 @@ git clone https://github.com/microsoft/fhir-loader
 Detailed instructions can be found [here](./scripts/Readme.md)
 
 ## Importing FHIR Data
-The containers for importing data are created during deployment.  Containers are created by input file type
+The containers for importing data are created during deployment.  A different container is created for each input file type.
 - for FHIR Bundles (transactional or batch), use the "bundles" container
-- for NDJSON formated FHIR Bunldles use the "ndjson" container
+- for NDJSON formated FHIR Bundles use the "ndjson" container
 - for Compressed (zip) formatted FHIR Bundles, use the "zip" container
 
 
-## Exporting Bulk Patient Centric FHIR Data
-The FHIR Loader also provides an endpoint to execute a high speed Parallel patient centric bulk export of data.  It is similar to the capabilities provided by the built in FHIR Server $export function but uses multiple connections to invoke FHIR API Calls using user defined criteria and standard FHIR Query parameters.  This can offer performance advantages and more precise resource inclusion than the specified $export facility.  The data for your export is written to the ```export``` container of the storage account created with the fhir-loader installation.  Each export job creates it's own subcontainer using the instanceid of the triggered export job. 
+## Exporting Bulk Patient-centric FHIR Data
+The FHIR Loader also provides an endpoint to execute a high speed parallel patient-centric bulk export of data. It is similar to the capabilities provided by the built-in FHIR Server $export function but uses multiple connections to invoke FHIR API calls with user-defined criteria and standard FHIR Query parameters. This can offer performance advantages and more precise resource inclusion than the $export operation specified in the FHIR standard. The data for your export is written to the ```export``` container of the storage account created with the fhir-loader installation. Each export job creates it's own subcontainer using the ```instanceid``` of the triggered export job.
 
 ## Defining a query definition object
-This is a JSON Object that defines the targeted export resources in the system.  You will POST this object to the orchestration endpoint to begin the bulk export proecess. The query JSON Object format is:</br>
+This is a JSON Object that defines the targeted export resources in the system. You will POST this object to the orchestration endpoint to begin the bulk export proecess. The query JSON Object format is:</br>
  ```
 {
 	"query": "<Resource Query>",
@@ -80,9 +80,9 @@ As a payor you need subscriber data for a CMS data exchange. You want to export 
 
 }​​​​​
 ```
-Note: the patientreferencefield is ```subscriber``` this contains the logical id reference to the patient on the Coverage resource.  As the system processes the included resources of the query field the value is substituted in the $IDS query parameter that points to the correlated patient reference. The ```_count``` parameter optimizes the number of resources processed at a time.  The recommendation is 50 or less any thing greater than 50 is not recommended and could generate illegal query strings. If the ```_count``` parameter is not included the default page size of the FHIR server is used.</br>
+Note: the ```patientreferencefield``` is ```subscriber```. This contains the logical id reference to the patient on the Coverage resource. As the system processes the included resources of the query field, the value is substituted in the $IDS query parameter that points to the correlated patient reference. The ```_count``` parameter optimizes the number of resources processed at a time. If the recommendation is 50 or less. Anything greater than 50 is not recommended and could generate illegal query strings. If the ```_count``` parameter is not included, the default page size of the FHIR server is used.</br>
 </br>Example 2:</br>
-As a provider you want to export data for your patient population specifically those born before 1951 for import into a wellness campaign system.  You are only interested in data contained in the Patient and Encounter resources. You would use the following query definition object:
+As a provider you want to export data for your patient population – specifically those born before 1951 for import into a wellness campaign system.  You are only interested in data contained in the Patient and Encounter resources. You would use the following query definition object:
 ```
 {
 	"query": "Patient?birthdate=lt1951-01-01&_count=50",
@@ -109,7 +109,7 @@ As a provider you want to export data for your patient population specifically t
 }
 ```
 ## Export Job Results
-You can view the results of an export job either using the status query get uri or apon completion of the export job a text file is written in the export job container called ```_completed_run.xjson``` Both of these contain a JSON object with the results and execution information of your export job. The ```output``` field of the JSON is compliant with the FHIR Export specification and containes file location and resource counts:</br>
+You can view the results of an export job using either the status query get uri or, upon completion of the export job, a text file is written in the export job container called ```_completed_run.xjson```. Both of these contain a JSON object with the results and execution information of your export job. The ```output``` field of the JSON is compliant with the FHIR Export specification and containes file location and resource counts:</br>
 ```
 ...
 "output": [
@@ -132,9 +132,9 @@ You can view the results of an export job either using the status query get uri 
 ```
 
 ## Performance 
-The FHIR Loader deploys with a Standard App Service plan that can support tens of thousands file imports per hour.  During testing we have been able to scale the FHIR Loader performance to hundreds of thousands of files per hour.  
+The FHIR Loader deploys with a Standard App Service plan that can support tens of thousands of file imports per hour. During testing we have been able to scale the FHIR Loader performance to hundreds of thousands of files per hour.  
 
-Note:  Scaling to hundreds of thousands of files per hour requires additional scaling on the FHIR API to handle the incoming messages.  High rates of 429's at the API or Cosmos data plane indicate that additional scaling is necessary. 
+Note: Scaling to hundreds of thousands of files per hour requires additional scaling on the FHIR API to handle the incoming messages.  High rates of 429's at the API or Cosmos data plane indicate that additional scaling is necessary. 
 
 Detailed performance guidelines can be found [here](docs/performance.md) 
 

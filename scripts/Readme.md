@@ -1,30 +1,31 @@
-# FHIR-Bulk Loader Getting startd scripts Readme
-Script purpose, order of execution and other steps necessary to get up and running with FHIR-Loader
+# FHIR-Bulk Loader Getting Started with Scripts
+In this document we go over the deploy scripts necessary for installing FHIR Bulk Loader. We cover the order of script execution and the steps necessary to get up and running.
 
 ## Errata 
 There are no open issues at this time. 
 
 ## Prerequisites 
 
-These scripts will gather (and export) information necessary to the proper deployment and configuration of Azure Healthcare API for FHIR, an Application Service Client, Key Vault and Resource Groups secure information will be stored in the Keyvault.  
- - Prerequisites:  User must have rights to deploy resources at the Subscription scope 
+These scripts will gather (and export) information necessary for the proper deployment and configuration of FHIR Bulk Loader. Credentials and other secure information will be stored in the existing Key Vault attached to your FHIR Service/FHIR Proxy deployment.
+
+ - User must have FHIR Server (OSS)/Azure API for FHIR/Azure Healthcare APIs FHIR Service already deployed and set up with FHIR-Proxy.
+ - User must have rights to deploy resources at the Azure Subscription scope (i.e., Contributor role or above).
 
 __Note__
-A Keyvault is necessary for securing Service Client Credentials used with the FHIR Service and FHIR-Proxy.  Only 1 Keyvault should be used as this script scans the keyvault for FHIR Service and FHIR-Proxy values. If multiple Keyvaults have been used, please use the [backup and restore](https://docs.microsoft.com/en-us/azure/key-vault/general/backup?tabs=azure-cli) option to copy values to 1 keyvault.
+FHIR Service and FHIR-Proxy use a Key Vault for securing Service Client credentials. Because the ```deployFhirBulk.bash``` script scans the Key Vault for FHIR Service and FHIR-Proxy values, only one Key Vault should be used in your Resource Group. If multiple Key Vaults have been deployed in your Resource Group, please use the [backup and restore](https://docs.microsoft.com/en-us/azure/key-vault/general/backup?tabs=azure-cli) option to copy values to one Key Vault.
 
 __Note__ 
 The FHIR-Bulk Loader & Export scripts are designed for and tested from the Azure Cloud Shell - Bash Shell environment.
 
 
 ### Naming & Tagging
-All Azure resource types have a scope that defines the level that resource names must be unique.  Some resource names, such as PaaS services with public endpoints have global scopes so they must be unique across the entire Azure platform.    Our deployment scripts strive to suggest naming standards that group logial connections while aligning with Azure Best Practices.  Customers are prompted to accept a default or supply their own names during installation, examples include:
+All Azure resource types have a scope that defines the level at which resource names must be unique. Some resource names, such as PaaS services with public endpoints, have global scopes so they must be unique across the entire Azure platform. Our deployment scripts strive to suggest naming standards that group logical connections while aligning with Azure best practices. Customers are prompted to accept a default name or supply their own names during installation. See below for the FHIR Bulk Loader resource naming convention.
 
-Prefix      | Workload        |  Number     | Resource Type 
-------------|-----------------|-------------|---------------
-NA          | fhir            | random      | NA 
-User input  | secure function | random      | storage 
+App Name    | Deploy Prefix   | Number      | Resource Name Example (automatically generated)
+------------|-----------------|-------------|------------------------------------------------
+sfb-        | bulk            | random      | sfb-bulk123456
 
-Resources are tagged with their deployment script and origin.  Customers are able to add Tags after installation, examples include::
+Resources are tagged with their deployment script and origin.  Customers are able to add Tags after installation. Examples include::
 
 Origin              |  Deployment       
 --------------------|-----------------
@@ -33,10 +34,11 @@ HealthArchitectures | FHIR-Bulk
 ---
 
 ## Setup 
-Please note you should deploy these components into a tenant and subscription where you have appropriate permissions to create and manage Application Registrations (ie Application Adminitrator RBAC Role or Global Administrator), and can deploy Resources at the Subscription Scope. 
+Please note you should deploy these components into a tenant and subscription where you have appropriate permissions to create and manage Application Registrations (ie Application Adminitrator RBAC Role or Global Administrator in AAD), and can deploy Resources at the Subscription Scope. 
 
 Launch Azure Cloud Shell (Bash Environment)  
-  
+
+CTRL+click (Windows or Linux) or CMD+ click (Mac) to open in a new window   
 [![Launch Azure Shell](/docs/images/launchcloudshell.png "Launch Cloud Shell")](https://shell.azure.com/bash?target="_blank")
 
 Clone the repo to your Bash Shell (CLI) environment 
@@ -54,13 +56,11 @@ chmod +x *.bash
 ```
 
 ## Step 1.  deployFhirBulk.bash
-This is the main component deployment script for the Azure Components and application code.  Note that retry logic is used to account for provisioning delays, i.e., networking provisioning is taking some extra time.  Default retry logic is 5 retries.   
-
-This is the main component deployment script for the Azure Components.    
+This is the main component deployment script for the FHIR Bulk Loader Azure components and application code.  Note that retry logic is used to account for provisioning delays (e.g., networking provisioning is taking some extra time).  Default retry logic is 5 retries.    
 
 Ensure you are in the proper directory 
 ```azurecli-interactive
-cd $HOME/fhir-loader/scripts
+cd ./fhir-loader/scripts
 ``` 
 
 Launch the deployFhirBulk.bash shell script 
@@ -70,7 +70,7 @@ Launch the deployFhirBulk.bash shell script
 
 Optionally the deployment script can be used with command line options 
 ```azurecli
-./deployFhirBulk.bash -i <subscriptionId> -g <resourceGroupName> -l <resourceGroupLocation> -n <deployPprefix> -k <keyVaultName> -o <fhir or proxy>
+./deployFhirBulk.bash -i <subscriptionId> -g <resourceGroupName> -l <resourceGroupLocation> -n <deployPrefix> -k <keyVaultName> -o <fhir or proxy>
 ```
 
 
@@ -86,7 +86,7 @@ Information needed by this script
  - Resource Group Name and Location 
  - Keyvault Name 
 
-This script prompts users for KeyVault Name, searches for FHIR Service Values if Found loads them; otherwise the script prompts users for the FHIR Service 
+This script prompts users for the existing Key Vault name, searches for FHIR Service values in the Key Vault, and if found, loads them. Otherwise the script prompts users for the FHIR Service 
  - Client ID
  - Resource 
  - Tenant Name
