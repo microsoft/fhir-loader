@@ -23,7 +23,7 @@
    + Function App 
    + EventGrid
 
-3. You must be assigned a KeyVault access policy to read/write secrets in the specified Key Vault.
+3. You must be assigned a Key Vault access policy to read/write secrets in the specified Key Vault.
 
 ## Deployment Components
 _Larger image [here](./docs/images/architecture/install-components.png)_
