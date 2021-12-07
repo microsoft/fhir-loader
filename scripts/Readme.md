@@ -1,5 +1,5 @@
 # FHIR-Bulk Loader Getting Started with Deploy Scripts
-In this document we go over the deploy scripts necessary for installing FHIR Bulk Loader. We cover the order of script execution and the steps necessary to get up and running.
+In this document we go over the deploy scripts necessary for installing FHIR Bulk Loader. We cover the order of script execution and the steps needed to get up and running.
 
 ## Errata 
 There are no open issues at this time. 
