@@ -47,7 +47,7 @@ git clone https://github.com/microsoft/fhir-loader
 ```
 Change working directory to the repo Scripts directory
 ```azurecli-interactive
-cd ./fhir-loader/scripts
+cd $HOME/fhir-loader/scripts
 ```
 
 Make the Bash Shell Scripts used for Deployment and Setup executable 
@@ -60,7 +60,7 @@ This is the main component deployment script for the FHIR Bulk Loader Azure comp
 
 Ensure you are in the proper directory 
 ```azurecli-interactive
-cd ./fhir-loader/scripts
+cd $HOME/fhir-loader/scripts
 ``` 
 
 Launch the deployFhirBulk.bash shell script 
