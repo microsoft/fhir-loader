@@ -21,7 +21,7 @@ The FHIR-Bulk Loader & Export scripts are designed for and tested from the Azure
 ### Naming & Tagging
 All Azure resource types have a scope that defines the level at which resource names must be unique. Some resource names, such as PaaS services with public endpoints, have global scopes so they must be unique across the entire Azure platform. Our deployment scripts strive to suggest naming standards that group logical connections while aligning with Azure best practices. Customers are prompted to accept a default name or supply their own names during installation. See below for the FHIR Bulk Loader resource naming convention.
 
-App Name    | Deploy Prefix   | Number      | Resource Name Example (automatically generated)
+Resource Type    | Deploy Prefix   | Number      | Resource Name Example (automatically generated)
 ------------|-----------------|-------------|------------------------------------------------
 sfb-        | bulk            | random      | sfb-bulk123456
 
