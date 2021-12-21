@@ -33,7 +33,7 @@ Sample [Synthea](https://github.com/synthetichealth/synthea) file are avilable f
 
 ![upload](./images/upload.png)
 
-3) Once the file is uploaded it will be processes and moved into a _filetype_processes or _filetype_error container.  These files contain tracking and/or error messages.  
+3) Once the file is uploaded it will be processed and moved into a _filetype_processed or _filetype_error container.  These files contain tracking and/or error messages.  
 
 4) Files can also be tracked through the Function Loader Application Insights deployment (via the installation script).
 
