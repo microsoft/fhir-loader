@@ -17,11 +17,11 @@
    + the Microsoft FHIR Proxy (with Key Vault)
 
 2. You must have at least a Contributor role in your Azure subscription so that you can create/update the following resources:
-   + ResourceGroup
+   + Resource Group
    + Storage Account 
    + App Service Plan 
    + Function App 
-   + EventGrid
+   + Event Grid
 
 3. You must be assigned a Key Vault access policy to read/write secrets in the specified Key Vault.
 
