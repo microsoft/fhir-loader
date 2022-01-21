@@ -33,7 +33,7 @@ HealthArchitectures | FHIR-Bulk
 
 ---
 
-## Setup 
+## Getting Started
 Please note you should deploy these components into a tenant and subscription where you have appropriate permissions to create and manage Application Registrations (ie Application Adminitrator RBAC Role or Global Administrator in AAD), and can deploy Resources at the Subscription Scope. 
 
 Launch Azure Cloud Shell (Bash Environment)  
