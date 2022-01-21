@@ -11,11 +11,11 @@ These scripts will gather (and export) information necessary for the proper depl
  - User must have FHIR Server (OSS)/Azure API for FHIR/Azure Healthcare APIs FHIR Service already deployed and set up with FHIR-Proxy.
  - User must have rights to deploy resources at the Azure Subscription scope (i.e., Contributor role or above).
 
-__Note__
+__Note:__
 FHIR Service and FHIR-Proxy use a Key Vault for securing Service Client credentials. Because the ```deployFhirBulk.bash``` script scans the Key Vault for FHIR Service and FHIR-Proxy values, only one Key Vault should be used in your Resource Group. If multiple Key Vaults have been deployed in your Resource Group, please use the [backup and restore](https://docs.microsoft.com/en-us/azure/key-vault/general/backup?tabs=azure-cli) option to copy values to one Key Vault.
 
-__Note__ 
-The FHIR-Bulk Loader & Export scripts are designed for and tested from the Azure Cloud Shell - Bash Shell environment.
+__Note:__ 
+The FHIR-Bulk Loader & Export scripts are designed and tested for the [Azure Cloud Shell - Bash Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/features#:~:text=Azure%20Cloud%20Shell%20is%20a,and%20maintaining%20a%20machine%20yourself.) environment.
 
 
 ### Naming & Tagging
