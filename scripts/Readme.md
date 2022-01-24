@@ -1,5 +1,5 @@
 # FHIR-Bulk Loader Getting Started with Deploy Scripts
-In this document we go over the deploy scripts necessary for installing FHIR Bulk Loader. We cover the order of script execution and the steps needed to get up and running.
+In this document, we go over the deploy scripts necessary for installing FHIR Bulk Loader. We cover the order of script execution and the steps needed to get up and running.
 
 ## Errata 
 There are no open issues at this time. 
@@ -19,7 +19,7 @@ The FHIR-Bulk Loader & Export scripts are designed and tested for the [Azure Clo
 
 
 ### Naming & Tagging
-All Azure resource types have a scope in which their resource names must be unique. Some resource names, such as PaaS services with public endpoints, have global scopes. Therefore, these resource names must be unique across the entire Azure platform. Our deployment scripts strive to suggest naming standards that group logical connections while aligning with Azure best practices. Users are prompted to accept a default name or supply their own names during installation. See below for the FHIR Bulk Loader resource naming convention.
+All Azure resource types have a scope in which resource names must be unique. Some resource names, such as PaaS services with public endpoints, have global scopes. Therefore, these resource names must be unique across the entire Azure platform. Our deployment scripts suggest naming standards that group logical connections while aligning with Azure best practices. Users are prompted to accept a default name or supply their own names during installation. See below for the FHIR Bulk Loader resource naming convention.
 
 Resource Type    | Deploy App Name   | Number      | Resource Name Example (automatically generated)
 ------------|-----------------|-------------|------------------------------------------------
