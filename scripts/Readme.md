@@ -25,7 +25,7 @@ Resource Type    | Deploy App Name   | Number      | Resource Name Example (auto
 ------------|-----------------|-------------|------------------------------------------------
 sfb-        | bulk            | random      | sfb-bulk123456
 
-Resources are tagged with their deployment script and origin.  Customers are able to add Tags after installation. Examples include:
+Resources are tagged with their origin and deployment script. Customers are able to add Tags after installation. An example is provided below.
 
 Origin              |  Deployment       
 --------------------|-----------------
