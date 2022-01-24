@@ -25,7 +25,7 @@ Resource Type    | Deploy App Name   | Number      | Resource Name Example (auto
 ------------|-----------------|-------------|------------------------------------------------
 sfb-        | bulk            | random      | sfb-bulk123456
 
-Azure Resources deployed with this script are automatically tagged with their origin and deployment name (see example below). Customers are able to add/change [Tags](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources?tabs=json) after installation.
+Azure Resources deployed with this script are automatically tagged with their origin and deployment name (see example below). Users are able to add/change [Tags](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources?tabs=json) after installation.
 
 Origin              |  Deployment       
 --------------------|-----------------
