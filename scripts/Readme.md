@@ -38,7 +38,7 @@ Please note you should deploy these components into a tenant and subscription wh
 
 Launch Azure Cloud Shell (Bash Environment)  
 
-**CTRL+click** (Windows or Linux) or **CMD+click** (Mac) to open in a new window   
+**CTRL+click** (Windows or Linux) or **CMD+click** (Mac) to open in a new window or tab   
 
 [![Launch Azure Shell](/docs/images/launchcloudshell.png "Launch Cloud Shell")](https://shell.azure.com/bash?target="_blank")
 
