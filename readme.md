@@ -39,7 +39,7 @@ git clone https://github.com/microsoft/fhir-loader.git
 ```
 4. Execute ```deployFhirBulk.bash``` for direct FHIR Server access or ```deployFhirBulk.bash -o proxy``` to use FHIR Proxy access.
 
-Detailed instructions can be found [here](./scripts/Readme.md)
+Detailed instructions can be found [here](./scripts/Readme.md).
 
 ## Importing FHIR Data
 The containers for importing data are created during deployment. A different container is created for each input file type.
