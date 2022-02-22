@@ -35,7 +35,7 @@ _Larger image [here](./docs/images/architecture/install-components.png)_
 2. Select Bash Shell for the environment 
 3. Clone this repo
 ```azurecli
-git clone https://github.com/microsoft/fhir-loader
+git clone https://github.com/microsoft/fhir-loader.git
 ```
 4. Execute ```deployFhirBulk.bash``` for direct FHIR Server access or ```deployFhirBulk.bash -o proxy``` to use FHIR Proxy access.
 
