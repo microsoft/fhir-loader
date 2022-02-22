@@ -16,7 +16,7 @@ You may open an [issue](https://github.com/microsoft/fhir-loader/issues) against
 
 ### File Preparation 
 The FHIR-Bulk Loader will process files in several formats: 
-- _Bundles_ - Bundles are a collection of FHIR resources placed into a single file with containing context.  
+- _Bundles_ - A bundle is a collection of FHIR resources placed into a single file with a containing context.  
 - _NDJSON_ - _a.k.a_ Newline delimited JSON, is a format for storing structured data that may be processed one record at a time.
 - _Zip_ - Compressed FHIR bundles (.zip format) allow users to move large amounts of files efficienly through the Azure network.
 
