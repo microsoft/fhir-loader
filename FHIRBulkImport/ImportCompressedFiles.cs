@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs;
@@ -14,7 +15,7 @@ namespace FHIRBulkImport
     public static class ImportCompressedFiles
     {
         [FunctionName("ImportCompressedFiles")]
-        public static async void Run([BlobTrigger("zip/{name}", Connection = "FBI-STORAGEACCT")]Stream myBlob, string name, ILogger log)
+        public static async Task Run([BlobTrigger("zip/{name}", Connection = "FBI-STORAGEACCT")]Stream myBlob, string name, ILogger log)
         {
             try
             {

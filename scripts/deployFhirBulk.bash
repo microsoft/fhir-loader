@@ -668,7 +668,7 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	
 	# Create the function app
 	echo "Creating FHIR Bulk Loader & Export Function App ["$bulkAppName"]..."
-	fahost=$(az functionapp create --name $bulkAppName --storage-account $deployPrefix$storageAccountNameSuffix  --plan $deployPrefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 3 --query defaultHostName --output tsv)
+	fahost=$(az functionapp create --name $bulkAppName --storage-account $deployPrefix$storageAccountNameSuffix  --plan $deployPrefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 3 --query "defaultHostName" --output tsv)
 
 	echo "FHIR Bulk Loader & Export Function hostname is: "$fahost
 	
@@ -761,7 +761,7 @@ echo "Creating Event Grid Subscription...  this may take a while"
 	stepresult=$(az eventgrid event-subscription create --name $egNdjsonSubscription \
      --source-resource-id $storesourceid \
      --endpoint $eventGridEndpointNDJSON  \
-     --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
+     --endpoint-type azurefunction --subject-begins-with /blobServices/default/containers/ndjson --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
 
 	
 	echo " "
@@ -779,7 +779,7 @@ echo "Creating Event Grid Subscription...  this may take a while"
 	stepresult=$(az eventgrid event-subscription create --name $egBundleSubscription \
      --source-resource-id $storesourceid \
      --endpoint $eventGridEndpointBundle  \
-     --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
+     --endpoint-type azurefunction --subject-begins-with /blobServices/default/containers/bundles --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
 
 
 	#---

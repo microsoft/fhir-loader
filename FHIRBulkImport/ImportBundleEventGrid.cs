@@ -10,9 +10,9 @@ using Newtonsoft.Json.Linq;
 
 namespace FHIRBulkImport
 {
+    
     public static class ImportBundleEventGrid
     {
-
         [FunctionName("ImportBundleEventGrid")]
         public static async Task Run([EventGridTrigger] EventGridEvent blobCreatedEvent,
                                      [Blob("{data.url}", FileAccess.Read, Connection = "FBI-STORAGEACCT")] Stream myBlob,

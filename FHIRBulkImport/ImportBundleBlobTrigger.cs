@@ -7,9 +7,10 @@ using Microsoft.Extensions.Logging;
 
 namespace FHIRBulkImport
 {
-    [Disable("FBI-DISABLE-BLOBTRIGGER")]
+    
     public static class ImportBundleBlobTrigger
     {
+        [Disable("FBI-DISABLE-BLOBTRIGGER")]
         [FunctionName("ImportBundleBlobTrigger")]
         public static async Task Run([BlobTrigger("bundles/{name}", Connection = "FBI-STORAGEACCT")]Stream myBlob, string name, ILogger log)
         {

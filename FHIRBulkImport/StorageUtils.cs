@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Azure.Storage.Blobs.Specialized;
-using System.Collections.Concurrent;
+using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 
 namespace FHIRBulkImport
 {
@@ -90,6 +90,8 @@ namespace FHIRBulkImport
                 log.LogError($"Error Moving file {name} to {destName}:{e.Message}");
             }
         }
+        
+
     }
    
 }

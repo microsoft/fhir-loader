@@ -77,7 +77,7 @@ namespace FHIRBulkImport
          [ActivityTrigger] string instanceid,
          ILogger log)
         {
-            return FileHolderManager.CountFiles(instanceid,log);
+            return await FileHolderManager.CountFiles(instanceid,log);
         }
         [FunctionName("ExportOrchestrator")]
         public static async Task<JArray> RunOrchestrator(
@@ -204,7 +204,7 @@ namespace FHIRBulkImport
                 context.SetCustomStatus(retVal);
                 string rm = retVal.ToString(Newtonsoft.Json.Formatting.None);
                 await context.CallActivityAsync<bool>("AppendBlob", SetContextVariables(context.InstanceId, rm));
-                //log.LogInformation($"ExportOrchestrator:Instance {context.InstanceId} Completed:\r\n{rm}");
+                log.LogInformation($"Completed orchestration with ID = '{context.InstanceId}'.");
                 return s;
             }
             else
@@ -222,7 +222,7 @@ namespace FHIRBulkImport
         {
             string instanceid = (string)ctx["instanceId"];
             string rm = (string)ctx["ids"];
-            var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", "_completed_run.xjson");
+            var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", "_completed_run.json");
             using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(rm)))
             {
                 await appendBlobClient.AppendBlockAsync(ms);
@@ -260,7 +260,16 @@ namespace FHIRBulkImport
                             {
                                 string sq = t.ToString();
                                 sq = sq.Replace("$IDS", ids);
-                                subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", SetContextVariables(vars["instanceId"].ToString(),sq)));
+                                string rt = sq.Split("?")[0];
+                                string key = $"{vars["instanceId"].ToString()}-{rt}";
+                                var entityId = new EntityId(nameof(FileTracker),key);
+                                int fileno = await context.CallEntityAsync<int>(entityId, "Get");
+                                JObject ctxparms = new JObject();
+                                ctxparms["instanceid"] = vars["instanceId"].ToString();
+                                ctxparms["ids"] = sq;
+                                ctxparms["resourcetype"] = rt;
+                                ctxparms["fileno"] = fileno;
+                                subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", ctxparms));
                             }
                         
                             await Task.WhenAll(subtasks);
@@ -294,21 +303,55 @@ namespace FHIRBulkImport
             
             return retVal;
         }
+        [FunctionName("FileTracker")]
+        public static void FileTracker ([EntityTrigger] IDurableEntityContext ctx)
+        {
+            switch (ctx.OperationName.ToLowerInvariant())
+            {
+                //Get CurrentFile Numbers
+                case "get":
+                    string[] en = ctx.EntityKey.Split("-");
+                    string instanceid = en[0];
+                    string rt = en[1];
+                    int fileno = ctx.GetState<int>();
+                    if (fileno == 0)
+                    {
+                        fileno = 1;
+                        ctx.SetState(fileno);
+                        ctx.Return(fileno);
+                    }
+                    else
+                    {
+                        var filename = rt + "-" + fileno + ".ndjson";
+                        var client = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", filename);
+                        long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "-1") * 1024000;
+                        var props = client.GetProperties();
+                        if (props.Value.BlobCommittedBlockCount > 49500 || (maxfilesizeinbytes > 0 && props.Value.ContentLength >= maxfilesizeinbytes))
+                        {
+                            fileno++;
+                            ctx.SetState(fileno);
+                        }
+                        ctx.Return(fileno);
+                    }
+                    break;
+            }
+        }
         [FunctionName("ExportOrchestrator_GatherResources")]
         public static async Task<string> GatherResources([ActivityTrigger] IDurableActivityContext context, ILogger log)
         {
-
+            
             JToken vars = context.GetInput<JToken>();
             int total = 0;
             string query = vars["ids"].ToString();
-            string instanceid = vars["instanceId"].ToString();
-            var rt = query.Split("?")[0];
+            string instanceid = vars["instanceid"].ToString();
+            int fileno = (int)vars["fileno"];
+            var rt = (string)vars["resourcetype"];
             var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
             if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
             {
 
                     var resource = JObject.Parse(fhirresp.Content);
-                    total = total + await ConvertToNDJSON(resource,rt,instanceid,log);
+                    total = total + await ConvertToNDJSON(resource,rt,instanceid,fileno,log);
                     bool nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                     while (nextlink)
                     {
@@ -322,7 +365,7 @@ namespace FHIRBulkImport
                         else
                         {
                             resource = JObject.Parse(fhirresp.Content);
-                            total = total + await ConvertToNDJSON(resource, rt, instanceid,log);
+                            total = total + await ConvertToNDJSON(resource, rt, instanceid,fileno,log);
                             nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                         }
                     }
@@ -334,13 +377,12 @@ namespace FHIRBulkImport
             return $"{rt}:{total}";
         }
        
-        private static async Task<int> ConvertToNDJSON(JToken bundle, string resourceType,string instanceId,ILogger log)
+        private static async Task<int> ConvertToNDJSON(JToken bundle, string resourceType,string instanceId, int fileno,ILogger log)
         {
           
             int cnt = 0;
             try
             {
-                var info = FileHolderManager.GetCurrentHolderClient(instanceId, resourceType);
                 StringBuilder sb = new StringBuilder();
                 if (!bundle.IsNullOrEmpty() && bundle.FHIRResourceType().Equals("Bundle"))
                 {
@@ -359,10 +401,7 @@ namespace FHIRBulkImport
                 }
                 if (sb.Length > 0)
                 {
-                    using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(sb.ToString())))
-                    {
-                        await info.CurrentClient.AppendBlockAsync(ms);
-                    }
+                    var rslt = await FileHolderManager.WriteAppendBlobAsync(instanceId, resourceType, fileno, sb.ToString(), log);
                 }
                 
             }
@@ -418,7 +457,6 @@ namespace FHIRBulkImport
            [DurableClient] IDurableOrchestrationClient starter,
            ILogger log)
         {
-
             string config = await req.Content.ReadAsStringAsync();
             var state = await runningInstances(starter, log);
             JArray retVal = new JArray();
@@ -477,7 +515,7 @@ namespace FHIRBulkImport
             var retVal = new List<DurableOrchestrationStatus>();
             foreach (DurableOrchestrationStatus status in result.DurableOrchestrationState)
             {
-                if (!status.InstanceId.Contains(":"))
+                if (!status.InstanceId.Contains(":") && !status.InstanceId.StartsWith("@"))
                 {
                     retVal.Add(status);
                 }

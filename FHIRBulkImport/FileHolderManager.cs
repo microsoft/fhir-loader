@@ -5,16 +5,19 @@ using System.Collections.Generic;
 using System.Text;
 using System.Linq;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using Azure.Storage.Blobs.Specialized;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
 namespace FHIRBulkImport
 {
     public static class FileHolderManager
     {
-        private static Dictionary<string, AppendBlobInfoHolder> _holders = new Dictionary<string, AppendBlobInfoHolder>();
-        private static readonly object _cacheLock = new object();
-        private static int CountLinesInBlob(string saconnectionString, string instanceid, string blobname,ILogger log)
+        private static async Task<JObject> CountLinesInBlob(string saconnectionString, string instanceid, string blobname,ILogger log)
         {
-            var appendBlobSource = StorageUtils.GetAppendBlobClientSync(saconnectionString, $"export/{instanceid}", $"{blobname}.xndjson");
+            var appendBlobSource = await StorageUtils.GetAppendBlobClient(saconnectionString, $"export/{instanceid}", $"{blobname}");
             appendBlobSource.Seal();
             int count = 0;
             using (var stream = appendBlobSource.OpenRead())
@@ -28,109 +31,68 @@ namespace FHIRBulkImport
                     }
                 }
             }
-            log.LogInformation($"There are {count} resources in {blobname}");
-            return count;
+            JObject rslt = new JObject();
+            rslt["type"] = blobname.Split("-")[0];
+            rslt["url"] = appendBlobSource.Uri.ToString();
+            rslt["count"] = count;
+            return rslt;
         }
-        public static JArray CountFiles(string instanceid,ILogger log)
+        public static async Task<JArray> CountFiles(string instanceid,ILogger log)
         {
             JArray retVal = new JArray();
             string key = instanceid;
-            lock (_cacheLock)
+            try
             {
-                var enumerator = _holders.GetEnumerator();
-                while (enumerator.MoveNext())
+                // Create a BlobServiceClient object which will be used to create a container client
+                BlobServiceClient blobServiceClient = new BlobServiceClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+
+                //Create a unique name for the container
+             
+
+                // Create the container and return a container client object
+                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient("export");
+
+                await foreach (BlobItem blobItem in containerClient.GetBlobsAsync(prefix:$"{instanceid}/"))
                 {
-                    if (enumerator.Current.Key.StartsWith(key))
+                    string name = blobItem.Name.Replace($"{instanceid}/","");
+                    if (name.EndsWith(".ndjson"))
                     {
-                        var curvalue = enumerator.Current.Value;
-                        JArray arr = curvalue.FileInfo;
-                        int fn = 1;
-                        foreach (JToken t in arr)
-                        {
-                            int filetotal = CountLinesInBlob(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), curvalue.instanceId, $"{curvalue.ResourceType}-{fn}",log);
-                            t["count"] = filetotal;
-                            fn++;
-                            retVal.Add(t);
-                        }
-                        _holders.Remove(enumerator.Current.Key);
+                        var rslt = await CountLinesInBlob(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), instanceid, name,log);
+                        retVal.Add(rslt);
                     }
                 }
+                
+            }
+            catch (Exception e)
+            {
+                log.LogError($"CountFiles:Exception {e.StackTrace}");
             }
             return retVal;
         }
-        public static AppendBlobInfo GetCurrentHolderClient(string instanceId, string resourceType)
+        public static async Task<bool> WriteAppendBlobAsync(string instanceId, string resourceType, int fileno, string block, ILogger log)
         {
-            AppendBlobInfoHolder holder = null;
-            string key = $"{instanceId}-{resourceType}";
-            lock (_cacheLock)
+            try
             {
-                if (!_holders.ContainsKey(key))
+                var filename = resourceType + "-" + fileno + ".ndjson";
+                var client = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
+                using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(block)))
                 {
-                    holder = new AppendBlobInfoHolder();
-                    holder.LastFileNum = 1;
-                    holder.ResourceType = resourceType;
-                    holder.instanceId = instanceId;
-                    holder.FileInfo = new JArray();
-                    var filename = resourceType + "-" + holder.LastFileNum + ".xndjson";
-                    var client = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
-                    holder.CurrentClient = client;
-                    JObject info = new JObject();
-                    info["type"] = resourceType;
-                    info["url"] = holder.CurrentClient.Uri.ToString();
-                    info["count"] = 0;
-                    info["sizebytes"] = 0;
-                    info["commitedblocks"] = 0;
-                    holder.FileInfo.Add(info);
-                    _holders[key] = holder;
+                    await client.AppendBlockAsync(ms);
                 }
-                else
-                {
-                    holder = _holders[key];
-                    long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "-1") * 1024000;
-                    var props = holder.CurrentClient.GetProperties();
-                    holder.FileInfo[holder.LastFileNum - 1]["sizebytes"] = props.Value.ContentLength;
-                    holder.FileInfo[holder.LastFileNum - 1]["commitedblocks"] = props.Value.BlobCommittedBlockCount;
-                    if (props.Value.BlobCommittedBlockCount > 49500 || (maxfilesizeinbytes > 0 && props.Value.ContentLength >= maxfilesizeinbytes))
-                    {
-
-                        holder.LastFileNum++;
-                        var filename = resourceType + "-" + holder.LastFileNum + ".xndjson";
-                        var client = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
-                        holder.CurrentClient = client;
-                        JObject info = new JObject();
-                        info["type"] = resourceType;
-                        info["url"] = holder.CurrentClient.Uri.ToString();
-                        info["count"] = 0;
-                        info["sizebytes"] = 0;
-                        info["commitedblocks"] = 0;
-                        holder.FileInfo.Add(info);
-                    }
-                }
-                return new AppendBlobInfo(holder.CurrentClient, holder.LastFileNum);
+                return true;
             }
-           
+            catch (Exception e)
+            {
+                log.LogError($"WriteAppendBlobAsync Exception: {e.Message}\r\n{e.StackTrace}");
+                return false;
+            }
+            
+        }
+        
 
-        }
-       
-    }
-    public class AppendBlobInfo
-    {
-        public AppendBlobInfo(Azure.Storage.Blobs.Specialized.AppendBlobClient client,int filenum)
-        {
-            this.CurrentClient = client;
-            this.fileno = filenum;
-        }
-        public Azure.Storage.Blobs.Specialized.AppendBlobClient CurrentClient { get; set; }
-        public int fileno { get; set; }
-    }
-    public class AppendBlobInfoHolder
-    {
-        public string instanceId { get; set; }
-        public Azure.Storage.Blobs.Specialized.AppendBlobClient CurrentClient { get; set; }
-        public int LastFileNum { get; set; }
-        public string ResourceType { get; set; }
-        public JArray FileInfo { get; set; }
 
     }
+   
+    
  }
 
