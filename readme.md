@@ -67,7 +67,7 @@ This is a JSON Object that defines the targeted export resources in the system. 
 	]
 }
 ```
-Example 1:</br>
+### Example 1:</br>
 As a payor you need subscriber data for a CMS data exchange. You want to export certain resources for subscribers of a particular coverage class. The class value is Med1 and you want all of the matched subscribers with the Patient, Coverage, ExplanationOfBenefit, Condition, Observation, AllergyIntolerance, and Encounter resources included. For this you could use the following query definition object:</br>
 ```
 {​​​​​
@@ -86,7 +86,7 @@ As a payor you need subscriber data for a CMS data exchange. You want to export 
 }​​​​​
 ```
 Note: the ```patientreferencefield``` is ```subscriber```. This contains the logical id reference to the patient on the Coverage resource. As the system processes the included resources of the query field, the value is substituted in the $IDS query parameter that points to the correlated patient reference. The ```_count``` parameter optimizes the number of resources processed at a time. If the recommendation is 50 or less. Anything greater than 50 is not recommended and could generate illegal query strings. If the ```_count``` parameter is not included, the default page size of the FHIR server is used.</br>
-</br>Example 2:</br>
+### </br>Example 2:</br>
 As a provider you want to export data for your patient population – specifically those born before 1951 for import into a wellness campaign system. You are only interested in data contained in the Patient and Encounter resources. You would use the following query definition object:
 ```
 {
