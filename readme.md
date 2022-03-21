@@ -51,10 +51,10 @@ The containers for importing data are created during deployment. A different con
 - for NDJSON formated FHIR Bundles, use the "ndjson" container
 - for Compressed (.zip) formatted FHIR Bundles, use the "zip" container
 
-Simply upload the file for import into the proper container, and FHIR-Bulk Loader and Export will automatically add the data to the FHIR service database.
+Simply upload the file for import into the proper container, and FHIR-Bulk Loader will automatically add the data to the FHIR service database.
 
 ## Exporting Bulk Patient-centric FHIR Data
-The FHIR-Bulk Loader also provides an endpoint to execute a high speed parallel patient-centric bulk export of data. It is similar to the capabilities provided by the built-in FHIR Server `$export` function but uses multiple connections to invoke FHIR API calls with user-defined criteria and standard FHIR Query parameters. This can offer performance advantages and more precise resource inclusion than the $export operation specified in the FHIR standard. The data for your export is written to the ```export``` container of the storage account created with the fhir-loader installation. Each export job creates it's own subcontainer using the ```instanceid``` of the triggered export job.
+The FHIR-Bulk Loader and Export also provides an endpoint to execute a high speed parallel patient-centric bulk export of data. It is similar to the capabilities provided by the built-in FHIR Server `$export` function but uses multiple connections to invoke FHIR API calls with user-defined criteria and standard FHIR Query parameters. This can offer performance advantages and more precise resource inclusion than the $export operation specified in the FHIR standard. The data for your export is written to the ```export``` container of the storage account created with the fhir-loader installation. Each export job creates it's own subcontainer using the ```instanceid``` of the triggered export job.
 
 ## Defining a query definition object
 This is a JSON Object that defines the targeted export resources in the system. You will POST this object to the orchestration endpoint to begin the bulk export process. The query JSON Object format is:</br>
@@ -99,8 +99,8 @@ As a provider you want to export data for your patient population – specifical
 }
 ```
 ## Requesting an alternative patient export
-1. Define your query definition object to target the data you wish to export using the instructions above.
-2. Obtain the function URL and key generated during the installation of the Bulk-FHIR Loader.
+1. Create your query definition object to target the data you wish to export using the instructions above.
+2. Obtain the function URL and key generated during the installation of the FHIR-Bulk Loader.
 3. Using an HTTP client, POST the query definition object in the HTTP Body to the following endpoint:</br>```https://<your function url>/$alt-export?code=<your function access key>```
 4. The system will asynchronously schedule your export and return the following control/information JSON object:</br>
 ```
@@ -114,7 +114,7 @@ As a provider you want to export data for your patient population – specifical
 }
 ```
 ## Export Job Results
-You can view the results of an export job using either the status query get uri or, upon completion of the export job, a text file is written in the export job container called ```_completed_run.xjson```. Both of these contain a JSON object with the results and execution information of your export job. The ```output``` field of the JSON is compliant with the FHIR Export specification and contains file location and resource counts:</br>
+You can view the results of an export job using either the status query get uri or, upon completion of the export job, a text file is written in the export job container called ```_completed_run.xjson```. Both of these contain a JSON object with the results of your export job. The ```output``` field of the JSON is compliant with the FHIR Export specification and contains file location and resource counts:</br>
 ```
 ...
 "output": [
@@ -139,7 +139,7 @@ You can view the results of an export job using either the status query get uri 
 ## Performance 
 The FHIR-Bulk Loader deploys with a Standard App Service plan that can support tens of thousands of file imports per hour. During testing we have been able to scale the FHIR-Bulk Loader performance to hundreds of thousands of files per hour.  
 
-Note: Scaling to hundreds of thousands of files per hour requires additional scaling on the FHIR API to handle the incoming messages. High rates of 429's at the API or Cosmos data plane indicate that additional scaling is necessary. 
+**Note:** Scaling to hundreds of thousands of files per hour requires additional scaling on the FHIR API to handle the incoming messages. High rates of 429's at the API or Cosmos data plane indicate that additional scaling is necessary. 
 
 Detailed performance guidelines can be found [here](docs/performance.md). 
 
@@ -159,4 +159,4 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-FHIR� is the registered trademark of HL7 and is used with the permission of HL7.
+FHIR is the registered trademark of HL7 and is used with the permission of HL7.
