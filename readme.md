@@ -42,11 +42,16 @@ git clone https://github.com/microsoft/fhir-loader.git
 Detailed instructions can be found [here](./scripts/Readme.md).
 
 ## Importing FHIR Data
+Once deployment is complete, go to the storage account created for the FHIR-Bulk Loader and Export and click on the **Storage browser (preview)** blade.
+
+<img src="./docs/images/FHIR-Bulk_Loader_Blob_Containers_edit.png" height="528">
+
 The containers for importing data are created during deployment. A different container is created for each input file type.
 - for FHIR Bundles (transactional or batch), use the "bundles" container
 - for NDJSON formated FHIR Bundles, use the "ndjson" container
 - for Compressed (.zip) formatted FHIR Bundles, use the "zip" container
 
+Simply upload the file for import into the proper container, and FHIR-Bulk Loader and Export will automatically handle adding the data to the FHIR service database.
 
 ## Exporting Bulk Patient-centric FHIR Data
 The FHIR-Bulk Loader also provides an endpoint to execute a high speed parallel patient-centric bulk export of data. It is similar to the capabilities provided by the built-in FHIR Server `$export` function but uses multiple connections to invoke FHIR API calls with user-defined criteria and standard FHIR Query parameters. This can offer performance advantages and more precise resource inclusion than the $export operation specified in the FHIR standard. The data for your export is written to the ```export``` container of the storage account created with the fhir-loader installation. Each export job creates it's own subcontainer using the ```instanceid``` of the triggered export job.
