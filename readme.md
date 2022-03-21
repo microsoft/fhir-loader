@@ -44,7 +44,7 @@ Detailed instructions can be found [here](./scripts/Readme.md).
 ## Importing FHIR Data
 Once deployment is complete, go to the storage account created for the FHIR-Bulk Loader and Export and click on the **Storage browser (preview)** blade.
 
-<img src="./docs/images/FHIR-Bulk_Loader_Blob_Containers_edit.png" height="528">
+<img src="./docs/images/FHIR-Bulk_Loader_Blob_Containers_edit.png" height="428">
 
 The containers for importing data are created during deployment. A different container is created for each input file type.
 - for FHIR Bundles (transactional or batch), use the "bundles" container
