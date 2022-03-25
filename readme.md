@@ -2,7 +2,7 @@
 
 ## Introduction 
 
-**FHIR-Bulk Loader & Export** is an Azure Function App solution that provides the following services for ingesting and exporting FHIR Resources:
+**FHIR-Bulk Loader & Export** is an Azure Function App solution that provides the following services for ingesting and exporting FHIR data:
  + Imports FHIR Bundles (compressed and non-compressed) and NDJSON files into a FHIR Server 
  + High Speed Parallel Event Grid that triggers from storage accounts or other event grid resources
  + Complete Auditing, Error logging and Retry for throttled transactions
