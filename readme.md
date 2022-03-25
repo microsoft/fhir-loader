@@ -3,7 +3,7 @@
 ## Introduction 
 
 **FHIR-Bulk Loader & Export** is an Azure Function App solution that provides the following services for ingesting and exporting FHIR data:
- + Imports FHIR Bundles (compressed and non-compressed) and NDJSON files into a FHIR Server 
+ + Imports FHIR Bundles (compressed and non-compressed) and NDJSON files into a FHIR service 
  + High Speed Parallel Event Grid that triggers from storage accounts or other event grid resources
  + Complete Auditing, Error logging and Retry for throttled transactions
  + High Speed Parallel Orchestrated Patient-centric Export Capability 
@@ -13,7 +13,7 @@
 
 ## Prerequsites
 1. The FHIR-Bulk Loader & Export requires the following components: 
-   + Azure API for FHIR, Azure Healthcare APIs FHIR service, or OSS FHIR Server
+   + Azure API for FHIR, Azure Health Data Services FHIR service, or OSS FHIR Server
    + *Optional* FHIR-Proxy (with Key Vault)
 
 2. You must have at least a Contributor role in your Azure subscription so that you can create/update the following resources:
