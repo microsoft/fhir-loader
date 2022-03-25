@@ -2,7 +2,7 @@
 
 ## Description
 
-This guide provides information on testing FHIR-Bulk Loader capabilities
+This guide provides information on testing FHIR-Bulk Loader capabilities.
 
 ## What to focus on
 
