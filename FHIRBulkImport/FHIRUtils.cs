@@ -9,13 +9,13 @@ using System.Threading.Tasks;
 using System.Linq;
 using Polly;
 using System.Net;
+using System.Collections.Concurrent;
 
 namespace FHIRBulkImport
 {
     public static class FHIRUtils
     {
-        private static object lockobj = new object();
-        private static string _bearerToken = null;
+        private static ConcurrentDictionary<string,string> _tokens = new ConcurrentDictionary<string, string>();
         private static readonly HttpStatusCode[] httpStatusCodesWorthRetrying = {
             HttpStatusCode.RequestTimeout, // 408
             HttpStatusCode.InternalServerError, // 500
@@ -25,39 +25,26 @@ namespace FHIRBulkImport
             HttpStatusCode.TooManyRequests //429
         };
 
-        private static HttpClient _fhirClient = null;
-        private static void InititalizeHttpClient(ILogger log)
-        {
-            if (_fhirClient==null)
+        private static HttpClient _fhirClient = new HttpClient(
+            new SocketsHttpHandler()
             {
-                log.LogInformation("Initializing FHIR Client...");
-                SocketsHttpHandler socketsHandler = new SocketsHttpHandler
-                  {
-                      ResponseDrainTimeout = TimeSpan.FromSeconds(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-RESPONSEDRAINSECS", "60")),
-                      PooledConnectionLifetime = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-LIFETIME", "5")),
-                      PooledConnectionIdleTimeout = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-IDLETO", "2")),
-                      MaxConnectionsPerServer = Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-MAXCONNECTIONS", "20")
-                  };
-                 _fhirClient = new HttpClient(socketsHandler);
-            }
-        }
+                ResponseDrainTimeout = TimeSpan.FromSeconds(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-RESPONSEDRAINSECS", "60")),
+                PooledConnectionLifetime = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-LIFETIME", "5")),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-IDLETO", "2")),
+                MaxConnectionsPerServer = Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-MAXCONNECTIONS", "20")
+            });
         public static async System.Threading.Tasks.Task<FHIRResponse> CallFHIRServer(string path, string body, HttpMethod method, ILogger log)
         {
-            if (!string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("FS-RESOURCE")) && ADUtils.isTokenExpired(_bearerToken))
-            {
-                lock (lockobj)
+                string _bearerToken = null;
+                _tokens.TryGetValue("fhirtoken", out _bearerToken);
+                if (ADUtils.isTokenExpired(_bearerToken))
                 {
-                    
-                    if (ADUtils.isTokenExpired(_bearerToken))
-                    {
-                        InititalizeHttpClient(log);
                         log.LogInformation("Bearer Token is expired...Obtaining new bearer token...");
                         _bearerToken = ADUtils.GetOAUTH2BearerToken(System.Environment.GetEnvironmentVariable("FS-RESOURCE"), System.Environment.GetEnvironmentVariable("FS-TENANT-NAME"),
                                                                  System.Environment.GetEnvironmentVariable("FS-CLIENT-ID"), System.Environment.GetEnvironmentVariable("FS-SECRET")).GetAwaiter().GetResult();
-                    }
+                        _tokens.AddOrUpdate("fhirtoken", _bearerToken, (key, oldValue) => _bearerToken);
                 }
-            }
-            var retryPolicy = Policy
+                var retryPolicy = Policy
                 .Handle<HttpRequestException>()
                 .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
                 .WaitAndRetryAsync(Utils.GetIntEnvironmentVariable("FBI-POLLY-MAXRETRIES","3"), retryAttempt =>

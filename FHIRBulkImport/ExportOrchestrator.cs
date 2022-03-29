@@ -22,7 +22,7 @@ namespace FHIRBulkImport
 {
     public static class ExportOrchestrator
     {
-         private static string IdentifyUniquePatientReferences(JObject resource, string patreffield, HashSet<string> uniquePats)
+         private static void IdentifyUniquePatientReferences(JObject resource, string patreffield, HashSet<string> uniquePats)
         {
             List<string> retVal = new List<string>();
            
@@ -53,16 +53,17 @@ namespace FHIRBulkImport
                                     id = patref.Split("/")[1];
                                 }
                             }
+                         
                         }
-                        if (!uniquePats.Contains(id))
+                        if (id != null && !uniquePats.Contains(id))
                         {
                             uniquePats.Add(id);
-                            retVal.Add(id);
                         }
+
                     }
                 }
             }
-            return string.Join(",", retVal);
+           
         }
         private static JObject SetContextVariables(string instanceId, string ids = null, JArray include = null)
         {
@@ -72,12 +73,21 @@ namespace FHIRBulkImport
             if (include != null) o["include"] = include;
             return o;
         }
-        [FunctionName("CountFiles")]
-        public static async Task<JArray> CountFiles(
+        [FunctionName("CountFileLines")]
+        public static async Task<JObject> CountFileLines(
+        [ActivityTrigger] JObject ctx,
+        ILogger log)
+        {
+            string instanceid = (string)ctx["instanceid"];
+            string blob = (string)ctx["filename"];
+            return await FileHolderManager.CountLinesInBlob(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"),instanceid, blob,log);
+        }
+        [FunctionName("FileNames")]
+        public static async Task<List<string>> FileNames(
          [ActivityTrigger] string instanceid,
          ILogger log)
         {
-            return await FileHolderManager.CountFiles(instanceid,log);
+            return await FileHolderManager.GetFileNames(instanceid,log);
         }
         [FunctionName("ExportOrchestrator")]
         public static async Task<JArray> RunOrchestrator(
@@ -113,7 +123,123 @@ namespace FHIRBulkImport
             context.SetCustomStatus(retVal);
             //get a list of N work items to process in parallel
             var tasks = new List<Task<JObject>>();
-            var fhirresp = await context.CallActivityAsync<FHIRResponse>("QueryFHIR", query);
+            JObject parms = new JObject();
+            parms["query"] = query;
+            parms["instanceid"] = context.InstanceId;
+            parms["patreffield"] = patreffield;
+            retVal["gatheringidsstarted"] = context.CurrentUtcDateTime;
+            context.SetCustomStatus(retVal);
+            var uniquepats = await context.CallActivityAsync<HashSet<string>>("QueryFHIR", parms);
+            retVal["gatheringidscompleted"] = context.CurrentUtcDateTime;
+            retVal["uniqueidstoprocess"] = uniquepats.Count();
+            context.SetCustomStatus(retVal);
+            List<string> ids = new List<string>();
+            int suborchs = 0;
+            foreach (string id in uniquepats)
+            {
+                ids.Add(id);
+                if (ids.Count() == 50)
+                {
+                    var send = string.Join(",", ids);
+                    tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, send, include)));
+                    ids.Clear();
+                    suborchs++;
+                    retVal["suborchestrationsqueued"] = suborchs;
+                    context.SetCustomStatus(retVal);
+                }
+            }
+            if (ids.Count() > 0)
+            {
+                var send = string.Join(",", ids);
+                tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, send, include)));
+                ids.Clear();
+                suborchs++;
+                retVal["suborchestrationsqueued"] = suborchs;
+                context.SetCustomStatus(retVal);
+            }
+            retVal["suborchestionwaitstarted"] = context.CurrentUtcDateTime;
+            context.SetCustomStatus(retVal);
+            await Task.WhenAll(tasks);
+            retVal["suborchestionwaitcompleted"] = context.CurrentUtcDateTime;
+            context.SetCustomStatus(retVal);
+            var callResults = tasks
+                    .Where(t => t.Status == TaskStatus.RanToCompletion)
+                    .Select(t => t.Result);
+            retVal["extractcompleted"] = context.CurrentUtcDateTime;
+            List<string> blobNames = new List<string>();
+            JObject extractresult = new JObject();
+            foreach (JObject j in callResults)
+                {
+                    foreach (JProperty property in j.Properties())
+                    {
+                        if (extractresult[property.Name] != null)
+                        {
+                            int total = (int)extractresult[property.Name];
+                            total +=(int)property.Value;
+                            extractresult[property.Name] = total;
+                        } else
+                        {
+                            extractresult[property.Name] = property.Value;
+                        }
+                        if (!blobNames.Contains(property.Name)) blobNames.Add(property.Name);
+                    }
+                }
+            retVal["extractresults"] = extractresult;
+            context.SetCustomStatus(retVal);
+            tasks.Clear();
+            retVal["fileresourcecountstarted"] = context.CurrentUtcDateTime;
+            context.SetCustomStatus(retVal);
+            var filenames = await context.CallActivityAsync<List<string>>("FileNames", context.InstanceId);
+            foreach (string s in filenames)
+            {
+                JObject parms1 = new JObject();
+                parms1["instanceid"] = context.InstanceId;
+                parms1["filename"] = s;
+                tasks.Add(context.CallActivityAsync<JObject>("CountFileLines", parms1));
+            }
+            await Task.WhenAll(tasks);
+            retVal["fileresourcecountcompleted"] = context.CurrentUtcDateTime;
+            context.SetCustomStatus(retVal);
+            var callResults1 = tasks
+                    .Where(t => t.Status == TaskStatus.RanToCompletion)
+                    .Select(t => t.Result);
+            JArray filecounts = new JArray();
+            foreach (JObject j in callResults1)
+            {
+                filecounts.Add(j);
+            }
+            retVal["orchestratoroutput"] = filecounts;
+            context.SetCustomStatus(retVal);
+            string rm = retVal.ToString(Newtonsoft.Json.Formatting.None);
+            await context.CallActivityAsync<bool>("AppendBlob", SetContextVariables(context.InstanceId, rm));
+            log.LogInformation($"Completed orchestration with ID = '{context.InstanceId}'.");
+            return filecounts;
+        }
+        [FunctionName("AppendBlob")]
+        public static async Task<bool> AppendBlob(
+           [ActivityTrigger] JToken ctx,
+           ILogger log)
+        {
+            string instanceid = (string)ctx["instanceId"];
+            string rm = (string)ctx["ids"];
+            var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", "_completed_run.json");
+            using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(rm)))
+            {
+                await appendBlobClient.AppendBlockAsync(ms);
+            }
+            return true;
+        }
+        [FunctionName("QueryFHIR")]
+        public static async Task<HashSet<string>> QueryFHIR(
+            [ActivityTrigger] IDurableActivityContext context,
+            ILogger log)
+        {
+            HashSet<string> uniquePats = new HashSet<string>();
+            JToken vars = context.GetInput<JToken>();
+            string query = vars["query"].ToString();
+            string instanceid = vars["instanceid"].ToString();
+            string patreffield = (string)vars["patreffield"];
+            var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
             if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
             {
                 var resource = JObject.Parse(fhirresp.Content);
@@ -136,119 +262,58 @@ namespace FHIRBulkImport
                             cnt++;
                             if (cnt % 50 == 0)
                             {
-                                string ids = IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
-                                tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId,ids,include)));
-                                bundle = ImportNDJSON.initBundle();                           
+                                IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
+                                bundle = ImportNDJSON.initBundle();
                             }
                         }
                         if (((JArray)bundle["entry"]).Count > 0)
                         {
-                            string ids= IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
-                            tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, ids, include)));
+                            IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
                         }
 
                     }
-                } else {
+                }
+                else
+                {
                     //Page through query results fo everything else          
-                    var ids = IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
-                    tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId, ids, include)));
+                    IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
                     bool nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                     while (nextlink)
                     {
                         string nextpage = (string)resource["link"].getFirstField()["url"];
-                        fhirresp = await context.CallActivityAsync<FHIRResponse>("QueryFHIR", nextpage);
+                        fhirresp = await FHIRUtils.CallFHIRServer(nextpage, "", HttpMethod.Get, log);
                         if (!fhirresp.Success)
                         {
-                            log.LogError($"ExportOrchestrator: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{nextpage}");
+                            log.LogError($"Query FHIR: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{nextpage}");
                             nextlink = false;
                         }
                         else
                         {
 
                             resource = JObject.Parse(fhirresp.Content);
-                            ids = IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
-                            tasks.Add(context.CallSubOrchestratorAsync<JObject>("ExportOrchestrator_ProcessPatientQueryPage", SetContextVariables(context.InstanceId,ids, include)));
+                            IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
                             nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                         }
                     }
                 }
-                await Task.WhenAll(tasks);
-                uniquePats.Clear();
-                var callResults = tasks
-                    .Where(t => t.Status == TaskStatus.RanToCompletion)
-                    .Select(t => t.Result);
-                retVal["extractcompleted"] = context.CurrentUtcDateTime;
-                List<string> blobNames = new List<string>();
-                JObject extractresult = new JObject();
-                foreach (JObject j in callResults)
-                {
-                    foreach (JProperty property in j.Properties())
-                    {
-                        if (extractresult[property.Name] != null)
-                        {
-                            int total = (int)extractresult[property.Name];
-                            total +=(int)property.Value;
-                            extractresult[property.Name] = total;
-                        } else
-                        {
-                            extractresult[property.Name] = property.Value;
-                        }
-                        if (!blobNames.Contains(property.Name)) blobNames.Add(property.Name);
-                    }
-                }
-                retVal["extractresults"] = extractresult;
-                context.SetCustomStatus(retVal);
-                tasks.Clear();
-                var s = await context.CallActivityAsync<JArray>("CountFiles", context.InstanceId);
-                retVal["output"] = s;
-                context.SetCustomStatus(retVal);
-                string rm = retVal.ToString(Newtonsoft.Json.Formatting.None);
-                await context.CallActivityAsync<bool>("AppendBlob", SetContextVariables(context.InstanceId, rm));
-                log.LogInformation($"Completed orchestration with ID = '{context.InstanceId}'.");
-                return s;
-            }
-            else
-            {
-                var m = $"ExportOrchestrator:Failed to communicate with FHIR Server: Status {fhirresp.Status} Response {fhirresp.Content}";
-                log.LogError(m);
-                return new JArray(m);
-            }
-        }
-        
-        [FunctionName("AppendBlob")]
-        public static async Task<bool> AppendBlob(
-           [ActivityTrigger] JToken ctx,
-           ILogger log)
-        {
-            string instanceid = (string)ctx["instanceId"];
-            string rm = (string)ctx["ids"];
-            var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", "_completed_run.json");
-            using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(rm)))
-            {
-                await appendBlobClient.AppendBlockAsync(ms);
-            }
-            return true;
-        }
-        [FunctionName("QueryFHIR")]
-        public static async Task<FHIRResponse> Run(
-            [ActivityTrigger] string query,
-            ILogger log)
-        {
 
-            var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
-            return fhirresp;
+            } else
+            {
+                log.LogError($"Query FHIR: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{query}");
+
+            }
+            return uniquePats;
         }
-       
         [FunctionName("ExportOrchestrator_ProcessPatientQueryPage")]
         public static async Task<JObject> ProcessPatientQueryPage([OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
-           
             JObject retVal = new JObject();
             var vars = context.GetInput<JToken>();
             try
             {
-                string ids = (string)vars["ids"];
                 JArray include = (JArray)vars["include"];
+                string ids = (string)vars["ids"];
+                string instanceid = (string)vars["instanceId"];
                 if (string.IsNullOrEmpty(ids)) log.LogWarning("ExportOrchestrator_ProcessPatientQueryPage: Null/Empty Check IDS is null or empty");
                 if (include == null) log.LogWarning("ExportOrchestrator_ProcessPatientQueryPage: Null Check include is null");
                 if (!string.IsNullOrEmpty(ids))
@@ -299,8 +364,7 @@ namespace FHIRBulkImport
             } catch (Exception e)
             {
                 log.LogError($"ExportOrchestrator Process Patient Page Exception:{e.Message}\r\nTrace:{e.ToString()}");
-            }
-            
+            }            
             return retVal;
         }
         [FunctionName("FileTracker")]
@@ -430,7 +494,7 @@ namespace FHIRBulkImport
             }
             // Function input comes from the request content.
             string instanceId = await starter.StartNewAsync("ExportOrchestrator",null,config);
-
+            
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
 
             return starter.CreateCheckStatusResponse(req, instanceId);

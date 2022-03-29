@@ -15,7 +15,7 @@ namespace FHIRBulkImport
 {
     public static class FileHolderManager
     {
-        private static async Task<JObject> CountLinesInBlob(string saconnectionString, string instanceid, string blobname,ILogger log)
+        public static async Task<JObject> CountLinesInBlob(string saconnectionString, string instanceid, string blobname,ILogger log)
         {
             var appendBlobSource = await StorageUtils.GetAppendBlobClient(saconnectionString, $"export/{instanceid}", $"{blobname}");
             appendBlobSource.Seal();
@@ -37,9 +37,9 @@ namespace FHIRBulkImport
             rslt["count"] = count;
             return rslt;
         }
-        public static async Task<JArray> CountFiles(string instanceid,ILogger log)
+        public static async Task<List<string>> GetFileNames(string instanceid,ILogger log)
         {
-            JArray retVal = new JArray();
+            List<string> retVal = new List<string>();
             string key = instanceid;
             try
             {
@@ -57,8 +57,7 @@ namespace FHIRBulkImport
                     string name = blobItem.Name.Replace($"{instanceid}/","");
                     if (name.EndsWith(".ndjson"))
                     {
-                        var rslt = await CountLinesInBlob(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), instanceid, name,log);
-                        retVal.Add(rslt);
+                        retVal.Add(name);
                     }
                 }
                 
@@ -71,10 +70,19 @@ namespace FHIRBulkImport
         }
         public static async Task<bool> WriteAppendBlobAsync(string instanceId, string resourceType, int fileno, string block, ILogger log)
         {
+            var filename = resourceType + "-" + fileno + ".ndjson";
+            return await WriteAppendBlobAsync(instanceId, filename, block, log);
+        }
+        public static async Task<bool> WriteAppendBlobAsync(string instanceId, string filename, string block, ILogger log)
+        {
+                var client = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
+                return await WriteAppendBlobAsync(client, block, log);
+        }
+        public static async Task<bool> WriteAppendBlobAsync(AppendBlobClient client, string block, ILogger log)
+        {
             try
             {
-                var filename = resourceType + "-" + fileno + ".ndjson";
-                var client = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
+
                 using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(block)))
                 {
                     await client.AppendBlockAsync(ms);
@@ -86,9 +94,8 @@ namespace FHIRBulkImport
                 log.LogError($"WriteAppendBlobAsync Exception: {e.Message}\r\n{e.StackTrace}");
                 return false;
             }
-            
         }
-        
+
 
 
     }
