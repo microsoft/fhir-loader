@@ -234,73 +234,82 @@ namespace FHIRBulkImport
             [ActivityTrigger] IDurableActivityContext context,
             ILogger log)
         {
+            
             HashSet<string> uniquePats = new HashSet<string>();
-            JToken vars = context.GetInput<JToken>();
-            string query = vars["query"].ToString();
-            string instanceid = vars["instanceid"].ToString();
-            string patreffield = (string)vars["patreffield"];
-            var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
-            if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
+            try
             {
-                var resource = JObject.Parse(fhirresp.Content);
-                //For group resource loop through the member array
-                if (resource.FHIRResourceType().Equals("Group"))
+                JToken vars = context.GetInput<JToken>();
+                string query = vars["query"].ToString();
+                string instanceid = vars["instanceid"].ToString();
+                string patreffield = (string)vars["patreffield"];
+                var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
+                if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
                 {
-                    JArray ga = (JArray)resource["member"];
-                    if (!ga.IsNullOrEmpty())
+                    var resource = JObject.Parse(fhirresp.Content);
+                    //For group resource loop through the member array
+                    if (resource.FHIRResourceType().Equals("Group"))
                     {
-                        int cnt = 0;
-                        var bundle = ImportNDJSON.initBundle();
-                        foreach (JToken t in ga)
+                        JArray ga = (JArray)resource["member"];
+                        if (!ga.IsNullOrEmpty())
                         {
-                            string prv = (string)t["entity"]["reference"];
-                            JObject o = new JObject();
-                            o["resourceType"] = "GroupInternal";
-                            o["entity"] = new JObject();
-                            o["entity"]["reference"] = prv;
-                            ImportNDJSON.addResource(bundle, o);
-                            cnt++;
-                            if (cnt % 50 == 0)
+                            int cnt = 0;
+                            var bundle = ImportNDJSON.initBundle();
+                            foreach (JToken t in ga)
+                            {
+                                string prv = (string)t["entity"]["reference"];
+                                JObject o = new JObject();
+                                o["resourceType"] = "GroupInternal";
+                                o["entity"] = new JObject();
+                                o["entity"]["reference"] = prv;
+                                ImportNDJSON.addResource(bundle, o);
+                                cnt++;
+                                if (cnt % 50 == 0)
+                                {
+                                    IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
+                                    bundle = ImportNDJSON.initBundle();
+                                }
+                            }
+                            if (((JArray)bundle["entry"]).Count > 0)
                             {
                                 IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
-                                bundle = ImportNDJSON.initBundle();
+                            }
+
+                        }
+                    }
+                    else
+                    {
+                        //Page through query results fo everything else          
+                        IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
+                        bool nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
+                        while (nextlink)
+                        {
+                            string nextpage = (string)resource["link"].getFirstField()["url"];
+                            fhirresp = await FHIRUtils.CallFHIRServer(nextpage, "", HttpMethod.Get, log);
+                            if (!fhirresp.Success)
+                            {
+                                log.LogError($"Query FHIR: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{nextpage}");
+                                nextlink = false;
+                            }
+                            else
+                            {
+
+                                resource = JObject.Parse(fhirresp.Content);
+                                IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
+                                nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                             }
                         }
-                        if (((JArray)bundle["entry"]).Count > 0)
-                        {
-                            IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
-                        }
-
                     }
+
                 }
                 else
                 {
-                    //Page through query results fo everything else          
-                    IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
-                    bool nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
-                    while (nextlink)
-                    {
-                        string nextpage = (string)resource["link"].getFirstField()["url"];
-                        fhirresp = await FHIRUtils.CallFHIRServer(nextpage, "", HttpMethod.Get, log);
-                        if (!fhirresp.Success)
-                        {
-                            log.LogError($"Query FHIR: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{nextpage}");
-                            nextlink = false;
-                        }
-                        else
-                        {
+                    log.LogError($"Query FHIR: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{query}");
 
-                            resource = JObject.Parse(fhirresp.Content);
-                            IdentifyUniquePatientReferences(resource, patreffield, uniquePats);
-                            nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
-                        }
-                    }
                 }
-
-            } else
+            }
+            catch (Exception e)
             {
-                log.LogError($"Query FHIR: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{query}");
-
+                log.LogError($"Query FHIR: Unhandled Exception: {e.Message}\r\n{e.StackTrace}");
             }
             return uniquePats;
         }
