@@ -100,12 +100,15 @@ namespace Applied.FhirLoader.CLI
 
         private AccessToken FetchToken(string? tenantId = null)
         {
+            _logger.LogInformation($"Attempting to get access token for {_client.BaseAddress}...");
+
             string[] scopes = new string[] { $"{_client.BaseAddress}/.default" };
             TokenRequestContext tokenRequestContext = new TokenRequestContext(scopes: scopes, tenantId: tenantId);
-            var credential = new DefaultAzureCredential(true).GetToken(tokenRequestContext);
+            var credential = new DefaultAzureCredential(true);
+            var token = credential.GetToken(tokenRequestContext);
 
-            _logger.LogInformation($"Got token for FHIR server {_client.BaseAddress}.");
-            return credential;
+            _logger.LogInformation($"Got token for FHIR server {_client.BaseAddress}!");
+            return token;
         }
 
         public void Dispose()
