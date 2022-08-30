@@ -55,7 +55,7 @@ Parameters:
 Get help about the command:
 
 ```sh
-applied-fhir-loader --help
+microsoft-fhir-loader --help
 ```
 
 ## Uninstall
