@@ -12,10 +12,10 @@ using Newtonsoft.Json;
 using Polly.Timeout;
 
 
-namespace Applied.FhirLoader.CLI
+namespace FhirLoader.Common
 {
     /// <summary>
-    /// FHIR Version agnostic client for sending bundles
+    /// FHIR version agnostic client for sending bundles
     /// </summary>
     public class BundleClient : IDisposable
     {

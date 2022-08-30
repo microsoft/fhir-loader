@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 
-namespace Applied.FhirLoader
+namespace FhirLoader.Common
 {
     public class BulkFileHandler : IFileHandler
     {

@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 
 
-namespace Applied.FhirLoader
+namespace FhirLoader.Common
 {
     ///<summary>
     /// Utility class for resolving Synthea bundle references

@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>applied-fhir-loader</ToolCommandName>
+    <ToolCommandName>microsoft-fhir-loader</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
     <Version>0.1.4</Version>
     <AssemblyVersion></AssemblyVersion>

@@ -2,7 +2,7 @@
 using CommandLine.Text;
 
 
-namespace Applied.FhirLoader.CLI
+namespace FhirLoader.Tool
 {
     internal class CommandOptions
     {

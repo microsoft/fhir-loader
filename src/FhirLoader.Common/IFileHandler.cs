@@ -1,4 +1,4 @@
-﻿namespace Applied.FhirLoader
+﻿namespace FhirLoader.Common
 {
     public interface IFileHandler
     {

@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 
 
-namespace Applied.FhirLoader.CLI
+namespace FhirLoader.Tool
 {
     internal class Metrics
     {

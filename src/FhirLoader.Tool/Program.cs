@@ -1,10 +1,11 @@
-﻿using CommandLine;
-using Azure.Identity;
+﻿using Azure.Identity;
+using CommandLine;
+using FhirLoader.Common;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks.Dataflow;
 
 
-namespace Applied.FhirLoader.CLI
+namespace FhirLoader.Tool
 {
     public class Program
     {

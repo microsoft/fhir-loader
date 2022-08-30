@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using System.Net.Sockets;
 
-namespace Applied.FhirLoader.CLI
+namespace FhirLoader.Tool
 {
     /// <summary>
     /// Class to create loggers for our application.

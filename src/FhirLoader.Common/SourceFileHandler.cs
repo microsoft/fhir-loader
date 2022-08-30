@@ -3,7 +3,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 
 
-namespace Applied.FhirLoader.CLI
+namespace FhirLoader.Common
 {
     public class SourceFileHandler
     {
@@ -18,13 +18,21 @@ namespace Applied.FhirLoader.CLI
         {
             _logger.LogInformation($"Searching {blobPath} for FHIR files.");
 
-            blobPath = blobPath.TrimEnd('/');
-            BlobServiceClient blobServiceClient = new BlobServiceClient(serviceUri: new Uri(blobPath));
-            var containerClient = blobServiceClient.GetBlobContainerClient("");
+            var blobPathUri = new Uri(blobPath);
+            var blobUriParsed = new BlobUriBuilder(blobPathUri);
+            var accountUrl = new Uri($"https://{blobUriParsed.Host}");
+
+            BlobServiceClient blobServiceClient = new BlobServiceClient(serviceUri: accountUrl);
+            var containerClient = blobServiceClient.GetBlobContainerClient(blobUriParsed.BlobContainerName);
 
             // Get list of bulk files and bundler
-            List<BlobItem> inputBundles = containerClient.GetBlobs().Where(_ => _.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)).ToList();
-            List<BlobItem> inputBulkfiles = containerClient.GetBlobs().Where(_ => _.Name.EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase)).ToList();
+            // Using the orig Uri as BlobUriBuilder drops the last slash
+            IEnumerable<BlobItem> blobsPrefixFiltered = containerClient.GetBlobs();
+            if (blobPathUri.Segments.Length >= 2)
+                blobsPrefixFiltered = blobsPrefixFiltered.Where(_ => _.Name.StartsWith(string.Join('/', blobPathUri.Segments.Skip(2))));
+
+            List<BlobItem> inputBundles = blobsPrefixFiltered.Where(_ => _.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)).ToList();
+            List<BlobItem> inputBulkfiles = blobsPrefixFiltered.Where(_ => _.Name.EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase)).ToList();
 
             _logger.LogInformation($"Found {inputBundles.Count()} FHIR bundles and {inputBulkfiles.Count()} FHIR bulk data files.");
 
