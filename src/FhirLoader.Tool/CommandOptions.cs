@@ -4,7 +4,7 @@ using CommandLine.Text;
 
 namespace FhirLoader.Tool
 {
-    internal class CommandOptions
+    public class CommandOptions
     {
         private const string DEFAULT_BUNDLE_SIZE = "500";
         private const string BUNDLE_SIZE_MIN = "1";
@@ -23,7 +23,7 @@ namespace FhirLoader.Tool
         [Option("fhir", Required = true, HelpText = "Base URL of your FHIR server.")]
         public string? FhirUrl { get; set; }
 
-        [Option("batch", Required = false, HelpText = $"Size of bundles to split large files into when sending resources. Defaults to {DEFAULT_BUNDLE_SIZE}. Must be between {BUNDLE_SIZE_MIN} and {BUNDLE_SIZE_MAX}"), ]
+        [Option("batch", Required = false, HelpText = $"Size of bundles to split large files into when sending resources. Defaults to {DEFAULT_BUNDLE_SIZE}. Must be between {BUNDLE_SIZE_MIN} and {BUNDLE_SIZE_MAX}"),]
         public int? BatchSize { get; set; }
 
         [Option("concurrency", Required = false, HelpText = $"Number of bundles to send in parallel. Defaults to {DEFAULT_CONCURRENCY}. Must be between {CONCURRENCY_MIN} and {CONCURRENCY_MAX}."),]
@@ -32,7 +32,7 @@ namespace FhirLoader.Tool
         [Option("tenant-id", Required = false, HelpText = "Tenant ID of your FHIR server (not needed for your default directory)."),]
         public string? TenantId { get; set; }
 
-        [Option("debug", Required = false, Default = false, HelpText ="Print more detailed information to the console.")]
+        [Option("debug", Required = false, Default = false, HelpText = "Print more detailed information to the console.")]
         public bool Debug { get; set; }
 
         [Usage(ApplicationAlias = "applied-fhir-loader")]
@@ -78,4 +78,3 @@ namespace FhirLoader.Tool
         public ArgumentValidationException(string message) : base(message) { }
     }
 }
-    
