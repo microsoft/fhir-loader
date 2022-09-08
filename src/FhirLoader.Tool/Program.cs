@@ -26,7 +26,7 @@ namespace FhirLoader.Tool
                         {
                             _logger = ApplicationLogging.Instance.Configure(LogLevel.Trace).CreateLogger<Program>();
                         }
-                        
+
                         opt.Validate();
                         return await Run(opt);
                     },
@@ -39,7 +39,7 @@ namespace FhirLoader.Tool
             }
         }
 
-        static async Task<int> Run(CommandOptions opt)
+        public static async Task<int> Run(CommandOptions opt)
         {
             _logger.LogInformation("Setting up Applied FHIR Loader, please wait...  ");
             try
@@ -57,7 +57,7 @@ namespace FhirLoader.Tool
                 var client = new BundleClient(opt.FhirUrl!, _logger, opt.TenantId);
 
                 // Create a bundle sender
-                Metrics.Instance.Start();                             
+                Metrics.Instance.Start();
 
                 // Send bundles in parallel
                 try
@@ -66,31 +66,31 @@ namespace FhirLoader.Tool
                         {
                             await client.Send(bundleWrapper.bundle, bundleWrapper.count, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
                         },
-                       new ExecutionDataflowBlockOptions 
-                       { 
+                       new ExecutionDataflowBlockOptions
+                       {
                            MaxDegreeOfParallelism = opt.Concurrency!.Value,
                            BoundedCapacity = opt.Concurrency!.Value * 2,
                            CancellationToken = _cancelTokenSource.Token
                        }
                    );
 
-                        // For each file, send segmented bundles
-                        bool blockAcceptingNewMessages = true;
-                        foreach (var file in files)
-                        {
-                            if (!blockAcceptingNewMessages)
-                                break;
+                    // For each file, send segmented bundles
+                    bool blockAcceptingNewMessages = true;
+                    foreach (var file in files)
+                    {
+                        if (!blockAcceptingNewMessages)
+                            break;
 
-                            foreach (var bundle in file.ConvertToBundles())
+                        foreach (var bundle in file.ConvertToBundles())
+                        {
+                            if (!await actionBlock.SendAsync(bundle, _cancelTokenSource.Token))
                             {
-                                if (!await actionBlock.SendAsync(bundle, _cancelTokenSource.Token))
-                                {
-                                    blockAcceptingNewMessages = false;
-                                    _logger.LogError("Cannot send all bundles due to an internal error. Finishing and exiting.");
-                                    break;
-                                }
+                                blockAcceptingNewMessages = false;
+                                _logger.LogError("Cannot send all bundles due to an internal error. Finishing and exiting.");
+                                break;
                             }
                         }
+                    }
 
                     actionBlock.Complete();
                     await actionBlock.Completion.WaitAsync(_cancelTokenSource.Token);
@@ -127,7 +127,7 @@ namespace FhirLoader.Tool
             }
             catch (CredentialUnavailableException)
             {
-                _logger.LogError($"Could not obtain Azure credential. Please use `az login` or another method specified here: https://docs.microsoft.com/dotnet/api/azure.identity.defaultazurecredential?view=azure-dotnet");                
+                _logger.LogError($"Could not obtain Azure credential. Please use `az login` or another method specified here: https://docs.microsoft.com/dotnet/api/azure.identity.defaultazurecredential?view=azure-dotnet");
             }
 
             ApplicationLogging.Instance.LogFactory.Dispose();
