@@ -132,7 +132,7 @@ namespace FhirLoader.Tool
 
             ApplicationLogging.Instance.LogFactory.Dispose();
             Metrics.Instance.Stop();
-            return 1;
+            return 0;
         }
 
         static void OnConsoleCancel(object? sender, ConsoleCancelEventArgs e)

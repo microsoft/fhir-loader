@@ -8,17 +8,18 @@ namespace FHIRLoader.Tool.Tests.E2E
 {
     public class FHIRLoaderE2ETest
     {
-
-        private static MyServiceConfig config;
+        private readonly TestConfig _config;
 
         public FHIRLoaderE2ETest()
-        {            
+        {
             IConfigurationBuilder builder = new ConfigurationBuilder()
-                .AddUserSecrets(Assembly.GetExecutingAssembly(), true);
+                .AddUserSecrets(Assembly.GetExecutingAssembly(), true)
+                .AddEnvironmentVariables("TEST_");
             IConfigurationRoot root = builder.Build();
-            config = new MyServiceConfig();
+            TestConfig config = new TestConfig();
             root.Bind(config);
 
+            _config = config;
         }
 
         /// <summary>
@@ -30,13 +31,13 @@ namespace FHIRLoader.Tool.Tests.E2E
         {
             CommandOptions commandOptions = new()
             {
-                FhirUrl = config.FhirURL,
-                FolderPath = @"../../../../TestSamples\bundle",
-                BatchSize = config.Batchsize,//Must be betweeen 1 & 500,Default 500
-                Concurrency = config.Concurrency//Must be betweeen 1 & 50,Default 50
+                FhirUrl = _config.FhirURL,
+                FolderPath = @"../../../../TestSamples/bundle",
+                BatchSize = _config.Batchsize,//Must be betweeen 1 & 500,Default 500
+                Concurrency = _config.Concurrency//Must be betweeen 1 & 50,Default 50
             };
             int response = await Program.Run(commandOptions);
-            Assert.Equal(1, response);
+            Assert.Equal(0, response);
         }
 
         /// <summary>
@@ -48,13 +49,13 @@ namespace FHIRLoader.Tool.Tests.E2E
         {
             CommandOptions commandOptions = new()
             {
-                FhirUrl = config.FhirURL,
-                FolderPath = @"../../../../TestSamples\ndjson",
-                BatchSize = config.Batchsize,//Must be betweeen 1 & 500,Default 500
-                Concurrency = config.Concurrency//Must be betweeen 1 & 50,Default 50
+                FhirUrl = _config.FhirURL,
+                FolderPath = @"../../../../TestSamples/ndjson",
+                BatchSize = _config.Batchsize,//Must be betweeen 1 & 500,Default 500
+                Concurrency = _config.Concurrency//Must be betweeen 1 & 50,Default 50
             };
             int response = await Program.Run(commandOptions);
-            Assert.Equal(1, response);
+            Assert.Equal(0, response);
         }
 
         /// <summary>
@@ -66,13 +67,13 @@ namespace FHIRLoader.Tool.Tests.E2E
         {
             CommandOptions commandOptions = new()
             {
-                FhirUrl = config.FhirURL,
-                BlobPath = config.BlobBundlePath,
-                BatchSize = config.Batchsize,//Must be betweeen 1 & 500,Default 500
-                Concurrency = config.Concurrency//Must be betweeen 1 & 50,Default 50
+                FhirUrl = _config.FhirURL,
+                BlobPath = _config.BlobBundlePath,
+                BatchSize = _config.Batchsize,//Must be betweeen 1 & 500,Default 500
+                Concurrency = _config.Concurrency//Must be betweeen 1 & 50,Default 50
             };
             int response = await Program.Run(commandOptions);
-            Assert.Equal(1, response);
+            Assert.Equal(0, response);
         }
 
         /// <summary>
@@ -84,13 +85,13 @@ namespace FHIRLoader.Tool.Tests.E2E
         {
             CommandOptions commandOptions = new()
             {
-                FhirUrl = config.FhirURL,
-                BlobPath = config.BlobndJsonPath,
-                BatchSize = config.Batchsize,//Must be betweeen 1 & 500,Default 500
-                Concurrency = config.Concurrency//Must be betweeen 1 & 50,Default 50
+                FhirUrl = _config.FhirURL,
+                BlobPath = _config.BlobNDJsonPath,
+                BatchSize = _config.Batchsize,//Must be betweeen 1 & 500,Default 500
+                Concurrency = _config.Concurrency//Must be betweeen 1 & 50,Default 50
             };
             int response = await Program.Run(commandOptions);
-            Assert.Equal(1, response);
+            Assert.Equal(0, response);
         }
     }
 }
