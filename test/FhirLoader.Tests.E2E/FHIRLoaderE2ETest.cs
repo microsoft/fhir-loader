@@ -32,7 +32,7 @@ namespace FHIRLoader.Tool.Tests.E2E
             CommandOptions commandOptions = new()
             {
                 FhirUrl = _config.FhirURL,
-                FolderPath = @"../../../../TestSamples/bundle",
+                FolderPath = @"../../../TestData/bundle",
                 BatchSize = _config.Batchsize,//Must be betweeen 1 & 500,Default 500
                 Concurrency = _config.Concurrency//Must be betweeen 1 & 50,Default 50
             };
@@ -50,7 +50,7 @@ namespace FHIRLoader.Tool.Tests.E2E
             CommandOptions commandOptions = new()
             {
                 FhirUrl = _config.FhirURL,
-                FolderPath = @"../../../../TestSamples/ndjson",
+                FolderPath = @"../../../TestData/ndjson",
                 BatchSize = _config.Batchsize,//Must be betweeen 1 & 500,Default 500
                 Concurrency = _config.Concurrency//Must be betweeen 1 & 50,Default 50
             };
