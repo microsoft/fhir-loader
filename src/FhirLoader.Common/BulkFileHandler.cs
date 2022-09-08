@@ -27,7 +27,7 @@ namespace FhirLoader.Common
 
             using (var reader = new StreamReader(_inputStream))
             {
-                var lines = StreamAsLines(reader);
+                var lines = StreamAsLines(reader).ToList();
                 var pageNumber = 0;
 
                 while (true)
