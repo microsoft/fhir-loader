@@ -5,80 +5,77 @@ using Newtonsoft.Json.Linq;
 
 namespace FhirLoader.Common
 {
-    public class BulkFileHandler : IFileHandler
+    public class BulkFileHandler : FhirFileHandler
     {
         private readonly Stream _inputStream;
-        private readonly ILogger _logger;
-        private readonly int _bundleSize;
-        private readonly string _fileName;
 
-        public BulkFileHandler(Stream inputStream, string fileName, int bundleSize, ILogger logger)
+        private IEnumerable<ProcessedBundle>? _bundles;
+
+        public BulkFileHandler(Stream inputStream, string fileName, int bundleSize) : base(fileName, bundleSize)
         {
             _inputStream = inputStream;
-            _bundleSize = bundleSize;
-            _logger = logger;
-            _fileName = fileName;
         }
 
-        public IEnumerable<(string bundle, int count)> ConvertToBundles()
+        public override IEnumerable<ProcessedBundle> FileAsBundles {  get
+            {
+                if (_bundles is null)
+                    _bundles = ConvertToBundles();
+
+                return _bundles;
+            } 
+        }
+
+        private IEnumerable<ProcessedBundle> ConvertToBundles()
         {
-            IEnumerable<string> page;
-            int count = 0;
 
             using (var reader = new StreamReader(_inputStream))
             {
-                var lines = StreamAsLines(reader);
-                var pageNumber = 0;
-
-                while (true)
+                while (!reader.EndOfStream)
                 {
-                    (page, count) = NextPage(lines!, pageNumber);
-                    if (count == 0)
-                        break;
+                    List<string> page = new List<string>();
 
-                    var resourceChunk = page.Select(x => JObject.Parse(x));
-                    var bundle = JObject.FromObject(new
+                    for (int i = 0; i < BundleSize; i++)
                     {
-                        resourceType = "Bundle",
-                        type = "batch",
-                        entry =
-                        from r in resourceChunk
-                        select new
+                        if (!reader.EndOfStream)
                         {
-                            resource = r,
-                            request = new
-                            {
-                                method = r.ContainsKey("id") ? "PUT" : "POST",
-                                url = r.ContainsKey("id") ? $"{r["resourceType"]}/{r["id"]}" : r["resourceType"]
-                            }
-                        }
-                    });
-
-                    yield return (bundle.ToString(Formatting.Indented), count);
+                            var line = reader.ReadLine();
+                            if (line is not null)
+                                page.Add(line);
+                        }  
+                    }
+                    yield return BuildBundle(page);
                 }
             }
         }
 
-        private IEnumerable<string> StreamAsLines(StreamReader reader)
+        private ProcessedBundle BuildBundle(IEnumerable<string> page)
         {
-            while(!reader.EndOfStream)
+            var resourceChunk = page.Select(x => JObject.Parse(x));
+            var bundle = JObject.FromObject(new
             {
-                var line = reader.ReadLine(); 
-                if (line != null)
-                    yield return line;
-            }
-        }
+                resourceType = "Bundle",
+                type = "batch",
+                entry =
+                from r in resourceChunk
+                select new
+                {
+                    resource = r,
+                    request = new
+                    {
+                        method = r.ContainsKey("id") ? "PUT" : "POST",
+                        url = r.ContainsKey("id") ? $"{r["resourceType"]}/{r["id"]}" : r["resourceType"]
+                    }
+                }
+            });
 
-        private (IEnumerable<string> page, int count) NextPage(IEnumerable<string> lines, int pageNumber)
-        {
-            var page = lines.Skip(pageNumber * _bundleSize).Take(_bundleSize);
-            pageNumber++;
+            var count = bundle.ContainsKey("entry") ? bundle["entry"]!.Count() : 0;
 
-            int count;
-            if (!page.TryGetNonEnumeratedCount(out count))
-                count = page.Count();
-
-            return (page, count);
+            return new ProcessedBundle
+            {
+                BundleText = bundle.ToString(Formatting.Indented),
+                BundleCount = count,
+                BundleFileName = FileName,
+            };
         }
     }
 }

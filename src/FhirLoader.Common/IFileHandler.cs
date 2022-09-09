@@ -1,7 +1,19 @@
-﻿namespace FhirLoader.Common
+﻿using Microsoft.Extensions.Logging;
+
+namespace FhirLoader.Common
 {
-    public interface IFileHandler
+    public abstract class FhirFileHandler
     {
-        IEnumerable<(string bundle, int count)> ConvertToBundles();
+        public FhirFileHandler(string fileName, int bundleSize)
+        {
+            FileName = fileName;
+            BundleSize = bundleSize;    
+        }
+
+        public readonly string FileName;
+
+        public readonly int BundleSize;
+
+        public abstract IEnumerable<ProcessedBundle>? FileAsBundles { get; }
     }
 }

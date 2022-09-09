@@ -44,9 +44,9 @@ namespace FhirLoader.Common
             _resiliencyStrategy = resiliencyStrategy ?? DefaultResiliencyStrategy();
         }
 
-        public async Task Send(string bundleString, int resourceCount, Action<int, long>? metricsCallback = null, CancellationToken? cancel = null)
+        public async Task Send(ProcessedBundle bundle, Action<int, long>? metricsCallback = null, CancellationToken? cancel = null)
         {
-            var content = new StringContent(bundleString, Encoding.UTF8, "application/json");
+            var content = new StringContent(bundle.BundleText!, Encoding.UTF8, "application/json");
             HttpResponseMessage response;
 
             var timer = new Stopwatch();
@@ -54,7 +54,7 @@ namespace FhirLoader.Common
 
             try
             {
-                _logger.LogTrace($"Sending {resourceCount} resources to {_client.BaseAddress}...");
+                _logger.LogTrace($"Sending {bundle.BundleCount} resources to {_client.BaseAddress}...");
 
                 response = await _resiliencyStrategy.ExecuteAsync(
                     async ct => await _client.PostAsync("", content, ct),
@@ -92,7 +92,7 @@ namespace FhirLoader.Common
             else
             {
                 if (metricsCallback is not null)
-                    metricsCallback(resourceCount, timer.ElapsedMilliseconds);
+                    metricsCallback(bundle.BundleCount, timer.ElapsedMilliseconds);
 
                 _logger.LogTrace("Successfully sent bundle.");
             }
