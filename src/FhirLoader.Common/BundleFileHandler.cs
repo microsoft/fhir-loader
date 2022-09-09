@@ -5,22 +5,31 @@ using Newtonsoft.Json.Linq;
 
 namespace FhirLoader.Common
 {
-    public class BundleFileHandler : IFileHandler
+    public class BundleFileHandler : FhirFileHandler
     {
         private readonly Stream _inputStream;
         private readonly ILogger _logger;
-        private readonly int _bundleSize;
-        private readonly string _fileName;
 
-        public BundleFileHandler(Stream inputStream, string fileName, int bundleSize, ILogger logger)
+        private IEnumerable<ProcessedBundle>? _bundles;
+
+        public BundleFileHandler(Stream inputStream, string fileName, int bundleSize, ILogger logger) : base(fileName, bundleSize)
         {
             _inputStream = inputStream;
-            _bundleSize = bundleSize;
             _logger = logger;
-            _fileName = fileName;
         }
 
-        public IEnumerable<(string bundle, int count)> ConvertToBundles()
+        public override IEnumerable<ProcessedBundle> FileAsBundles
+        {
+            get
+            {
+                if (_bundles is null)
+                    _bundles = ConvertToBundles();
+
+                return _bundles;
+            }
+        }
+
+        public IEnumerable<ProcessedBundle> ConvertToBundles()
         {
             JObject bundle;
 
@@ -34,20 +43,25 @@ namespace FhirLoader.Common
             }
             catch
             {
-                _logger.LogError($"Failed to resolve references in input file {_fileName}.");
+                _logger.LogError($"Failed to resolve references in input file {FileName}.");
                 throw;
             }
 
             var bundleResources = bundle.SelectTokens("$.entry[*].resource");
-            if (bundleResources.Count() <= _bundleSize)
+            if (bundleResources.Count() <= BundleSize)
             {
-                yield return (bundle.ToString(Formatting.Indented), bundleResources.Count());
+                yield return new ProcessedBundle
+                {
+                    BundleFileName = FileName,
+                    BundleText = bundle.ToString(Formatting.Indented),
+                    BundleCount = bundleResources.Count(),
+                };
             }
             
             while (true)
             {
-                var resourceChunk = bundleResources.Take(_bundleSize);
-                bundleResources = bundleResources.Skip(_bundleSize);
+                var resourceChunk = bundleResources.Take(BundleSize);
+                bundleResources = bundleResources.Skip(BundleSize);
 
                 if (resourceChunk.Count() == 0)
                     break;
@@ -69,7 +83,12 @@ namespace FhirLoader.Common
                     }
                 });
 
-                yield return (newBundle.ToString(Formatting.Indented), resourceChunk.Count());
+                yield return new ProcessedBundle
+                {
+                    BundleFileName = FileName,
+                    BundleText = newBundle.ToString(Formatting.Indented),
+                    BundleCount = resourceChunk.Count(),
+                };
             }
         }
     }

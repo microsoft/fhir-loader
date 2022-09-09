@@ -44,7 +44,7 @@ namespace FhirLoader.Tool
             _logger.LogInformation("Setting up Applied FHIR Loader, please wait...  ");
             try
             {
-                IEnumerable<IFileHandler> files;
+                IEnumerable<FhirFileHandler> files;
                 SourceFileHandler sourceHandler = new(_logger);
 
                 if (opt.FolderPath is not null)
@@ -62,9 +62,9 @@ namespace FhirLoader.Tool
                 // Send bundles in parallel
                 try
                 {
-                    var actionBlock = new ActionBlock<(string bundle, int count)>(async bundleWrapper =>
+                    var actionBlock = new ActionBlock<ProcessedBundle>(async bundleWrapper =>
                         {
-                            await client.Send(bundleWrapper.bundle, bundleWrapper.count, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
+                            await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
                         },
                        new ExecutionDataflowBlockOptions
                        {
@@ -81,7 +81,7 @@ namespace FhirLoader.Tool
                         if (!blockAcceptingNewMessages)
                             break;
 
-                        foreach (var bundle in file.ConvertToBundles())
+                        foreach (var bundle in file.FileAsBundles!)
                         {
                             if (!await actionBlock.SendAsync(bundle, _cancelTokenSource.Token))
                             {

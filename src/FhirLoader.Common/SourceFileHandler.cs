@@ -14,7 +14,7 @@ namespace FhirLoader.Common
             _logger = logger;
         }
 
-        public IEnumerable<IFileHandler> LoadFromBlobPath(string blobPath, int bundleSize)
+        public IEnumerable<FhirFileHandler> LoadFromBlobPath(string blobPath, int bundleSize)
         {
             _logger.LogInformation($"Searching {blobPath} for FHIR files.");
 
@@ -45,11 +45,11 @@ namespace FhirLoader.Common
                 if (blob.Name.EndsWith(".json"))
                     yield return new BundleFileHandler(safeBlobStream, blob.Name, bundleSize, _logger);
                 else if (blob.Name.EndsWith(".ndjson"))
-                    yield return new BulkFileHandler(safeBlobStream, blob.Name, bundleSize, _logger);
+                    yield return new BulkFileHandler(safeBlobStream, blob.Name, bundleSize);
             }
         }
 
-        public IEnumerable<IFileHandler> LoadFromFilePath(string bundlePath, int bundleSize)
+        public IEnumerable<FhirFileHandler> LoadFromFilePath(string bundlePath, int bundleSize)
         {
             _logger.LogInformation($"Searching {bundlePath} for FHIR files.");
 
@@ -73,7 +73,7 @@ namespace FhirLoader.Common
                 }
                 else if (filePath.EndsWith(".ndjson"))
                 {
-                    yield return new BulkFileHandler(safeFileStream, filePath, bundleSize, _logger);
+                    yield return new BulkFileHandler(safeFileStream, filePath, bundleSize);
                 }
             }
         }
