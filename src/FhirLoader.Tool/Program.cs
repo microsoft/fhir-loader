@@ -51,8 +51,10 @@ namespace FhirLoader.Tool
                     files = sourceHandler.LoadFromFilePath(opt.FolderPath, opt.BatchSize!.Value);
                 else if (opt.BlobPath is not null)
                     files = sourceHandler.LoadFromBlobPath(opt.BlobPath, opt.BatchSize!.Value);
+                else if (opt.PackagePath is not null)
+                    files = sourceHandler.LoadFromPackagePath(opt.PackagePath, opt.BatchSize!.Value);
                 else
-                    throw new ArgumentException("Either folder or blob must be inputted.");
+                    throw new ArgumentException("Either folder,package or blob must be inputted.");
 
                 var client = new BundleClient(opt.FhirUrl!, _logger, opt.TenantId);
 
@@ -63,9 +65,9 @@ namespace FhirLoader.Tool
                 try
                 {
                     var actionBlock = new ActionBlock<ProcessedBundle>(async bundleWrapper =>
-                        {
-                            await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
-                        },
+                    {
+                        await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
+                    },
                        new ExecutionDataflowBlockOptions
                        {
                            MaxDegreeOfParallelism = opt.Concurrency!.Value,
@@ -120,6 +122,10 @@ namespace FhirLoader.Tool
                     });
                 }
                 Console.WriteLine($"Done! Sent {Metrics.Instance.TotalResourcesSent} resources in {(int)(Metrics.Instance.TotalTimeInMilliseconds / 1000)} seconds.");
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine(ex.Message);
             }
             catch (DirectoryNotFoundException)
             {

@@ -49,6 +49,8 @@ namespace FhirLoader.Common
             var content = new StringContent(bundle.BundleText!, Encoding.UTF8, "application/json");
             HttpResponseMessage response;
 
+            var requestUri = !string.IsNullOrEmpty(bundle.BundleUri) ? $"/{bundle.ResourceType}?url={bundle.BundleUri}" : string.Empty;
+
             var timer = new Stopwatch();
             timer.Start();
 
@@ -57,7 +59,7 @@ namespace FhirLoader.Common
                 _logger.LogTrace($"Sending {bundle.BundleCount} resources to {_client.BaseAddress}...");
 
                 response = await _resiliencyStrategy.ExecuteAsync(
-                    async ct => await _client.PostAsync("", content, ct),
+                    async ct => await _client.PostAsync(requestUri, content, ct),
                     cancellationToken: cancel ?? CancellationToken.None
                 );
             }
@@ -87,7 +89,7 @@ namespace FhirLoader.Common
                 catch (JsonReaderException)
                 {
                     _logger.LogError(responseString);
-                }   
+                }
             }
             else
             {

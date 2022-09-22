@@ -11,5 +11,7 @@ namespace FhirLoader.Common
         public string? BundleText;
         public int BundleCount;
         public string? BundleFileName;
+        public string? ResourceType;
+        public string? BundleUri;
     }
 }
