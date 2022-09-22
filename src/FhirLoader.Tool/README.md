@@ -32,6 +32,8 @@ microsoft-fhir-loader --package "~/Downloads/my-package" --fhir "fhir-server-url
 ```
 Here, my-package means the folder in which you store the files from the npm command.
 
+Use the below command to install the files using npm.
+
 ```sh
 npm --registry "your npm package path"
 ```
