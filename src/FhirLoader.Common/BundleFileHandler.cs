@@ -10,7 +10,7 @@ namespace FhirLoader.Common
         private readonly Stream _inputStream;
         private readonly ILogger _logger;
 
-        private IEnumerable<ProcessedBundle>? _bundles;
+        private IEnumerable<ProcessedResource>? _bundles;
 
         public BundleFileHandler(Stream inputStream, string fileName, int bundleSize, ILogger logger) : base(fileName, bundleSize)
         {
@@ -18,7 +18,7 @@ namespace FhirLoader.Common
             _logger = logger;
         }
 
-        public override IEnumerable<ProcessedBundle> FileAsBundles
+        public override IEnumerable<ProcessedResource> FileAsBundles
         {
             get
             {
@@ -29,7 +29,7 @@ namespace FhirLoader.Common
             }
         }
 
-        public IEnumerable<ProcessedBundle> ConvertToBundles()
+        public IEnumerable<ProcessedResource> ConvertToBundles()
         {
             JObject bundle;
 
@@ -50,11 +50,11 @@ namespace FhirLoader.Common
             var bundleResources = bundle.SelectTokens("$.entry[*].resource");
             if (bundleResources.Count() <= BundleSize)
             {
-                yield return new ProcessedBundle
+                yield return new ProcessedResource
                 {
-                    BundleFileName = FileName,
-                    BundleText = bundle.ToString(Formatting.Indented),
-                    BundleCount = bundleResources.Count(),
+                    ResourceFileName = FileName,
+                    ResourceText = bundle.ToString(Formatting.Indented),
+                    ResourceCount = bundleResources.Count(),
                 };
             }
             
@@ -83,11 +83,11 @@ namespace FhirLoader.Common
                     }
                 });
 
-                yield return new ProcessedBundle
+                yield return new ProcessedResource
                 {
-                    BundleFileName = FileName,
-                    BundleText = newBundle.ToString(Formatting.Indented),
-                    BundleCount = resourceChunk.Count(),
+                    ResourceFileName = FileName,
+                    ResourceText = newBundle.ToString(Formatting.Indented),
+                    ResourceCount = resourceChunk.Count(),
                 };
             }
         }

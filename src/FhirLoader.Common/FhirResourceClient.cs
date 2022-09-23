@@ -17,7 +17,7 @@ namespace FhirLoader.Common
     /// <summary>
     /// FHIR version agnostic client for sending bundles
     /// </summary>
-    public class BundleClient : IDisposable
+    public class FhirResourceClient : IDisposable
     {
         private readonly HttpClient _client;
         private readonly ILogger _logger;
@@ -26,7 +26,7 @@ namespace FhirLoader.Common
 
         const string METADATA_SUFFIX = "/metadata";
 
-        public BundleClient(string baseUrl, ILogger logger, string? tenantId = null, AsyncPolicyWrap<HttpResponseMessage>? resiliencyStrategy = null)
+        public FhirResourceClient(string baseUrl, ILogger logger, string? tenantId = null, AsyncPolicyWrap<HttpResponseMessage>? resiliencyStrategy = null)
         {
             _logger = logger;
             _client = new HttpClient();
@@ -44,19 +44,19 @@ namespace FhirLoader.Common
             _resiliencyStrategy = resiliencyStrategy ?? DefaultResiliencyStrategy();
         }
 
-        public async Task Send(ProcessedBundle bundle, Action<int, long>? metricsCallback = null, CancellationToken? cancel = null)
+        public async Task Send(ProcessedResource bundle, Action<int, long>? metricsCallback = null, CancellationToken? cancel = null)
         {
-            var content = new StringContent(bundle.BundleText!, Encoding.UTF8, "application/json");
+            var content = new StringContent(bundle.ResourceText!, Encoding.UTF8, "application/json");
             HttpResponseMessage response;
 
-            var requestUri = !string.IsNullOrEmpty(bundle.BundleUri) ? $"/{bundle.ResourceType}?url={bundle.BundleUri}" : string.Empty;
+            var requestUri = !string.IsNullOrEmpty(bundle.ResourceType) ? $"/{bundle.ResourceType}" : string.Empty;
 
             var timer = new Stopwatch();
             timer.Start();
 
             try
             {
-                _logger.LogTrace($"Sending {bundle.BundleCount} resources to {_client.BaseAddress}...");
+                _logger.LogTrace($"Sending {bundle.ResourceCount} resources to {_client.BaseAddress}...");
 
                 response = await _resiliencyStrategy.ExecuteAsync(
                     async ct => await _client.PostAsync(requestUri, content, ct),
@@ -94,7 +94,7 @@ namespace FhirLoader.Common
             else
             {
                 if (metricsCallback is not null)
-                    metricsCallback(bundle.BundleCount, timer.ElapsedMilliseconds);
+                    metricsCallback(bundle.ResourceCount, timer.ElapsedMilliseconds);
 
                 _logger.LogTrace("Successfully sent bundle.");
             }

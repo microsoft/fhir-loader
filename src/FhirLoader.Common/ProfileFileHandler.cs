@@ -8,7 +8,7 @@ namespace FhirLoader.Common
     {
         private readonly Stream _inputStream;
         private readonly ILogger _logger;
-        private IEnumerable<ProcessedBundle>? _bundles;
+        private IEnumerable<ProcessedResource>? _bundles;
 
         public ProfileFileHandler(Stream inputStream, string fileName, int bundleSize, ILogger logger) : base(fileName, bundleSize)
         {
@@ -16,7 +16,7 @@ namespace FhirLoader.Common
             _logger = logger;
         }
 
-        public override IEnumerable<ProcessedBundle> FileAsBundles
+        public override IEnumerable<ProcessedResource> FileAsBundles
         {
             get
             {
@@ -27,7 +27,7 @@ namespace FhirLoader.Common
             }
         }
 
-        public IEnumerable<ProcessedBundle> ConvertToBundles()
+        public IEnumerable<ProcessedResource> ConvertToBundles()
         {
             JObject bundle;
 
@@ -35,12 +35,11 @@ namespace FhirLoader.Common
             using (StreamReader reader = new StreamReader(_inputStream))
                 bundle = JObject.Parse(reader.ReadToEnd());
 
-            yield return new ProcessedBundle
+            yield return new ProcessedResource
             {
-                BundleFileName = FileName,
-                BundleText = bundle.ToString(Formatting.Indented),
-                BundleCount = 1,
-                BundleUri = bundle.GetValue("url")?.Value<string>(),
+                ResourceFileName = FileName,
+                ResourceText = bundle.ToString(Formatting.Indented),
+                ResourceCount = 1,                
                 ResourceType = bundle.GetValue("resourceType")?.Value<string>()
             };
 

@@ -6,12 +6,11 @@ using System.Threading.Tasks;
 
 namespace FhirLoader.Common
 {
-    public class ProcessedBundle
+    public class ProcessedResource
     {
-        public string? BundleText;
-        public int BundleCount;
-        public string? BundleFileName;
+        public string? ResourceText;
+        public int ResourceCount;
+        public string? ResourceFileName;
         public string? ResourceType;
-        public string? BundleUri;
     }
 }

@@ -56,7 +56,7 @@ namespace FhirLoader.Tool
                 else
                     throw new ArgumentException("Either folder,package or blob must be inputted.");
 
-                var client = new BundleClient(opt.FhirUrl!, _logger, opt.TenantId);
+                var client = new FhirResourceClient(opt.FhirUrl!, _logger, opt.TenantId);
 
                 // Create a bundle sender
                 Metrics.Instance.Start();
@@ -64,7 +64,7 @@ namespace FhirLoader.Tool
                 // Send bundles in parallel
                 try
                 {
-                    var actionBlock = new ActionBlock<ProcessedBundle>(async bundleWrapper =>
+                    var actionBlock = new ActionBlock<ProcessedResource>(async bundleWrapper =>
                     {
                         await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
                     },
