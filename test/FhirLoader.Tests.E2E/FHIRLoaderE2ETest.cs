@@ -190,7 +190,7 @@ namespace FHIRLoader.Tool.Tests.E2E
 
         /// <summary>
         /// Check that the json file has the resource type bundle.
-        /// If a file without a bundle resource type exists in a bundle folder, then the tool will skip those files.
+        /// The tool will skip those files which do not have the resource type value as "bundle".
         /// </summary>
         [Fact]
         public void CheckIfFileswithoutbundleresourceTypeExist_Test()
@@ -212,7 +212,7 @@ namespace FHIRLoader.Tool.Tests.E2E
             }
             if (i > 0)
             {
-                Assert.Fail("Files that do not have a bundle resource type will be skipped.");
+                Assert.Fail("Files that do not have a resource type as  'bundle' will be skipped.");
             }
 
         }
@@ -223,21 +223,22 @@ namespace FHIRLoader.Tool.Tests.E2E
         /// returns true if matched, otherwise false.
         /// </summary>
         [Fact]
-        public void checkIfPackageTypeExists_Test()
+        public async void checkIfPackageTypeExists_Test()
         {
-            string packageType = "fhir.ig";
-            bool response = Enum.GetValues(typeof(PackageType))
-                  .Cast<PackageType>()
-                  .Select(x => GetDisplayName<PackageType>(x))
-                  .ToList().Contains(packageType);
-            if (response)
+
+            CommandOptions commandOptions = new()
             {
-                Assert.True(response);
-            }
-            else
+                FhirUrl = _config.FhirURL,
+                PackagePath = @"../../../TestData/missingpackagetype",
+                BatchSize = _config.Batchsize,//Must be betweeen 1 & 500,Default 500
+                Concurrency = _config.Concurrency//Must be betweeen 1 & 50,Default 50
+            };
+            int response = await Program.Run(commandOptions);
+            Action throwingAction = () =>
             {
-                Assert.False(response);
-            }
+                throw new ArgumentException("Package type is not valid. Skipping the loading process.");
+            };
+            Assert.Throws<ArgumentException>(throwingAction);
 
         }
 

@@ -12,5 +12,6 @@ namespace FhirLoader.Common
         public int ResourceCount;
         public string? ResourceFileName;
         public string? ResourceType;
+        public bool IsBundle = true;
     }
 }

@@ -125,6 +125,7 @@ namespace FhirLoader.Tool
             }
             catch (ArgumentException ex)
             {
+                _logger.LogError(ex.Message);
                 Console.WriteLine(ex.Message);
             }
             catch (DirectoryNotFoundException)

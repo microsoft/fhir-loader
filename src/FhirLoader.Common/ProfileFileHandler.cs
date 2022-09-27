@@ -39,8 +39,9 @@ namespace FhirLoader.Common
             {
                 ResourceFileName = FileName,
                 ResourceText = bundle.ToString(Formatting.Indented),
-                ResourceCount = 1,                
-                ResourceType = bundle.GetValue("resourceType")?.Value<string>()
+                ResourceCount = 1,
+                ResourceType = bundle.GetValue("resourceType")?.Value<string>(),
+                IsBundle = false
             };
 
 
