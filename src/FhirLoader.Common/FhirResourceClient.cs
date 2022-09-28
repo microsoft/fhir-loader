@@ -49,7 +49,7 @@ namespace FhirLoader.Common
             var content = new StringContent(processedResource.ResourceText!, Encoding.UTF8, "application/json");
             HttpResponseMessage response;
 
-            var requestUri = processedResource.IsBundle == false ? $"/{processedResource.ResourceType}" : string.Empty;
+            var requestUri = processedResource.IsBundle ? string.Empty : !string.IsNullOrEmpty(processedResource.ResourceId) ? $"/{processedResource.ResourceType}/{processedResource.ResourceId}" : $"/{processedResource.ResourceType}";
 
             var timer = new Stopwatch();
             timer.Start();
@@ -58,10 +58,21 @@ namespace FhirLoader.Common
             {
                 _logger.LogTrace($"Sending {processedResource.ResourceCount} resources to {_client.BaseAddress}...");
 
-                response = await _resiliencyStrategy.ExecuteAsync(
-                    async ct => await _client.PostAsync(requestUri, content, ct),
+                if (!string.IsNullOrEmpty(processedResource.ResourceId) && !processedResource.IsBundle)
+                {
+                    response = await _resiliencyStrategy.ExecuteAsync(
+                    async ct => await _client.PutAsync(requestUri, content, ct),
                     cancellationToken: cancel ?? CancellationToken.None
-                );
+                      );
+                }
+                else
+                {
+                    response = await _resiliencyStrategy.ExecuteAsync(
+                   async ct => await _client.PostAsync(requestUri, content, ct),
+                   cancellationToken: cancel ?? CancellationToken.None
+                     );
+                }
+
             }
             catch (TaskCanceledException tcex)
             {

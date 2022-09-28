@@ -30,7 +30,6 @@ namespace FhirLoader.Common
         public IEnumerable<ProcessedResource> ConvertToBundles()
         {
             JObject bundle;
-
             // We must read the full file
             using (StreamReader reader = new StreamReader(_inputStream))
                 bundle = JObject.Parse(reader.ReadToEnd());
@@ -41,7 +40,8 @@ namespace FhirLoader.Common
                 ResourceText = bundle.ToString(Formatting.Indented),
                 ResourceCount = 1,
                 ResourceType = bundle.GetValue("resourceType")?.Value<string>(),
-                IsBundle = false
+                IsBundle = false,
+                ResourceId = bundle.GetValue("id")?.Value<string>()
             };
 
 
