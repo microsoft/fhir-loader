@@ -57,7 +57,7 @@ namespace FhirLoader.Common
                     ResourceCount = bundleResources.Count(),
                 };
             }
-            
+
             while (true)
             {
                 var resourceChunk = bundleResources.Take(BundleSize);
@@ -88,6 +88,7 @@ namespace FhirLoader.Common
                     ResourceFileName = FileName,
                     ResourceText = newBundle.ToString(Formatting.Indented),
                     ResourceCount = resourceChunk.Count(),
+                    ResourceType = "Bundle"
                 };
             }
         }

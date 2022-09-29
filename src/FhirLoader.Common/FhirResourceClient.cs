@@ -47,7 +47,7 @@ namespace FhirLoader.Common
         public async Task Send(ProcessedResource processedResource, Action<int, long>? metricsCallback = null, CancellationToken? cancel = null)
         {
             var content = new StringContent(processedResource.ResourceText!, Encoding.UTF8, "application/json");
-            HttpResponseMessage response;
+            HttpResponseMessage response = new();
 
             var requestUri = processedResource.IsBundle ? string.Empty : !string.IsNullOrEmpty(processedResource.ResourceId) ? $"/{processedResource.ResourceType}/{processedResource.ResourceId}" : $"/{processedResource.ResourceType}";
 
@@ -56,7 +56,7 @@ namespace FhirLoader.Common
 
             try
             {
-                _logger.LogTrace($"Sending {processedResource.ResourceCount} resources to {_client.BaseAddress}...");
+                _logger.LogTrace($"Sending resource type {processedResource.ResourceType} having {processedResource.ResourceCount} resources to {_client.BaseAddress}...");
 
                 if (!string.IsNullOrEmpty(processedResource.ResourceId) && !processedResource.IsBundle)
                 {

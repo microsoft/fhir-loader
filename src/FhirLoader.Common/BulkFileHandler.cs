@@ -16,13 +16,15 @@ namespace FhirLoader.Common
             _inputStream = inputStream;
         }
 
-        public override IEnumerable<ProcessedResource> FileAsBundles {  get
+        public override IEnumerable<ProcessedResource> FileAsBundles
+        {
+            get
             {
                 if (_bundles is null)
                     _bundles = ConvertToBundles();
 
                 return _bundles;
-            } 
+            }
         }
 
         private IEnumerable<ProcessedResource> ConvertToBundles()
@@ -41,7 +43,7 @@ namespace FhirLoader.Common
                             var line = reader.ReadLine();
                             if (line is not null)
                                 page.Add(line);
-                        }  
+                        }
                     }
                     yield return BuildBundle(page);
                 }
@@ -75,6 +77,7 @@ namespace FhirLoader.Common
                 ResourceText = bundle.ToString(Formatting.Indented),
                 ResourceCount = count,
                 ResourceFileName = FileName,
+                ResourceType = "Bundle"
             };
         }
     }
