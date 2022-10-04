@@ -15,8 +15,8 @@ namespace FhirLoader.Common
             Conformance,
             [Description("fhir.ig")]
             fhirig,
-            [Description("Core")]
-            Core
+            [Description("fhir.core")]
+            fhircore
         }
 
         /// <summary>
