@@ -13,8 +13,6 @@ using Newtonsoft.Json.Linq;
 using System.Linq;
 using System;
 using System.Threading;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
 using DurableTask.Core;
 

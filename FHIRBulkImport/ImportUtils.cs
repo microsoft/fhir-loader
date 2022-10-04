@@ -113,7 +113,7 @@ namespace FHIRBulkImport
                     log.LogInformation($"ImportFHIRBundles File Name:{name} had throttled resources in response bundle. Moved to processed..Created retry bunde {fn}");
 
                 }
-            } catch (TransientError te)
+            } catch (TransientError)
             {
                 throw;
             }

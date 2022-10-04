@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
 using Azure.Storage.Blobs.Specialized;
-using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
 
 namespace FHIRBulkImport
 {
