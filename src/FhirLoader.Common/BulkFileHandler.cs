@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -9,23 +9,25 @@ namespace FhirLoader.Common
     {
         private readonly Stream _inputStream;
 
-        private IEnumerable<ProcessedBundle>? _bundles;
+        private IEnumerable<ProcessedResource>? _bundles;
 
         public BulkFileHandler(Stream inputStream, string fileName, int bundleSize) : base(fileName, bundleSize)
         {
             _inputStream = inputStream;
         }
 
-        public override IEnumerable<ProcessedBundle> FileAsBundles {  get
+        public override IEnumerable<ProcessedResource> FileAsBundles
+        {
+            get
             {
                 if (_bundles is null)
                     _bundles = ConvertToBundles();
 
                 return _bundles;
-            } 
+            }
         }
 
-        private IEnumerable<ProcessedBundle> ConvertToBundles()
+        private IEnumerable<ProcessedResource> ConvertToBundles()
         {
 
             using (var reader = new StreamReader(_inputStream))
@@ -41,14 +43,14 @@ namespace FhirLoader.Common
                             var line = reader.ReadLine();
                             if (line is not null)
                                 page.Add(line);
-                        }  
+                        }
                     }
                     yield return BuildBundle(page);
                 }
             }
         }
 
-        private ProcessedBundle BuildBundle(IEnumerable<string> page)
+        private ProcessedResource BuildBundle(IEnumerable<string> page)
         {
             var resourceChunk = page.Select(x => JObject.Parse(x));
             var bundle = JObject.FromObject(new
@@ -70,11 +72,12 @@ namespace FhirLoader.Common
 
             var count = bundle.ContainsKey("entry") ? bundle["entry"]!.Count() : 0;
 
-            return new ProcessedBundle
+            return new ProcessedResource
             {
-                BundleText = bundle.ToString(Formatting.Indented),
-                BundleCount = count,
-                BundleFileName = FileName,
+                ResourceText = bundle.ToString(Formatting.Indented),
+                ResourceCount = count,
+                ResourceFileName = FileName,
+                ResourceType = "Bundle"
             };
         }
     }

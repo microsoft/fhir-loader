@@ -26,6 +26,18 @@ Send your own local bundle/bulk files:
 microsoft-fhir-loader --file "$HOME/source/synthea/output/fhir" --fhir "fhir-server-url"
 ```
 
+Send your own package files:
+```sh
+microsoft-fhir-loader --package "~/Downloads/my-package" --fhir "fhir-server-url"
+```
+Here, my-package means the folder in which you store the files from the npm command.
+
+Use the below command to install the files using npm.
+
+```sh
+npm --registry "your npm package path"
+```
+
 ### Authentication
 
 This tool will attempt to pull your authorization context from the Azure CLI. If it cannot be found, it will open a web browser to attempt to authenticate. The tool uses [DefaultAzureCredential](https://docs.microsoft.com/dotnet/api/azure.identity.defaultazurecredential?view=azure-dotnet).
@@ -45,6 +57,7 @@ Parameters:
 ```sh
   --folder     Folder path to FHIR data to load.
   --blob       Url to public blob storage container with FHIR data to load.
+  --package    Package path to FHIR data to load.
   --fhir       Required. Base URL of your FHIR server.
   --batch      Size of bundles to split large files into when sending resources.
   --tenant-id  Tenant ID (other than your default)

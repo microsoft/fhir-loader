@@ -20,6 +20,9 @@ namespace FhirLoader.Tool
         [Option("blob", Required = false, HelpText = "Url to public blob storage container with FHIR data to load. ")]
         public string? BlobPath { get; set; }
 
+        [Option("package", Required = false, HelpText = "Package path to FHIR data to load.")]
+        public string? PackagePath { get; set; }
+
         [Option("fhir", Required = true, HelpText = "Base URL of your FHIR server.")]
         public string? FhirUrl { get; set; }
 
@@ -58,6 +61,12 @@ namespace FhirLoader.Tool
             if (FolderPath is not null && !Directory.Exists(FolderPath))
             {
                 throw new ArgumentException($"Path {FolderPath} could not be found or is not a directory.");
+            }
+
+            // Ensure the package path exists
+            if (PackagePath is not null && !Directory.Exists(PackagePath))
+            {
+                throw new ArgumentException($"Path {PackagePath} could not be found or is not a directory.");
             }
 
             if (BatchSize < Convert.ToInt32(BUNDLE_SIZE_MIN) || BatchSize > Convert.ToInt32(BUNDLE_SIZE_MAX))
