@@ -17,7 +17,7 @@ namespace FhirLoader.Common
     /// <summary>
     /// FHIR version agnostic client for sending bundles
     /// </summary>
-    public class BundleClient : IDisposable
+    public class FhirResourceClient : IDisposable
     {
         private readonly HttpClient _client;
         private readonly ILogger _logger;
@@ -29,8 +29,7 @@ namespace FhirLoader.Common
         private DateTime _tokenGeneratedDateTime = DateTime.MinValue;
 
         const string METADATA_SUFFIX = "/metadata";
-
-        public BundleClient(string baseUrl, ILogger logger, string? tenantId = null, AsyncPolicyWrap<HttpResponseMessage>? resiliencyStrategy = null, CancellationToken cancel = default)
+        public FhirResourceClient(string baseUrl, ILogger logger, string? tenantId = null, AsyncPolicyWrap<HttpResponseMessage>? resiliencyStrategy = null)
         {
             _logger = logger;
             _client = new HttpClient();
@@ -51,27 +50,40 @@ namespace FhirLoader.Common
             await SetAccessTokenAsync(cancel);
         }
 
-        public async Task Send(ProcessedBundle bundle, Action<int, long>? metricsCallback = null, CancellationToken cancel = default)
+        public async Task Send(ProcessedResource processedResource, Action<int, long>? metricsCallback = null, CancellationToken? cancel = default)
         {
-            var content = new StringContent(bundle.BundleText!, Encoding.UTF8, "application/json");
-            HttpResponseMessage response;
+            var content = new StringContent(processedResource.ResourceText!, Encoding.UTF8, "application/json");
+            HttpResponseMessage response = new();
+
+            var requestUri = processedResource.IsBundle ? string.Empty : !string.IsNullOrEmpty(processedResource.ResourceId) ? $"/{processedResource.ResourceType}/{processedResource.ResourceId}" : $"/{processedResource.ResourceType}";
+
             var timer = new Stopwatch();
             int perBundleFailCount = 0;
 
             while (true)
             {
+
                 timer.Start();
 
                 try
                 {
-                    _logger.LogTrace($"Sending {bundle.BundleCount} resources to {_client.BaseAddress}...");
+                    _logger.LogTrace($"Sending resource type {processedResource.ResourceType} having {processedResource.ResourceCount} resources to {_client.BaseAddress}...");
 
-                    var strategyWithTokenRefresh = _resiliencyStrategy.WrapAsync(CreateTokenRefreshPolicy());
-
-                    response = await strategyWithTokenRefresh.ExecuteAsync(
-                        async ct => await _client.PostAsync("", content, ct),
+                if (!string.IsNullOrEmpty(processedResource.ResourceId) && !processedResource.IsBundle)
+                {
+                    response = await _resiliencyStrategy.ExecuteAsync(
+                        async ct => await _client.PutAsync(requestUri, content, ct),
                         cancellationToken: cancel
                     );
+                }
+                else
+                {
+                    response = await _resiliencyStrategy.ExecuteAsync(
+                        async ct => await _client.PostAsync(requestUri, content, ct),
+                        cancellationToken: cancel
+                    );
+                }
+
                 }
                 catch (TaskCanceledException tcex)
                 {
@@ -93,16 +105,14 @@ namespace FhirLoader.Common
                     await Task.Delay(30000);
                     continue;
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    throw new FatalBundleClientException($"Critical error: {ex.Message}", ex);
+                    throw new FatalBundleClientException($"Critical error: {e.Message}", e);
                 }
-
-                timer.Stop();
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogError($"Could not send bundle due to error from server: {response.StatusCode}. Adding request back to queue...");
+                    _logger.LogError($"Could not send resource(s) due to error from server: {response.StatusCode}. Adding request back to queue...");
                     var responseString = await response.Content.ReadAsStringAsync() ?? "{}";
                     try
                     {
@@ -123,7 +133,9 @@ namespace FhirLoader.Common
                     continue;
                 }
 
+                timer.Stop();
                 break;
+
             }
 
             if (metricsCallback is not null)

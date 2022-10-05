@@ -1,7 +1,7 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
-
+using Newtonsoft.Json.Linq;
 
 namespace FhirLoader.Common
 {
@@ -40,7 +40,7 @@ namespace FhirLoader.Common
             {
                 var blobClient = containerClient.GetBlobClient(blob.Name);
                 var blobStream = blobClient.DownloadStreaming().Value.Content;
-                var safeBlobStream = Stream.Synchronized(blobStream);               
+                var safeBlobStream = Stream.Synchronized(blobStream);
 
                 if (blob.Name.EndsWith(".json"))
                     yield return new BundleFileHandler(safeBlobStream, blob.Name, bundleSize, _logger);
@@ -69,13 +69,58 @@ namespace FhirLoader.Common
 
                 if (filePath.EndsWith(".json"))
                 {
-                    yield return new BundleFileHandler(safeFileStream, filePath, bundleSize, _logger);
+                    if (CheckResourceType(filePath)?.ToLower() == "bundle")
+                    {
+                        yield return new BundleFileHandler(safeFileStream, filePath, bundleSize, _logger);
+                    }
                 }
                 else if (filePath.EndsWith(".ndjson"))
                 {
                     yield return new BulkFileHandler(safeFileStream, filePath, bundleSize);
                 }
             }
+        }
+
+        public IEnumerable<FhirFileHandler> LoadFromPackagePath(string packagePath, int bundleSize)
+        {
+            _logger.LogInformation($"Searching {packagePath} for FHIR files.");
+
+            string? packageType;
+
+            PackageHelper helper = new(packagePath);
+            if (!helper.ValidateRequiredFiles())
+            {
+                _logger.LogError($"Provided package path does not have .index.json and/or package.json file. Skipping the loading process.");
+                throw new ArgumentException("Provided package path does not have .index.json and/or package.json file. Skipping the loading process.");
+            }
+            if (!helper.IsValidPackageType(out packageType))
+            {
+                _logger.LogError($"Package type {packageType} is not valid. Skipping the loading process.");
+                throw new ArgumentException($"Package type {packageType} is not valid. Skipping the loading process.");
+            }
+
+            var inputBundles = helper.GetPackageFiles();
+
+            _logger.LogInformation($"Found {inputBundles.Count} FHIR bundles.");
+
+            foreach (var filePath in inputBundles.OrderBy(x => x))
+            {
+                var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                var safeFileStream = Stream.Synchronized(fileStream);
+                yield return new ProfileFileHandler(safeFileStream, filePath, bundleSize, _logger);
+
+            }
+        }
+
+        /// <summary>
+        /// Read the file content and return the resource type.
+        /// </summary>
+        /// <param name="filepath"></param>
+        /// <returns></returns>
+        private static string? CheckResourceType(string filepath)
+        {
+            JObject data = JObject.Parse(File.ReadAllText(filepath));
+            return data.GetValue("resourceType")?.Value<string>();
         }
     }
 }

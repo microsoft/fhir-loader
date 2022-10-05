@@ -51,22 +51,25 @@ namespace FhirLoader.Tool
                     files = sourceHandler.LoadFromFilePath(opt.FolderPath, opt.BatchSize!.Value);
                 else if (opt.BlobPath is not null)
                     files = sourceHandler.LoadFromBlobPath(opt.BlobPath, opt.BatchSize!.Value);
+                else if (opt.PackagePath is not null)
+                    files = sourceHandler.LoadFromPackagePath(opt.PackagePath, opt.BatchSize!.Value);
                 else
-                    throw new ArgumentException("Either folder or blob must be inputted.");
+                    throw new ArgumentException("Either folder,package or blob must be inputted.");
+
+                // Create client and setup access token
+                var client = new FhirResourceClient(opt.FhirUrl!, _logger, opt.TenantId);
+                await client.PrefetchToken(_cancelTokenSource.Token);
+
+                // Create a bundle sender
+                Metrics.Instance.Start();
 
                 // Send bundles in parallel
                 try
                 {
-                    var client = new BundleClient(opt.FhirUrl!, _logger, opt.TenantId);
-                    await client.PrefetchToken(_cancelTokenSource.Token);
-
-                    // Create a bundle sender
-                    Metrics.Instance.Start();
-
-                    var actionBlock = new ActionBlock<ProcessedBundle>(async bundleWrapper =>
-                        {
-                            await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
-                        },
+                    var actionBlock = new ActionBlock<ProcessedResource>(async bundleWrapper =>
+                    {
+                        await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
+                    },
                        new ExecutionDataflowBlockOptions
                        {
                            MaxDegreeOfParallelism = opt.Concurrency!.Value,
@@ -121,6 +124,11 @@ namespace FhirLoader.Tool
                     });
                 }
                 Console.WriteLine($"Done! Sent {Metrics.Instance.TotalResourcesSent} resources in {(int)(Metrics.Instance.TotalTimeInMilliseconds / 1000)} seconds.");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex.Message);
+                Console.WriteLine(ex.Message);
             }
             catch (DirectoryNotFoundException)
             {
