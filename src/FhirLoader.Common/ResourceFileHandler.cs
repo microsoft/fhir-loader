@@ -4,15 +4,17 @@ using Newtonsoft.Json.Linq;
 
 namespace FhirLoader.Common
 {
-    public class ProfileFileHandler : FhirFileHandler
+    public class ResourceFileHandler : FhirFileHandler
     {
         private readonly Stream _inputStream;
+        private readonly int _resourceCount;
         private readonly ILogger _logger;
         private IEnumerable<ProcessedResource>? _bundles;
 
-        public ProfileFileHandler(Stream inputStream, string fileName, int bundleSize, ILogger logger) : base(fileName, bundleSize)
+        public ResourceFileHandler(Stream inputStream, string fileName, int resourceCount, ILogger logger) : base(fileName, resourceCount)
         {
             _inputStream = inputStream;
+            _resourceCount = resourceCount;
             _logger = logger;
         }
 
@@ -34,17 +36,17 @@ namespace FhirLoader.Common
             using (StreamReader reader = new StreamReader(_inputStream))
                 bundle = JObject.Parse(reader.ReadToEnd());
 
+            var resourceType = bundle.GetValue("resourceType")?.Value<string>();
+
             yield return new ProcessedResource
             {
                 ResourceFileName = FileName,
                 ResourceText = bundle.ToString(Formatting.Indented),
-                ResourceCount = 1,
-                ResourceType = bundle.GetValue("resourceType")?.Value<string>(),
-                IsBundle = false,
+                ResourceCount = _resourceCount,
+                ResourceType = resourceType,
+                IsBundle = resourceType == "Bundle",
                 ResourceId = bundle.GetValue("id")?.Value<string>()
             };
-
-
         }
     }
 }

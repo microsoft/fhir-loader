@@ -23,6 +23,9 @@ namespace FhirLoader.Tool
         [Option("package", Required = false, HelpText = "Package path to FHIR data to load.")]
         public string? PackagePath { get; set; }
 
+        [Option("bundle-package-files", Required = false, Default = false, HelpText = "Combine package files into bundles for faster execution.")]
+        public bool BundlePackageFiles { get; set; }
+
         [Option("fhir", Required = true, HelpText = "Base URL of your FHIR server.")]
         public string? FhirUrl { get; set; }
 

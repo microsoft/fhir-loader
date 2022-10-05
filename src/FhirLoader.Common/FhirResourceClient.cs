@@ -15,7 +15,7 @@ using Polly.Retry;
 namespace FhirLoader.Common
 {
     /// <summary>
-    /// FHIR version agnostic client for sending bundles
+    /// FHIR version agnostic client for sending FHIR Resources (bundles or plain resources)
     /// </summary>
     public class FhirResourceClient : IDisposable
     {
@@ -50,15 +50,18 @@ namespace FhirLoader.Common
             await SetAccessTokenAsync(cancel);
         }
 
-        public async Task Send(ProcessedResource processedResource, Action<int, long>? metricsCallback = null, CancellationToken? cancel = default)
+        public async Task Send(ProcessedResource processedResource, Action<int, long>? metricsCallback = null, CancellationToken cancel = default)
         {
             var content = new StringContent(processedResource.ResourceText!, Encoding.UTF8, "application/json");
             HttpResponseMessage response = new();
 
             var requestUri = processedResource.IsBundle ? string.Empty : !string.IsNullOrEmpty(processedResource.ResourceId) ? $"/{processedResource.ResourceType}/{processedResource.ResourceId}" : $"/{processedResource.ResourceType}";
 
+            // Handle access token expiration
+            _resiliencyStrategy.WrapAsync(CreateTokenRefreshPolicy());
+
             var timer = new Stopwatch();
-            int perBundleFailCount = 0;
+            int perFileFailedCount = 0;
 
             while (true)
             {
@@ -91,7 +94,7 @@ namespace FhirLoader.Common
                 }
                 catch (BrokenCircuitException bce)
                 {
-                    throw new FatalBundleClientException($"Could not contact the FHIR Endpoint due to the following error: {bce.Message}", bce);
+                    throw new FatalFhirResourceClientException($"Could not contact the FHIR Endpoint due to the following error: {bce.Message}", bce);
                 }
                 catch (TimeoutRejectedException ex)
                 {
@@ -107,7 +110,7 @@ namespace FhirLoader.Common
                 }
                 catch (Exception e)
                 {
-                    throw new FatalBundleClientException($"Critical error: {e.Message}", e);
+                    throw new FatalFhirResourceClientException($"Critical error: {e.Message}", e);
                 }
 
                 if (!response.IsSuccessStatusCode)
@@ -124,10 +127,10 @@ namespace FhirLoader.Common
                         _logger.LogError(responseString);
                     }
 
-                    perBundleFailCount++;
+                    perFileFailedCount++;
 
-                    if (perBundleFailCount >= 3)
-                        throw new FatalBundleClientException("Single bundle failed for 3 consecutive attempts.");
+                    if (perFileFailedCount >= 3)
+                        throw new FatalFhirResourceClientException("Single bundle failed for 3 consecutive attempts.");
 
                     await Task.Delay(30000);
                     continue;
@@ -139,7 +142,7 @@ namespace FhirLoader.Common
             }
 
             if (metricsCallback is not null)
-                metricsCallback(bundle.BundleCount, timer.ElapsedMilliseconds);
+                metricsCallback(processedResource.ResourceCount, timer.ElapsedMilliseconds);
 
             _logger.LogTrace("Successfully sent bundle.");
         }
@@ -245,9 +248,9 @@ namespace FhirLoader.Common
         }
     }
 
-    public class FatalBundleClientException : Exception
+    public class FatalFhirResourceClientException : Exception
     {
-        public FatalBundleClientException(string message) : base(message) { }
-        public FatalBundleClientException(string message, Exception inner) : base(message, inner) { }
+        public FatalFhirResourceClientException(string message) : base(message) { }
+        public FatalFhirResourceClientException(string message, Exception inner) : base(message, inner) { }
     }
 }
