@@ -10,12 +10,12 @@ using Polly.CircuitBreaker;
 using System.Diagnostics;
 using Newtonsoft.Json;
 using Polly.Timeout;
-
+using Polly.Retry;
 
 namespace FhirLoader.Common
 {
     /// <summary>
-    /// FHIR version agnostic client for sending bundles
+    /// FHIR version agnostic client for sending FHIR Resources (bundles or plain resources)
     /// </summary>
     public class FhirResourceClient : IDisposable
     {
@@ -24,8 +24,11 @@ namespace FhirLoader.Common
         private readonly string? _tenantId;
         AsyncPolicyWrap<HttpResponseMessage> _resiliencyStrategy;
 
-        const string METADATA_SUFFIX = "/metadata";
+        // Used to get/refresh access token across threads
+        static SemaphoreSlim _tokenSemaphore = new SemaphoreSlim(1, 1);
+        private DateTime _tokenGeneratedDateTime = DateTime.MinValue;
 
+        const string METADATA_SUFFIX = "/metadata";
         public FhirResourceClient(string baseUrl, ILogger logger, string? tenantId = null, AsyncPolicyWrap<HttpResponseMessage>? resiliencyStrategy = null)
         {
             _logger = logger;
@@ -36,89 +39,127 @@ namespace FhirLoader.Common
                 baseUrl = baseUrl.Substring(0, baseUrl.Length - METADATA_SUFFIX.Length);
 
             _client.BaseAddress = new Uri(baseUrl);
-            var accessToken = FetchToken(_tenantId);
             _client.DefaultRequestHeaders.Clear();
             _client.DefaultRequestHeaders.Accept.Clear();
-            _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken.Token}");
 
-            _resiliencyStrategy = resiliencyStrategy ?? DefaultResiliencyStrategy();
+            _resiliencyStrategy = resiliencyStrategy ?? CreateDefaultResiliencyStrategy();
         }
 
-        public async Task Send(ProcessedResource processedResource, Action<int, long>? metricsCallback = null, CancellationToken? cancel = null)
+        public async Task PrefetchToken(CancellationToken cancel = default)
+        {
+            await SetAccessTokenAsync(cancel);
+        }
+
+        public async Task Send(ProcessedResource processedResource, Action<int, long>? metricsCallback = null, CancellationToken cancel = default)
         {
             var content = new StringContent(processedResource.ResourceText!, Encoding.UTF8, "application/json");
             HttpResponseMessage response = new();
 
             var requestUri = processedResource.IsBundle ? string.Empty : !string.IsNullOrEmpty(processedResource.ResourceId) ? $"/{processedResource.ResourceType}/{processedResource.ResourceId}" : $"/{processedResource.ResourceType}";
 
-            var timer = new Stopwatch();
-            timer.Start();
+            // Handle access token expiration
+            _resiliencyStrategy.WrapAsync(CreateTokenRefreshPolicy());
 
-            try
+            var timer = new Stopwatch();
+            int perFileFailedCount = 0;
+
+            while (true)
             {
-                _logger.LogTrace($"Sending resource type {processedResource.ResourceType} having {processedResource.ResourceCount} resources to {_client.BaseAddress}...");
+
+                timer.Start();
+
+                try
+                {
+                    _logger.LogTrace($"Sending resource type {processedResource.ResourceType} having {processedResource.ResourceCount} resources to {_client.BaseAddress}...");
 
                 if (!string.IsNullOrEmpty(processedResource.ResourceId) && !processedResource.IsBundle)
                 {
                     response = await _resiliencyStrategy.ExecuteAsync(
-                    async ct => await _client.PutAsync(requestUri, content, ct),
-                    cancellationToken: cancel ?? CancellationToken.None
-                      );
+                        async ct => await _client.PutAsync(requestUri, content, ct),
+                        cancellationToken: cancel
+                    );
                 }
                 else
                 {
                     response = await _resiliencyStrategy.ExecuteAsync(
-                   async ct => await _client.PostAsync(requestUri, content, ct),
-                   cancellationToken: cancel ?? CancellationToken.None
-                     );
+                        async ct => await _client.PostAsync(requestUri, content, ct),
+                        cancellationToken: cancel
+                    );
                 }
 
-            }
-            catch (TaskCanceledException tcex)
-            {
-                throw tcex;
-            }
-            catch (BrokenCircuitException bce)
-            {
-                throw new FatalBundleClientException($"Could not contact the FHIR Endpoint due to the following error: {bce.Message}", bce);
-            }
-            catch (Exception e)
-            {
-                throw new FatalBundleClientException($"Critical error: {e.Message}", e);
-            }
-
-            timer.Stop();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError($"Could not send bundle due to error from server: {response.StatusCode}");
-                var responseString = await response.Content.ReadAsStringAsync() ?? "{}";
-                try
+                }
+                catch (TaskCanceledException tcex)
                 {
-                    _logger.LogError(JObject.Parse(responseString).ToString(Formatting.Indented));
+                    throw tcex;
                 }
-                catch (JsonReaderException)
+                catch (BrokenCircuitException bce)
                 {
-                    _logger.LogError(responseString);
+                    throw new FatalFhirResourceClientException($"Could not contact the FHIR Endpoint due to the following error: {bce.Message}", bce);
                 }
-            }
-            else
-            {
-                if (metricsCallback is not null)
-                    metricsCallback(processedResource.ResourceCount, timer.ElapsedMilliseconds);
+                catch (TimeoutRejectedException ex)
+                {
+                    _logger.LogWarning("Maximum client timeout reached, delaying and retrying...");
+                    await Task.Delay(30000);
+                    continue;
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogWarning("Network error encountered, delaying and retrying...");
+                    await Task.Delay(30000);
+                    continue;
+                }
+                catch (Exception e)
+                {
+                    throw new FatalFhirResourceClientException($"Critical error: {e.Message}", e);
+                }
 
-                _logger.LogTrace("Successfully sent bundle.");
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError($"Could not send resource(s) due to error from server: {response.StatusCode}. Adding request back to queue...");
+                    var responseString = await response.Content.ReadAsStringAsync() ?? "{}";
+                    try
+                    {
+                        var responseObject = JObject.Parse(responseString);
+                        _logger.LogError(responseObject.ToString(Formatting.Indented));
+                    }
+                    catch (JsonReaderException)
+                    {
+                        _logger.LogError(responseString);
+                    }
+
+                    perFileFailedCount++;
+
+                    if (perFileFailedCount >= 3)
+                        throw new FatalFhirResourceClientException("Single bundle failed for 3 consecutive attempts.");
+
+                    await Task.Delay(30000);
+                    continue;
+                }
+
+                timer.Stop();
+                break;
+
             }
+
+            if (metricsCallback is not null)
+                metricsCallback(processedResource.ResourceCount, timer.ElapsedMilliseconds);
+
+            _logger.LogTrace("Successfully sent bundle.");
         }
 
-        private AccessToken FetchToken(string? tenantId = null)
+        private async Task<AccessToken> SetAccessTokenAsync(CancellationToken cancel = default)
         {
             _logger.LogInformation($"Attempting to get access token for {_client.BaseAddress}...");
 
             string[] scopes = new string[] { $"{_client.BaseAddress}/.default" };
-            TokenRequestContext tokenRequestContext = new TokenRequestContext(scopes: scopes, tenantId: tenantId);
+            TokenRequestContext tokenRequestContext = new TokenRequestContext(scopes: scopes, tenantId: _tenantId);
             var credential = new DefaultAzureCredential(true);
-            var token = credential.GetToken(tokenRequestContext);
+
+            var token = await credential.GetTokenAsync(tokenRequestContext, cancel);
+
+            _client.DefaultRequestHeaders.Remove("Authorization");
+            _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token.Token}");
+            _tokenGeneratedDateTime = DateTime.UtcNow;
 
             _logger.LogInformation($"Got token for FHIR server {_client.BaseAddress}!");
             return token;
@@ -129,7 +170,7 @@ namespace FhirLoader.Common
             _client.Dispose();
         }
 
-        public AsyncPolicyWrap<HttpResponseMessage> DefaultResiliencyStrategy()
+        public AsyncPolicyWrap<HttpResponseMessage> CreateDefaultResiliencyStrategy()
         {
             var rnd = new Random();
 
@@ -152,7 +193,7 @@ namespace FhirLoader.Common
                     }
                 );
 
-            // Define our first CircuitBreaker policy: Break if the action fails 4 times in a row.
+            // Define our first CircuitBreaker policy: Break if the action fails 5 times in a row.
             // This is designed to handle Exceptions from the FHIR API, as well as
             // a number of recoverable status messages, such as 500, 502, and 504.
             var circuitBreakerPolicyForRecoverable = Policy
@@ -160,18 +201,19 @@ namespace FhirLoader.Common
                 .Or<TimeoutRejectedException>()
                 .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
                 .CircuitBreakerAsync(
-                    handledEventsAllowedBeforeBreaking: 3,
-                    durationOfBreak: TimeSpan.FromSeconds(30),
+                    handledEventsAllowedBeforeBreaking: 6,
+                    durationOfBreak: TimeSpan.FromSeconds(60),
                     onBreak: (outcome, breakDelay) =>
                     {
-                        _logger.LogWarning($"Polly Circuit Breaker logging: Breaking the circuit for {breakDelay.TotalMilliseconds}ms due to: {outcome.Exception?.Message ?? outcome.Result.StatusCode.ToString()}");
+                        _logger.LogWarning($"Polly Circuit Breaker logging: Breaking the circuit for {breakDelay.TotalMilliseconds}ms due to response {outcome.Result.ToString()}. More Details: {outcome.Exception?.Message}");
                     },
                     onReset: () => _logger.LogWarning("Polly Circuit Breaker logging: Call ok... closed the circuit again"),
                     onHalfOpen: () => _logger.LogWarning("Polly Circuit Breaker logging: Half-open: Next call is a trial")
                 );
 
+            // Timeout before HttpClient timeout of 100ms
             var timeoutPolicy = Policy.TimeoutAsync<HttpResponseMessage>(
-                TimeSpan.FromSeconds(60),
+                TimeSpan.FromSeconds(95),
                 Polly.Timeout.TimeoutStrategy.Optimistic
             );
 
@@ -180,11 +222,35 @@ namespace FhirLoader.Common
 
             return Policy.WrapAsync(waitAndRetryPolicy, circuitBreakerWrappingTimeout);
         }
+
+        private AsyncRetryPolicy<HttpResponseMessage> CreateTokenRefreshPolicy()
+        {
+            var policy = Policy
+                .HandleResult<HttpResponseMessage>(message => message.StatusCode == HttpStatusCode.Unauthorized)
+                .RetryAsync(1, async (result, retryCount, context) =>
+                {
+                    await _tokenSemaphore.WaitAsync();
+                    try
+                    {
+                        if (DateTime.UtcNow > _tokenGeneratedDateTime.AddSeconds(100))
+                        {
+                            // #TODO - add cancel token
+                            await SetAccessTokenAsync();
+                        }
+                    }
+                    finally
+                    {
+                        _tokenSemaphore.Release();
+                    }
+                });
+
+            return policy;
+        }
     }
 
-    public class FatalBundleClientException : Exception
+    public class FatalFhirResourceClientException : Exception
     {
-        public FatalBundleClientException(string message) : base(message) { }
-        public FatalBundleClientException(string message, Exception inner) : base(message, inner) { }
+        public FatalFhirResourceClientException(string message) : base(message) { }
+        public FatalFhirResourceClientException(string message, Exception inner) : base(message, inner) { }
     }
 }

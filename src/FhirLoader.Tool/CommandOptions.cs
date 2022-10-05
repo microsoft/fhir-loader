@@ -12,7 +12,7 @@ namespace FhirLoader.Tool
 
         private const string CONCURRENCY_MIN = "1";
         private const string CONCURRENCY_MAX = "50";
-        private const string DEFAULT_CONCURRENCY = "3";
+        private const string DEFAULT_CONCURRENCY = "8";
 
         [Option("folder", Required = false, HelpText = "Folder path to FHIR data to load.")]
         public string? FolderPath { get; set; }
@@ -22,6 +22,9 @@ namespace FhirLoader.Tool
 
         [Option("package", Required = false, HelpText = "Package path to FHIR data to load.")]
         public string? PackagePath { get; set; }
+
+        [Option("bundle-package-files", Required = false, Default = false, HelpText = "Combine package files into bundles for faster execution.")]
+        public bool BundlePackageFiles { get; set; }
 
         [Option("fhir", Required = true, HelpText = "Base URL of your FHIR server.")]
         public string? FhirUrl { get; set; }

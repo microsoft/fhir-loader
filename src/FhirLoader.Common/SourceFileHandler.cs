@@ -1,7 +1,9 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Text;
 
 namespace FhirLoader.Common
 {
@@ -81,7 +83,7 @@ namespace FhirLoader.Common
             }
         }
 
-        public IEnumerable<FhirFileHandler> LoadFromPackagePath(string packagePath, int bundleSize)
+        public IEnumerable<FhirFileHandler> LoadFromPackagePath(string packagePath, int bundleSize, bool bundlePackageFiles)
         {
             _logger.LogInformation($"Searching {packagePath} for FHIR files.");
 
@@ -99,16 +101,55 @@ namespace FhirLoader.Common
                 throw new ArgumentException($"Package type {packageType} is not valid. Skipping the loading process.");
             }
 
-            var inputBundles = helper.GetPackageFiles();
+            var packageFiles = helper.GetPackageFiles();
 
-            _logger.LogInformation($"Found {inputBundles.Count} FHIR bundles.");
-
-            foreach (var filePath in inputBundles.OrderBy(x => x))
+            // Test code to determine if we can optimize creation of package resources
+            if (bundlePackageFiles)
             {
-                var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-                var safeFileStream = Stream.Synchronized(fileStream);
-                yield return new ProfileFileHandler(safeFileStream, filePath, bundleSize, _logger);
+                _logger.LogInformation($"Found {packageFiles.Count} FHIR package files. Sending in bundles...");
 
+                while (true)
+                {
+                    var fileChunk = packageFiles.OrderBy(x => x).Take(bundleSize);
+                    packageFiles = packageFiles.Skip(bundleSize).ToList();
+
+                    if (fileChunk.Count() == 0)
+                        break;
+
+                    var resourcesAsBundle = JObject.FromObject(new
+                    {
+                        resourceType = "Bundle",
+                        type = "batch",
+                        entry =
+                        from r in fileChunk.Select(x => JObject.Parse(File.ReadAllText(x)))
+                        select new
+                        {
+                            resource = r,
+                            request = new
+                            {
+                                method = r.SelectToken("id") is not null ? "PUT" : "POST",
+                                url = r.SelectToken("id") is not null ? $"{r["resourceType"]}/{r["id"]}" : r["resourceType"]
+                            }
+                        }
+                    });
+
+                    // Convert compiled bundle to stream
+                    // #TODO - can write to temp path on disk until it's ready to send
+                    byte[] byteArray = Encoding.UTF8.GetBytes(resourcesAsBundle.ToString());
+                    MemoryStream stream = new MemoryStream(byteArray);
+                    yield return new ResourceFileHandler(stream, String.Join(',', fileChunk), fileChunk.Count(), _logger);
+                }
+            }
+            else
+            {
+                _logger.LogInformation($"Found {packageFiles.Count} FHIR package files. Sending as individual resources...");
+                foreach (var filePath in packageFiles.OrderBy(x => x))
+                {
+                    var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                    var safeFileStream = Stream.Synchronized(fileStream);
+                    yield return new ResourceFileHandler(safeFileStream, filePath, 1, _logger);
+
+                }
             }
         }
 

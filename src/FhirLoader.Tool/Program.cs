@@ -52,11 +52,13 @@ namespace FhirLoader.Tool
                 else if (opt.BlobPath is not null)
                     files = sourceHandler.LoadFromBlobPath(opt.BlobPath, opt.BatchSize!.Value);
                 else if (opt.PackagePath is not null)
-                    files = sourceHandler.LoadFromPackagePath(opt.PackagePath, opt.BatchSize!.Value);
+                    files = sourceHandler.LoadFromPackagePath(opt.PackagePath, opt.BatchSize!.Value, opt.BundlePackageFiles);
                 else
                     throw new ArgumentException("Either folder,package or blob must be inputted.");
 
+                // Create client and setup access token
                 var client = new FhirResourceClient(opt.FhirUrl!, _logger, opt.TenantId);
+                await client.PrefetchToken(_cancelTokenSource.Token);
 
                 // Create a bundle sender
                 Metrics.Instance.Start();
@@ -97,11 +99,11 @@ namespace FhirLoader.Tool
                     actionBlock.Complete();
                     await actionBlock.Completion.WaitAsync(_cancelTokenSource.Token);
                 }
-                catch (TaskCanceledException)
+                catch (Exception ex) when (ex is TaskCanceledException || ex is OperationCanceledException)
                 {
                     _logger.LogWarning("Exiting...");
                 }
-                catch (FatalBundleClientException ex)
+                catch (FatalFhirResourceClientException ex)
                 {
                     if (ex.InnerException is not TaskCanceledException)
                     {
