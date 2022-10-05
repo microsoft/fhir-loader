@@ -54,14 +54,15 @@ namespace FhirLoader.Tool
                 else
                     throw new ArgumentException("Either folder or blob must be inputted.");
 
-                var client = new BundleClient(opt.FhirUrl!, _logger, opt.TenantId);
-
-                // Create a bundle sender
-                Metrics.Instance.Start();
-
                 // Send bundles in parallel
                 try
                 {
+                    var client = new BundleClient(opt.FhirUrl!, _logger, opt.TenantId);
+                    await client.PrefetchToken(_cancelTokenSource.Token);
+
+                    // Create a bundle sender
+                    Metrics.Instance.Start();
+
                     var actionBlock = new ActionBlock<ProcessedBundle>(async bundleWrapper =>
                         {
                             await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
@@ -95,7 +96,7 @@ namespace FhirLoader.Tool
                     actionBlock.Complete();
                     await actionBlock.Completion.WaitAsync(_cancelTokenSource.Token);
                 }
-                catch (TaskCanceledException)
+                catch (Exception ex) when (ex is TaskCanceledException || ex is OperationCanceledException)
                 {
                     _logger.LogWarning("Exiting...");
                 }

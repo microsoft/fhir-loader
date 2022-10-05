@@ -12,7 +12,7 @@ namespace FhirLoader.Tool
 
         private const string CONCURRENCY_MIN = "1";
         private const string CONCURRENCY_MAX = "50";
-        private const string DEFAULT_CONCURRENCY = "3";
+        private const string DEFAULT_CONCURRENCY = "8";
 
         [Option("folder", Required = false, HelpText = "Folder path to FHIR data to load.")]
         public string? FolderPath { get; set; }
