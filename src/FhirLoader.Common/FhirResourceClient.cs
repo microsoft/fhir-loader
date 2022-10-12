@@ -29,7 +29,7 @@ namespace FhirLoader.Common
         private DateTime _tokenGeneratedDateTime = DateTime.MinValue;
 
         const string METADATA_SUFFIX = "/metadata";
-        public FhirResourceClient(string baseUrl, ILogger logger, string? tenantId = null, AsyncPolicyWrap<HttpResponseMessage>? resiliencyStrategy = null)
+        public FhirResourceClient(string baseUrl, int expectedParallelRequests, ILogger logger, string? tenantId = null)
         {
             _logger = logger;
             _client = new HttpClient();
@@ -42,7 +42,7 @@ namespace FhirLoader.Common
             _client.DefaultRequestHeaders.Clear();
             _client.DefaultRequestHeaders.Accept.Clear();
 
-            _resiliencyStrategy = resiliencyStrategy ?? CreateDefaultResiliencyStrategy();
+            _resiliencyStrategy = CreateDefaultResiliencyStrategy(expectedParallelRequests);
         }
 
         public async Task PrefetchToken(CancellationToken cancel = default)
@@ -56,9 +56,6 @@ namespace FhirLoader.Common
             HttpResponseMessage response = new();
 
             var requestUri = processedResource.IsBundle ? string.Empty : !string.IsNullOrEmpty(processedResource.ResourceId) ? $"/{processedResource.ResourceType}/{processedResource.ResourceId}" : $"/{processedResource.ResourceType}";
-
-            // Handle access token expiration
-            _resiliencyStrategy.WrapAsync(CreateTokenRefreshPolicy());
 
             var timer = new Stopwatch();
             int perFileFailedCount = 0;
@@ -170,7 +167,7 @@ namespace FhirLoader.Common
             _client.Dispose();
         }
 
-        public AsyncPolicyWrap<HttpResponseMessage> CreateDefaultResiliencyStrategy()
+        public AsyncPolicyWrap<HttpResponseMessage> CreateDefaultResiliencyStrategy(int expectedParallelRequests)
         {
             var rnd = new Random();
 
@@ -184,9 +181,8 @@ namespace FhirLoader.Common
             // Define our waitAndRetry policy: retry n times with an exponential backoff in case the FHIR API throttles us for too many requests.
             var waitAndRetryPolicy = Policy
                 .HandleResult<HttpResponseMessage>(e => e.StatusCode == HttpStatusCode.ServiceUnavailable || e.StatusCode == (HttpStatusCode)429 || e.StatusCode == HttpStatusCode.TooManyRequests)
-                .WaitAndRetryAsync(5, // Retry 5 times with a delay between retries before ultimately giving up
-                    attempt => TimeSpan.FromMilliseconds((500 * rnd.Next(8)) * Math.Pow(2, attempt)), // Back off!  2, 4, 8, 16 etc times 2 seconds plus a random number
-                                                                                                      //attempt => TimeSpan.FromSeconds(6), // Wait 6 seconds between retries
+                .WaitAndRetryAsync(expectedParallelRequests * 3,
+                    attempt => TimeSpan.FromMilliseconds((500 * rnd.Next(8)) * Math.Pow(2, attempt)),
                     (exception, calculatedWaitDuration) =>
                     {
                         _logger.LogWarning($"FHIR API server throttling our requests. Automatically delaying for {calculatedWaitDuration.TotalMilliseconds / 1000} seconds");
@@ -201,7 +197,7 @@ namespace FhirLoader.Common
                 .Or<TimeoutRejectedException>()
                 .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
                 .CircuitBreakerAsync(
-                    handledEventsAllowedBeforeBreaking: 6,
+                    handledEventsAllowedBeforeBreaking: 3 * expectedParallelRequests,
                     durationOfBreak: TimeSpan.FromSeconds(60),
                     onBreak: (outcome, breakDelay) =>
                     {
@@ -220,14 +216,9 @@ namespace FhirLoader.Common
             var circuitBreakerWrappingTimeout = circuitBreakerPolicyForRecoverable.
                 WrapAsync(timeoutPolicy);
 
-            return Policy.WrapAsync(waitAndRetryPolicy, circuitBreakerWrappingTimeout);
-        }
-
-        private AsyncRetryPolicy<HttpResponseMessage> CreateTokenRefreshPolicy()
-        {
-            var policy = Policy
+            var tokenRefreshPolicy = Policy
                 .HandleResult<HttpResponseMessage>(message => message.StatusCode == HttpStatusCode.Unauthorized)
-                .RetryAsync(1, async (result, retryCount, context) =>
+                .RetryAsync(1 * expectedParallelRequests, async (result, retryCount, context) =>
                 {
                     await _tokenSemaphore.WaitAsync();
                     try
@@ -244,7 +235,7 @@ namespace FhirLoader.Common
                     }
                 });
 
-            return policy;
+            return Policy.WrapAsync(waitAndRetryPolicy, circuitBreakerWrappingTimeout, tokenRefreshPolicy);
         }
     }
 
