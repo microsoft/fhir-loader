@@ -38,6 +38,8 @@ Use the below command to install the files using npm.
 npm --registry "your npm package path"
 ```
 
+This tool will read all the files from the above given location. If any error occurs while reading the file to the FHIR server, it will skip that file, print the warning, and process the next file.
+
 ### Authentication
 
 This tool will attempt to pull your authorization context from the Azure CLI. If it cannot be found, it will open a web browser to attempt to authenticate. The tool uses [DefaultAzureCredential](https://docs.microsoft.com/dotnet/api/azure.identity.defaultazurecredential?view=azure-dotnet).
