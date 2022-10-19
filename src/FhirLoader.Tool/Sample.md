@@ -11,9 +11,9 @@
  * Open that directory in Command Prompt.
  * Run this below command in cmd.
 
-     ```sh
-     npm --registry https://packages.simplifier.net install hl7.fhir.us.core@4.1.0
-     ```
+ ```sh
+ npm --registry https://packages.simplifier.net install hl7.fhir.us.core@4.1.0
+ ```
 
  * It will download all the Us Core Files.
  
@@ -45,7 +45,7 @@ To learn more about .index.json and package.json, please refer to this ![link](h
 
 Once the process is finished and if any searchparamater file posted to fhir server, a question will prompt to console says ,
    
-``sh
+```sh
 Do you want loader to submit reindex ?
 ```
 
