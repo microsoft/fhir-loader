@@ -3,7 +3,7 @@
   The below steps will help you to understand how you can set up and send the US Core profiles to fhir server.
 
 
-## Implementation steps
+## Implementation Steps
 
  Let's say you want to upload the US Core profile to the Fhir server. so, as a first step, you will download the US Core package to your local folder.
 
@@ -52,7 +52,7 @@ Do you want loader to submit reindex ?
 if yes, it will reindex and propmt a url with reindex id.This will help you check the status of reindex job.
 if no, it will print the messsages as shown in last two point.
 
-Please click on this ![Link](https://learn.microsoft.com/en-us/azure/healthcare-apis/fhir/how-to-run-a-reindex) to understand more about reindex.
+Please click on this [link](https://learn.microsoft.com/en-us/azure/healthcare-apis/fhir/how-to-run-a-reindex) to understand more about reindex.
 
 If any error occurs during the process, it will be printed on the console window.
 At the end of the process, it will print the message with how many resources are posted to the server.
