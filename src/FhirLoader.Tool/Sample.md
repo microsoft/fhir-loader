@@ -17,13 +17,13 @@
 
  * It will download all the Us Core Files.
  
- Now execute the following command to send the US Core files to the Fhir server. 
+ Now execute the following command to send the US Core files to the Fhir server.Â 
 
  ```sh
  microsoft-fhir-loader --package "Your directory path" --fhir "your fhir server url"
  ```
   
- Once this process is started, it will first check if the package.json and  .index.json files exist or not. If it's not in the folder, it shows the below error.
+ Once this process is started, it will first check if the package.json andÂ  .index.json files exist or not. If it's not in the folder, it shows the below error.
 
  ```sh
 Provided package path does not have .index.json and/or package.json file. Skipping the loading process.
@@ -40,19 +40,20 @@ To learn more about .index.json and package.json, please refer to this [link](ht
  If all validations are successful, then it reads all the profile file names from the.index.json file. 
  
  While reading the files,
-   * If it's  SearchParameter file, then the process will check if the file is already posted on the server or not. All posted files will be skipped and the rest of the files will be posted to the server.
+   * If it's Â SearchParameter file, then the process will check if the file is already posted on the server or not. All posted files will be skipped and the rest of the files will be posted to the server.
    * Other files will be directly posted to the file server.
 
-Once the process is finished and if any searchparamater file posted to fhir server, a question will prompt to console says ,
+Once the process is finished, if any searchparamater files were posted to fhir server, you may need to run a reindex job so that the new search parameters can be useed. Learn more [here](https://learn.microsoft.com/en-us/azure/healthcare-apis/fhir/how-to-run-a-reindex) about reindex.
+
+A question will prompt to console that says ,
    
 ```sh
 Do you want loader to submit reindex ?
 ```
 
-if yes, it will reindex and propmt a url with reindex id.This will help you check the status of reindex job.
-if no, it will print the messsages as shown in last two point.
+If you click yes, it will reindex and show a url with reindex id. You can then navigate to this URL to check on the status of the reindex job.
+If you click no, it will print the messsages as shown in last two bullets.
 
-Please click on this [link](https://learn.microsoft.com/en-us/azure/healthcare-apis/fhir/how-to-run-a-reindex) to understand more about reindex.
 
 If any error occurs during the process, it will be printed on the console window.
 At the end of the process, it will print the message with how many resources are posted to the server.
