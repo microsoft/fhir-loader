@@ -35,7 +35,7 @@ Provided package path does not have .index.json and/or package.json file. Skippi
 Package type is not valid. Skipping the loading process.
 ```
     
-To learn more about .index.json and package.json, please refer to this ![link](https://confluence.hl7.org/pages/viewpage.action?pageId=35718629#NPMPackageSpecification-Packagemanifest)   
+To learn more about .index.json and package.json, please refer to this [link](https://confluence.hl7.org/pages/viewpage.action?pageId=35718629#NPMPackageSpecification-Packagemanifest)   
   
  If all validations are successful, then it reads all the profile file names from the.index.json file. 
  
