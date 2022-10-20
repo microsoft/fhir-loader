@@ -1,7 +1,6 @@
 ﻿using Microsoft.Azure.Services.AppAuthentication;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;

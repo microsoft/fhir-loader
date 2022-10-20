@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
 using System;
 using Newtonsoft.Json.Linq;
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
@@ -13,6 +14,19 @@ using System.Collections.Concurrent;
 
 namespace FHIRBulkImport
 {
+    public enum BundleType
+    {
+        NotAValidBundle,
+        Document,
+        Message,
+        Transaction,
+        TransactionResponse,
+        Batch,
+        BatchResponse,
+        History,
+        SearchSet,
+        Collection
+    }
     public static class FHIRUtils
     {
         private static ConcurrentDictionary<string,string> _tokens = new ConcurrentDictionary<string, string>();
@@ -50,9 +64,10 @@ namespace FHIRBulkImport
                 .WaitAndRetryAsync(Utils.GetIntEnvironmentVariable("FBI-POLLY-MAXRETRIES","3"), retryAttempt =>
                    TimeSpan.FromMilliseconds(Utils.GetIntEnvironmentVariable("FBI-POLLY-RETRYMS", "500")), (result, timeSpan, retryCount, context) =>
                    {
-                       log.LogWarning($"FHIR Request failed. Waiting {timeSpan} before next retry. Retry attempt {retryCount}");
-                    }
+                       log.LogWarning($"FHIR Request failed on a retryable status...Waiting {timeSpan} before next retry. Attempt {retryCount}");
+                   }
                 );
+            
             HttpResponseMessage _fhirResponse =
             await retryPolicy.ExecuteAsync(async () =>
             {
@@ -68,80 +83,172 @@ namespace FHIRBulkImport
             });
             return await FHIRResponse.FromHttpResponseMessage(_fhirResponse, log);
         }
-        public static string TransformBundle(string requestBody, ILogger log)
+        public static BundleType DetermineBundleType(string trtext,ILogger log)
         {
-            JObject result = JObject.Parse(requestBody);
-            if (result == null || result["resourceType"] == null || result["type"] == null) return requestBody;
-            string rtt = result.FHIRResourceType();
-            string bt = (string)result["type"];
-            if (rtt.Equals("Bundle") && bt.Equals("transaction"))
+            try
             {
-                log.LogInformation($"TransformBundleProcess: looks like a valid transaction bundle");
-                JArray entries = (JArray)result["entry"];
-                if (entries.IsNullOrEmpty()) return result.ToString();
-                log.LogInformation($"TransformBundleProcess: Phase 1 searching for existing entries on FHIR Server...");
-                foreach (JToken tok in entries)
+                using (var jsonDoc = JsonDocument.Parse(trtext))
                 {
-                    if (!tok.IsNullOrEmpty() && tok["request"]["ifNoneExist"] != null)
+                    if (jsonDoc.RootElement.TryGetProperty("resourceType", out JsonElement rt))
                     {
-                        string resource = (string)tok["request"]["url"];
-                        string query = (string)tok["request"]["ifNoneExist"];
-                        log.LogInformation($"TransformBundleProcess:Loading Resource {resource} with query {query}");
-                        var r = FHIRUtils.CallFHIRServer($"{resource}?{query}", "", HttpMethod.Get, log).Result;
-                        if (r.Success && r.Content !=null)
+                        if (rt.GetString().Equals("Bundle"))
                         {
-                            var rs = JObject.Parse(r.Content);
-                            if (!rs.IsNullOrEmpty() && ((string)rs["resourceType"]).Equals("Bundle") && !rs["entry"].IsNullOrEmpty())
+                            if (jsonDoc.RootElement.TryGetProperty("type", out JsonElement bt))
                             {
-                                JArray respentries = (JArray)rs["entry"];
-                                string existingid = "urn:uuid:" + (string)respentries[0]["resource"]["id"];
-                                tok["fullUrl"] = existingid;
+                                switch (bt.GetString())
+                                {
+                                    case "document":
+                                        return BundleType.Document;
+                                    case "message":
+                                        return BundleType.Message;
+                                    case "transaction":
+                                        return BundleType.Transaction;
+                                    case "transaction-response":
+                                        return BundleType.TransactionResponse;
+                                    case "batch":
+                                        return BundleType.Batch;
+                                    case "batch-response":
+                                        return BundleType.BatchResponse;
+                                    case "history":
+                                        return BundleType.History;
+                                    case "searchset":
+                                        return BundleType.SearchSet;
+                                    case "collection":
+                                        return BundleType.Collection;
+                                    default:
+                                        return BundleType.NotAValidBundle;
+                                }
                             }
                         }
                     }
-                }
-                //reparse JSON with replacement of existing ids prepare to convert to Batch bundle with PUT to maintain relationships
-                Dictionary<string, string> convert = new Dictionary<string, string>();
-                result["type"] = "batch";
-                entries = (JArray)result["entry"];
-                foreach (JToken tok in entries)
-                {
-                    string urn = (string)tok["fullUrl"];
-                    if (!string.IsNullOrEmpty(urn) && !tok["resource"].IsNullOrEmpty())
-                    {
-                        string rt = (string)tok["resource"]["resourceType"];
-                        string rid = urn.Replace("urn:uuid:", "");
-                        tok["resource"]["id"] = rid;
-                        if (!convert.TryAdd(rid, rt))
-                        {
-                            //Duplicate catch
-                            Guid g = Guid.NewGuid();
-                            rid = g.ToString();
-                            tok["resource"]["id"] = rid;
-
-                        }
-                        tok["request"]["method"] = "PUT";
-                        tok["request"]["url"] = $"{rt}?_id={rid}";
-                    }
 
                 }
-                log.LogInformation($"TransformBundleProcess: Phase 2 Localizing {convert.Count} resource entries...");
-                IEnumerable<JToken> refs = result.SelectTokens("$..reference");
-                foreach (JToken item in refs)
-                {
-                    string s = item.ToString();
-                    string t = "";
-                    s = s.Replace("urn:uuid:", "");
-
-                    if (convert.TryGetValue(s, out t))
-                    {
-                        item.Replace(t + "/" + s);
-                    }
-                }
-                log.LogInformation($"TransformBundleProcess: Complete.");
-                return result.ToString();
+                return BundleType.NotAValidBundle;
             }
-            return requestBody;
+            catch (Exception e)
+            {
+                log.LogError($"DetermineBundleType: Unhandled Exception {e.Message}\r\n{e.StackTrace}");
+                return BundleType.NotAValidBundle;
+            }
+        }
+        public static string[] SplitBundle(string requestBody, string originname, ILogger log)
+        {
+            List<string> retVal = new List<string>();
+            JObject result = JObject.Parse(requestBody);
+            if (result == null || result["resourceType"] == null || result["type"] == null) return new string[] { requestBody };
+            string rtt = result.FHIRResourceType();
+            string bt = (string)result["type"];
+            if (rtt.Equals("Bundle"))
+            {
+                JArray entries = (JArray)result["entry"];
+                int mbs = Utils.GetIntEnvironmentVariable("FBI-MAXBUNDLESIZE", "500");
+                if (entries.Count > mbs)
+                {
+                    if (bt.Equals("batch"))
+                    {
+                        log.LogInformation($"SplitBundle: Bundle {originname} is a batch bundle that contains {entries.Count} resources splitting...");
+                        int numbundles = 1;
+                        int numentries = 0;
+                        JObject bundle = ImportNDJSON.initBundle();
+                        JArray newentries = (JArray)bundle["entry"];
+                        foreach (JToken t in entries)
+                        {
+                            newentries.Add(t);
+                            numentries++;
+                            if (numentries>=mbs)
+                            {
+                                retVal.Add(bundle.ToString(Newtonsoft.Json.Formatting.None));
+                                bundle = null;
+                                bundle = ImportNDJSON.initBundle();
+                                newentries = (JArray)bundle["entry"];
+                                numentries = 0;
+                                numbundles++;
+                            }
+                        }
+                        if (numentries > 0)
+                        {
+                            retVal.Add(bundle.ToString(Newtonsoft.Json.Formatting.None));
+                        }
+                        log.LogInformation($"SplitBundle: Bundle {originname} was split into {numbundles} bundles...");
+                        return retVal.ToArray();
+                    }
+                    else
+                    {
+                        log.LogWarning($"SplitBundle: Bundle {originname} is a non-batch bundle that contains {entries.Count} resources unable to split...");
+                    }
+
+                } 
+            }
+            retVal.Add(result.ToString(Newtonsoft.Json.Formatting.None));
+            return retVal.ToArray();
+        }
+        public static string TransformBundle(string requestBody, ILogger log)
+        {
+            JObject result = JObject.Parse(requestBody);
+            log.LogInformation($"TransformBundleProcess: looks like a valid transaction bundle");
+            JArray entries = (JArray)result["entry"];
+            if (entries.IsNullOrEmpty()) return result.ToString();
+            log.LogInformation($"TransformBundleProcess: Phase 1 searching for existing entries on FHIR Server...");
+            foreach (JToken tok in entries)
+            {
+                if (!tok.IsNullOrEmpty() && tok["request"]["ifNoneExist"] != null)
+                {
+                    string resource = (string)tok["request"]["url"];
+                    string query = (string)tok["request"]["ifNoneExist"];
+                    log.LogInformation($"TransformBundleProcess:Loading Resource {resource} with query {query}");
+                    var r = FHIRUtils.CallFHIRServer($"{resource}?{query}", "", HttpMethod.Get, log).Result;
+                    if (r.Success && r.Content !=null)
+                    {
+                        var rs = JObject.Parse(r.Content);
+                        if (!rs.IsNullOrEmpty() && ((string)rs["resourceType"]).Equals("Bundle") && !rs["entry"].IsNullOrEmpty())
+                        {
+                            JArray respentries = (JArray)rs["entry"];
+                            string existingid = "urn:uuid:" + (string)respentries[0]["resource"]["id"];
+                            tok["fullUrl"] = existingid;
+                        }
+                    }
+                }
+            }
+            //reparse JSON with replacement of existing ids prepare to convert to Batch bundle with PUT to maintain relationships
+            Dictionary<string, string> convert = new Dictionary<string, string>();
+            result["type"] = "batch";
+            entries = (JArray)result["entry"];
+            foreach (JToken tok in entries)
+            {
+                string urn = (string)tok["fullUrl"];
+                if (!string.IsNullOrEmpty(urn) && !tok["resource"].IsNullOrEmpty())
+                {
+                    string rt = (string)tok["resource"]["resourceType"];
+                    string rid = urn.Replace("urn:uuid:", "");
+                    tok["resource"]["id"] = rid;
+                    if (!convert.TryAdd(rid, rt))
+                    {
+                        //Duplicate catch
+                        Guid g = Guid.NewGuid();
+                        rid = g.ToString();
+                        tok["resource"]["id"] = rid;
+
+                    }
+                    tok["request"]["method"] = "PUT";
+                    tok["request"]["url"] = $"{rt}?_id={rid}";
+                }
+
+            }
+            log.LogInformation($"TransformBundleProcess: Phase 2 Localizing {convert.Count} resource entries...");
+            IEnumerable<JToken> refs = result.SelectTokens("$..reference");
+            foreach (JToken item in refs)
+            {
+                string s = item.ToString();
+                string t = "";
+                s = s.Replace("urn:uuid:", "");
+
+                if (convert.TryGetValue(s, out t))
+                {
+                    item.Replace(t + "/" + s);
+                }
+            }
+            log.LogInformation($"TransformBundleProcess: Complete.");
+            return result.ToString();
         }
     }
     public class FHIRResponse {

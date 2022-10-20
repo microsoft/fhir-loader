@@ -1,10 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 using System;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FHIRBulkImport
@@ -13,53 +14,115 @@ namespace FHIRBulkImport
     {
         public static async Task ImportBundle(Stream myBlob, string name, ILogger log)
         {
-            bool trbundles = true;
-            string strbundles = System.Environment.GetEnvironmentVariable("FBI-TRANSFORMBUNDLES");
-            if (!string.IsNullOrEmpty(strbundles) && (strbundles.ToLower().Equals("no") || strbundles.ToLower().Equals("false"))) trbundles = false;
+            bool trbundles = Utils.GetBoolEnvironmentVariable("FBI-TRANSFORMBUNDLES", true);
             if (myBlob == null) return;
-            log.LogInformation($"ImportFHIRBUndles: Processing file Name:{name} \n Size: {myBlob.Length}");
+            log.LogInformation($"ImportFHIRBundles: Processing file Name:{name} \n Size: {myBlob.Length}");
             var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI-STORAGEACCT"));
             StreamReader reader = new StreamReader(myBlob);
-            var text = await reader.ReadToEndAsync();
-            var trtext = (trbundles ? FHIRUtils.TransformBundle(text, log) : text);
-            var fhirbundle = await FHIRUtils.CallFHIRServer("", trtext, HttpMethod.Post, log);
-            var result = LoadErrorsDetected(trtext, fhirbundle, name, log);
-
-            //Bundle Post was Throttled we can retry
-            if (!fhirbundle.Success && fhirbundle.Status == System.Net.HttpStatusCode.TooManyRequests)
+            var trtext = await reader.ReadToEndAsync();
+            //If not a Batch or Transaction Bundle move it to error and quit
+            var bt = FHIRUtils.DetermineBundleType(trtext, log);
+            if (bt != BundleType.Transaction && bt != BundleType.Batch)
             {
-                //Currently cannot use retry hints with EventGrid Trigger function bindings so we will throw and exception to enter eventgrid retry logic for FHIR Server throttling and do
-                //our own dead letter for internal errors or unrecoverable conditions
-                log.LogInformation($"ImportFHIRBUndles File Name:{name} is throttled...");
-                throw new Exception($"ImportFHIRBUndles: Transient Error File: {name}...Entering eventgrid retry process until success or ultimate failure to dead letter if configured.");
-            }
-            //No Errors move to processed container
-            if (fhirbundle.Success && ((JArray)result["errors"]).Count == 0 && ((JArray)result["throttled"]).Count == 0)
-            {
-                await StorageUtils.MoveTo(cbclient, "bundles", "bundlesprocessed", name, $"{name}.processed", log);
-                await StorageUtils.WriteStringToBlob(cbclient, "bundlesprocessed", $"{name}.processed.result", fhirbundle.Content, log);
-                log.LogInformation($"ImportFHIRBUndles Processed file Name:{name}");
-            }
-            //Handle Errors from FHIR Server of proxy
-            if (!fhirbundle.Success || ((JArray)result["errors"]).Count > 0)
-            {
+                log.LogWarning($"ImportFHIRBundles: File Name:{name} is not a Transaction or Batch Bundle resource");
                 await StorageUtils.MoveTo(cbclient, "bundles", "bundleserr", name, $"{name}.err", log);
-                await StorageUtils.WriteStringToBlob(cbclient, "bundleserr", $"{name}.err.response", fhirbundle.Content, log);
-                await StorageUtils.WriteStringToBlob(cbclient, "bundleserr", $"{name}.err.actionneeded", result.ToString(), log);
-                log.LogInformation($"ImportFHIRBUndles File Name:{name} had errors. Moved to deadletter bundleserr directory");
-
+                await StorageUtils.WriteStringToBlob(cbclient, "bundleserr", $"{name}.err.response", "Not a transaction or batch bundle resource.", log);
+                return;
             }
-            //Handle Throttled Requests inside of bundle so we will create a new bundle to retry
-            if (fhirbundle.Success && ((JArray)result["throttled"]).Count > 0)
+            //If it's a transaction bundle convert it to batch if flag is set
+            if (bt == BundleType.Transaction && trbundles)
             {
-                var nb = ImportNDJSON.initBundle();
-                nb["entry"] = result["throttled"];
-                string fn = $"retry{Guid.NewGuid().ToString().Replace("-", "")}.json";
-                await StorageUtils.MoveTo(cbclient, "bundles", "bundlesprocessed", name, $"{name}.processed", log);
-                await StorageUtils.WriteStringToBlob(cbclient, "bundlesprocessed", $"{name}.processed.result", fhirbundle.Content, log);
-                await StorageUtils.WriteStringToBlob(cbclient, "bundles", fn, nb.ToString(), log);
-                log.LogInformation($"ImportFHIRBUndles File Name:{name} had throttled resources in response bundle. Moved to processed..Created retry bunde {fn}");
+                trtext = FHIRUtils.TransformBundle(trtext, log);
+                bt = BundleType.Batch;
+            }
+            if (bt == BundleType.Batch)
+            {
+                string[] bundlearr = FHIRUtils.SplitBundle(trtext, name, log);
+                //If max entries allowed and is a batch then go ahead and split entries to process move original
+                if (bundlearr.Length > 1)
+                {
+                    int cnt = 1;
+                    await StorageUtils.MoveTo(cbclient, "bundles", "bundlesprocessed", name, $"{name}.split", log);
+                    foreach (string t in bundlearr)
+                    {
+                        string fn = name.ToLower().Replace(".json", "");
+                        await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{fn}-{cnt}.json", t, log);
+                        cnt++;
+                    }
+                    return;
+                }
+            }
+            //OK we can try and process it
+            try
+            {
+                string sresourcecnt = "";
+                int resourcecnt = 0;
+                using (var jsonDoc = JsonDocument.Parse(trtext))
+                {
+                    if (jsonDoc.RootElement.TryGetProperty("entry", out JsonElement entries))
+                    {
+                        resourcecnt = entries.GetArrayLength();
+                        sresourcecnt = $" with {resourcecnt} resources ";
+                    }
+                }
+                Stopwatch timefhir = Stopwatch.StartNew();
+                log.LogInformation($"ImportFHIRBundles: Calling FHIR Service for bundle {name}{sresourcecnt}file size {trtext.Length} bytes.");
+                var fhirbundle = await FHIRUtils.CallFHIRServer("", trtext, HttpMethod.Post, log);
+                timefhir.Stop();
+                string msg = $"ImportFHIRBundles: FHIR Service Call Completed for bundle {name}{sresourcecnt}in {timefhir.ElapsedMilliseconds} ms";
+                if (resourcecnt > 0)
+                {
+                    double effrate = resourcecnt / (timefhir.ElapsedMilliseconds / 1000);
+                    msg = msg + " Effective Rate: " + string.Format("{0:F1}", effrate) + " resources/sec";
+                }
+                log.LogInformation(msg);
+                var result = LoadErrorsDetected(trtext, fhirbundle, name, log);
+                //Bundle Post was Throttled we can retry
+                if (!fhirbundle.Success && fhirbundle.Status == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    //Currently cannot use retry hints with EventGrid Trigger function bindings so we will throw and exception to enter eventgrid retry logic for FHIR Server throttling and do
+                    //our own dead letter for internal errors or unrecoverable conditions
+                    log.LogWarning($"ImportFHIRBundles File Name:{name} is throttled...");
+                    throw new TransientError($"ImportFHIRBundles: Transient Error File: {name} was throttled by FHIR Service...Entering eventgrid retry process until success or ultimate failure to dead letter if configured.");
+                }
+                //No Errors move to processed container
+                if (fhirbundle.Success && ((JArray)result["errors"]).Count == 0 && ((JArray)result["throttled"]).Count == 0)
+                {
+                    await StorageUtils.MoveTo(cbclient, "bundles", "bundlesprocessed", name, $"{name}.processed", log);
+                    await StorageUtils.WriteStringToBlob(cbclient, "bundlesprocessed", $"{name}.processed.result", fhirbundle.Content, log);
+                    log.LogInformation($"ImportFHIRBundles Processed file Name:{name}");
+                }
+                //Handle Errors from FHIR Server of proxy
+                if (!fhirbundle.Success || ((JArray)result["errors"]).Count > 0)
+                {
+                    await StorageUtils.MoveTo(cbclient, "bundles", "bundleserr", name, $"{name}.err", log);
+                    await StorageUtils.WriteStringToBlob(cbclient, "bundleserr", $"{name}.err.response", fhirbundle.Content, log);
+                    await StorageUtils.WriteStringToBlob(cbclient, "bundleserr", $"{name}.err.actionneeded", result.ToString(), log);
+                    log.LogInformation($"ImportFHIRBUndles File Name:{name} had errors. Moved to deadletter bundleserr directory");
 
+                }
+                //Handle Throttled Requests inside of bundle so we will create a new bundle to retry
+                if (fhirbundle.Success && ((JArray)result["throttled"]).Count > 0)
+                {
+                    var nb = ImportNDJSON.initBundle();
+                    nb["entry"] = result["throttled"];
+                    string fn = $"retry{Guid.NewGuid().ToString().Replace("-", "")}.json";
+                    await StorageUtils.MoveTo(cbclient, "bundles", "bundlesprocessed", name, $"{name}.processed", log);
+                    await StorageUtils.WriteStringToBlob(cbclient, "bundlesprocessed", $"{name}.processed.result", fhirbundle.Content, log);
+                    await StorageUtils.WriteStringToBlob(cbclient, "bundles", fn, nb.ToString(), log);
+                    log.LogInformation($"ImportFHIRBundles File Name:{name} had throttled resources in response bundle. Moved to processed..Created retry bunde {fn}");
+
+                }
+            } catch (TransientError)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                log.LogError($"ImportFHIRBundles:Unhandled Exception on bundle {name}: {e.Message}", e);
+                await StorageUtils.MoveTo(cbclient, "bundles", "bundleserr", name, $"{name}.err", log);
+                await StorageUtils.WriteStringToBlob(cbclient, "bundleserr", $"{name}.err.response",$"Unhandled Error:{e.Message}\r\n{e.StackTrace}", log);
+                
             }
 
         }

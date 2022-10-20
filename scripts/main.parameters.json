@@ -1,0 +1,19 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "prefix": {
+            "value": "miktest3"
+        },
+        "location": {
+            "value": "westus3"
+        },
+        "fhirUrl": {
+            "value": "https://applied-synthea-1000000-bundles.fhir.azurehealthcareapis.com"
+        },
+        "logAnalyticsName": {
+            "value": ""
+        }
+
+    }
+}

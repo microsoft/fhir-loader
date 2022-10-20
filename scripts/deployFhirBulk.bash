@@ -668,7 +668,7 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	
 	# Create the function app
 	echo "Creating FHIR Bulk Loader & Export Function App ["$bulkAppName"]..."
-	fahost=$(az functionapp create --name $bulkAppName --storage-account $deployPrefix$storageAccountNameSuffix  --plan $deployPrefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 3 --query "defaultHostName" --output tsv)
+	fahost=$(az functionapp create --name $bulkAppName --storage-account $deployPrefix$storageAccountNameSuffix  --plan $deployPrefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 4 --query "defaultHostName" --output tsv)
 
 	echo "FHIR Bulk Loader & Export Function hostname is: "$fahost
 	
@@ -726,7 +726,6 @@ echo "Creating Event Grid Subscription...  this may take a while"
 	# Replacing the assignements above, retreive the Function Name from the Function App
 	echo "Assigning Endpoint for "...$importNdjsonvar
 	eventGridEndpointNDJSON=$(az functionapp function show --resource-group $resourceGroupName --name $bulkAppName --function-name $importNdjsonvar --query id --output tsv)
-
 	if [ -z "$eventGridEndpointNDJSON" ]; then
 		echo "Function App ImportNDJSON not found, retrying"
 		# some times the Region may be slow to provision the apps - pushing this into the retry function 
@@ -737,7 +736,6 @@ echo "Creating Event Grid Subscription...  this may take a while"
 	# Replacing the assignements above, retreive the Function Name from the Function App
 	echo "Assigning Endpoint for "...$importBundle
 	eventGridEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $bulkAppName --function-name $importBundle --query id --output tsv)
-
 	if [ -z "$eventGridEndpointBundle" ]; then
 		echo "Function App ImportBundle not found, retrying"
 		# some times the Region may be slow to provision the apps - pushing this into the retry function 
@@ -750,40 +748,30 @@ echo "Creating Event Grid Subscription...  this may take a while"
 	echo "Creating NDJSON Subscription "
 	# step is still valid, it is simply re-written below for ease of readability 
 	#stepresult=$(retry az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
-
 	echo "Source input: $storesourceid"
 	echo "Topic name: $egndjsonresource"
 	echo "Function name: $importNdjsonvar"
 	echo "Endpoint: $eventGridEndpointNDJSON"
-
 	sleep 30
-
 	stepresult=$(az eventgrid event-subscription create --name $egNdjsonSubscription \
      --source-resource-id $storesourceid \
      --endpoint $eventGridEndpointNDJSON  \
      --endpoint-type azurefunction --subject-begins-with /blobServices/default/containers/ndjson --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
-
 	
 	echo " "
 	echo "Creating BUNDLE Subscription "
 	# step is still valid, it is simply re-written below for ease of readability 
 	#stepresult=$(retry az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
-
 	echo "Source input: $storesourceid"
 	echo "Topic name: $egbundleresource"
 	echo "Function name: $importBundle"
 	echo "Endpoint: $eventGridEndpointBundle"
-
 	sleep 30
-
 	stepresult=$(az eventgrid event-subscription create --name $egBundleSubscription \
      --source-resource-id $storesourceid \
      --endpoint $eventGridEndpointBundle  \
      --endpoint-type azurefunction --subject-begins-with /blobServices/default/containers/bundles --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
-
-
 	#---
-
 	echo " "
 	echo "**************************************************************************************"
 	echo "FHIR Loader has successfully been deployed to group "$resourceGroupName" on "$(date)
@@ -792,10 +780,7 @@ echo "Creating Event Grid Subscription...  this may take a while"
 	echo "Your FHIRLoader Storage Account name is: "$deployPrefix$storageAccountNameSuffix
 	echo "***************************************************************************************"
 	echo " "
-
 )
-
 if [ $? != 0 ] ; then
 	echo "FHIR-Loader deployment had errors. Consider deleting the resources and trying again..."
 fi
-
