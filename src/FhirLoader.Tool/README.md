@@ -40,7 +40,9 @@ npm --registry "your npm package path"
 
 This tool will read all the files from the above given location. If any error occurs while reading the file to the FHIR server, it will skip that file, print the warning, and process the next file.
 
-Please [see](./Sample.md) this to learn more about how to set up and send profiles to fhir server.
+Please [see](./uscore_README.md) this to learn more about how to set up and send US Core profiles to fhir server.
+
+Please [see](./mCode_README.md) this to learn more about how to set up and send mCode profiles to fhir server.
 
 ### Authentication
 
