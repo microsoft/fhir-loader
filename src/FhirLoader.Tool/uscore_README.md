@@ -7,7 +7,7 @@
 
  Let's say you want to upload the US Core profile to the Fhir server. so, as a first step, you will download the US Core package to your local folder.
 
- * Create an empty directroy in your drive.
+ * Create an empty directory in your drive.
  * Open that directory in Command Prompt.
  * Run this below command in cmd.
 
