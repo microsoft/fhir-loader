@@ -20,6 +20,7 @@ namespace FhirLoader.Common
     public class FhirResourceClient : IDisposable
     {
         private readonly HttpClient _client;
+        private readonly bool _skipErrors;
         private readonly ILogger _logger;
         private readonly string? _tenantId;
         AsyncPolicyWrap<HttpResponseMessage> _resiliencyStrategy;
@@ -29,9 +30,10 @@ namespace FhirLoader.Common
         private DateTime _tokenGeneratedDateTime = DateTime.MinValue;
 
         const string METADATA_SUFFIX = "/metadata";
-        public FhirResourceClient(string baseUrl, int expectedParallelRequests, ILogger logger, string? tenantId = null)
+        public FhirResourceClient(string baseUrl, int expectedParallelRequests, bool skipErrors, ILogger logger, string? tenantId = null)
         {
             _logger = logger;
+            _skipErrors = skipErrors;
             _client = new HttpClient();
             _tenantId = tenantId;
 
@@ -91,15 +93,15 @@ namespace FhirLoader.Common
                 }
                 catch (BrokenCircuitException bce)
                 {
-                    throw new FatalFhirResourceClientException($"Could not contact the FHIR Endpoint due to the following error: {bce.Message}", bce);
+                    throw new FatalFhirResourceClientException($"Could not contact the FHIR Endpoint due to the following error: {bce.Message}", bce, null);
                 }
-                catch (TimeoutRejectedException ex)
+                catch (TimeoutRejectedException)
                 {
                     _logger.LogWarning("Maximum client timeout reached, delaying and retrying...");
                     await Task.Delay(30000);
                     continue;
                 }
-                catch (HttpRequestException ex)
+                catch (HttpRequestException)
                 {
                     _logger.LogWarning("Network error encountered, delaying and retrying...");
                     await Task.Delay(30000);
@@ -107,7 +109,7 @@ namespace FhirLoader.Common
                 }
                 catch (Exception e)
                 {
-                    throw new FatalFhirResourceClientException($"Critical error: {e.Message}", e);
+                    throw new FatalFhirResourceClientException($"Critical error: {e.Message}", e, null);
                 }
 
                 if (!response.IsSuccessStatusCode)
@@ -127,8 +129,16 @@ namespace FhirLoader.Common
                     perFileFailedCount++;
 
                     if (perFileFailedCount >= 3)
-                        throw new FatalFhirResourceClientException("Single bundle failed for 3 consecutive attempts.");
+                    {
+                        if (_skipErrors)
+                        {
+                            _logger.LogWarning("Could not send bundle because of code {Code}. Skipping...", response.StatusCode);
+                            break;
+                        }
 
+                        throw new FatalFhirResourceClientException("Single bundle failed for 3 consecutive attempts.", response.StatusCode);
+                    }
+                        
                     await Task.Delay(30000);
                     continue;
                 }
@@ -201,7 +211,7 @@ namespace FhirLoader.Common
                     durationOfBreak: TimeSpan.FromSeconds(60),
                     onBreak: (outcome, breakDelay) =>
                     {
-                        _logger.LogWarning($"Polly Circuit Breaker logging: Breaking the circuit for {breakDelay.TotalMilliseconds}ms due to response {outcome.Result.ToString()}. More Details: {outcome.Exception?.Message}");
+                        _logger.LogWarning($"Polly Circuit Breaker logging: Breaking the circuit for {breakDelay.TotalMilliseconds}ms due to response {outcome.Result}. More Details: {outcome.Exception?.Message}");
                     },
                     onReset: () => _logger.LogWarning("Polly Circuit Breaker logging: Call ok... closed the circuit again"),
                     onHalfOpen: () => _logger.LogWarning("Polly Circuit Breaker logging: Half-open: Next call is a trial")
@@ -241,7 +251,15 @@ namespace FhirLoader.Common
 
     public class FatalFhirResourceClientException : Exception
     {
-        public FatalFhirResourceClientException(string message) : base(message) { }
-        public FatalFhirResourceClientException(string message, Exception inner) : base(message, inner) { }
+        public HttpStatusCode? Code; 
+
+        public FatalFhirResourceClientException(string message, HttpStatusCode? code) : base(message) 
+        {
+            Code = code;
+        }
+        public FatalFhirResourceClientException(string message, Exception inner, HttpStatusCode? code) : base(message, inner)
+        {
+            Code = code;
+        }
     }
 }

@@ -57,7 +57,7 @@ namespace FhirLoader.Tool
                     throw new ArgumentException("Either folder,package or blob must be inputted.");
 
                 // Create client and setup access token
-                var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 10, _logger, opt.TenantId);
+                var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 10,opt.SkipErrors,  _logger, opt.TenantId);
                 await client.PrefetchToken(_cancelTokenSource.Token);
 
                 // Create a bundle sender

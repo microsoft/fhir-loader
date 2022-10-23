@@ -29,9 +29,14 @@ namespace FhirLoader.Common
 
             // Get list of bulk files and bundler
             // Using the orig Uri as BlobUriBuilder drops the last slash
-            IEnumerable<BlobItem> blobsPrefixFiltered = containerClient.GetBlobs();
+            string blobPrefix = "";
             if (blobPathUri.Segments.Length >= 2)
-                blobsPrefixFiltered = blobsPrefixFiltered.Where(_ => _.Name.StartsWith(string.Join('/', blobPathUri.Segments.Skip(2))));
+            {
+                blobPrefix = string.Join('/', blobPathUri.Segments.Skip(2));
+            }
+
+            // TODO - change to async.
+            IEnumerable<BlobItem> blobsPrefixFiltered = containerClient.GetBlobs(prefix: blobPrefix);
 
             List<BlobItem> inputBundles = blobsPrefixFiltered.Where(_ => _.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)).ToList();
             List<BlobItem> inputBulkfiles = blobsPrefixFiltered.Where(_ => _.Name.EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase)).ToList();

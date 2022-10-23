@@ -26,6 +26,9 @@ namespace FhirLoader.Tool
         [Option("bundle-package-files", Required = false, Default = false, HelpText = "Combine package files into bundles for faster execution.")]
         public bool BundlePackageFiles { get; set; }
 
+        [Option("skip-errors", Required = false, Default = false, HelpText = "Continue sending resources on HTTP error.")]
+        public bool SkipErrors { get; set; }
+
         [Option("fhir", Required = true, HelpText = "Base URL of your FHIR server.")]
         public string? FhirUrl { get; set; }
 

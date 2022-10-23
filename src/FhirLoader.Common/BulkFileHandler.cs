@@ -41,7 +41,7 @@ namespace FhirLoader.Common
                         if (!reader.EndOfStream)
                         {
                             var line = reader.ReadLine();
-                            if (line is not null)
+                            if (line is not null && line.StartsWith("{"))
                                 page.Add(line);
                         }
                     }
@@ -52,33 +52,41 @@ namespace FhirLoader.Common
 
         private ProcessedResource BuildBundle(IEnumerable<string> page)
         {
-            var resourceChunk = page.Select(x => JObject.Parse(x));
-            var bundle = JObject.FromObject(new
+            try
             {
-                resourceType = "Bundle",
-                type = "batch",
-                entry =
-                from r in resourceChunk
-                select new
+                var resourceChunk = page.Select(x => JObject.Parse(x));
+                var bundle = JObject.FromObject(new
                 {
-                    resource = r,
-                    request = new
+                    resourceType = "Bundle",
+                    type = "batch",
+                    entry =
+                    from r in resourceChunk
+                    select new
                     {
-                        method = r.ContainsKey("id") ? "PUT" : "POST",
-                        url = r.ContainsKey("id") ? $"{r["resourceType"]}/{r["id"]}" : r["resourceType"]
+                        resource = r,
+                        request = new
+                        {
+                            method = r.ContainsKey("id") ? "PUT" : "POST",
+                            url = r.ContainsKey("id") ? $"{r["resourceType"]}/{r["id"]}" : r["resourceType"]
+                        }
                     }
-                }
-            });
+                });
 
-            var count = bundle.ContainsKey("entry") ? bundle["entry"]!.Count() : 0;
+                var count = bundle.ContainsKey("entry") ? bundle["entry"]!.Count() : 0;
 
-            return new ProcessedResource
+                return new ProcessedResource
+                {
+                    ResourceText = bundle.ToString(Formatting.Indented),
+                    ResourceCount = count,
+                    ResourceFileName = FileName,
+                    ResourceType = "Bundle"
+                };
+            }
+            catch (Exception ex)
             {
-                ResourceText = bundle.ToString(Formatting.Indented),
-                ResourceCount = count,
-                ResourceFileName = FileName,
-                ResourceType = "Bundle"
-            };
+                throw new Exception($"Error converting NDJSON file to Bundle {FileName}.", ex);
+            }
+            
         }
     }
 }
