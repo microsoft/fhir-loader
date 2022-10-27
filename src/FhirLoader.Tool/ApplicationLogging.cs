@@ -10,7 +10,7 @@ namespace FhirLoader.Tool
     internal class ApplicationLogging
     {
         public static ApplicationLogging Instance = new ApplicationLogging();
-        public ILoggerFactory LogFactory;
+        public ILoggerFactory? LogFactory = null;
 
         public ApplicationLogging()
         {
@@ -19,7 +19,6 @@ namespace FhirLoader.Tool
 
         public ApplicationLogging Configure(LogLevel level)
         {
-            LogFactory.Dispose();
             LogFactory = GetLogFactory(level);
             return this;
         }
@@ -40,8 +39,23 @@ namespace FhirLoader.Tool
             });
         }
 
-        public ILogger<T> CreateLogger<T>() => LogFactory.CreateLogger<T>();
+        public ILogger<T> CreateLogger<T>(){
+            if (LogFactory is null)
+            {
+                LogFactory = GetLogFactory();
+            }
 
-        public ILogger CreateLogger(string name) => LogFactory.CreateLogger(name);
+            return LogFactory.CreateLogger<T>();
+
+        } 
+
+        public ILogger CreateLogger(string name) {
+            if (LogFactory is null)
+            {
+                LogFactory = GetLogFactory();
+            }
+
+            return LogFactory.CreateLogger(name);
+        }
     }
 }

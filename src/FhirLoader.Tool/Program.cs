@@ -27,10 +27,6 @@ namespace FhirLoader.Tool
                         {
                             _logger = ApplicationLogging.Instance.Configure(LogLevel.Trace).CreateLogger<Program>();
                         }
-                        else
-                        {
-                            _logger = ApplicationLogging.Instance.Configure(LogLevel.Information).CreateLogger<Program>();
-                        }
 
                         opt.Validate();
                         return await Run(opt);
@@ -151,7 +147,11 @@ namespace FhirLoader.Tool
                 _logger.LogError($"Could not obtain Azure credential. Please use `az login` or another method specified here: https://docs.microsoft.com/dotnet/api/azure.identity.defaultazurecredential?view=azure-dotnet");
             }
 
-            ApplicationLogging.Instance.LogFactory.Dispose();
+            if (ApplicationLogging.Instance.LogFactory is not null)
+            {
+                ApplicationLogging.Instance.LogFactory.Dispose();
+            }
+            
             Metrics.Instance.Stop();
             return 0;
         }
