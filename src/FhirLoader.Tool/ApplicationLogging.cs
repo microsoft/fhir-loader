@@ -19,7 +19,7 @@ namespace FhirLoader.Tool
 
         public ApplicationLogging Configure(LogLevel level)
         {
-            //LogFactory.Dispose();
+            LogFactory.Dispose();
             LogFactory = GetLogFactory(level);
             return this;
         }

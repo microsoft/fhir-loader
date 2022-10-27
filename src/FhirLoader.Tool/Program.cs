@@ -27,6 +27,10 @@ namespace FhirLoader.Tool
                         {
                             _logger = ApplicationLogging.Instance.Configure(LogLevel.Trace).CreateLogger<Program>();
                         }
+                        else
+                        {
+                            _logger = ApplicationLogging.Instance.Configure(LogLevel.Information).CreateLogger<Program>();
+                        }
 
                         opt.Validate();
                         return await Run(opt);
