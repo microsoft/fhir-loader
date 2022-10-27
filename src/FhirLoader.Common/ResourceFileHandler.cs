@@ -18,7 +18,7 @@ namespace FhirLoader.Common
             _logger = logger;
         }
 
-        public override IEnumerable<ProcessedResource> FileAsBundles
+        public override IEnumerable<ProcessedResource> FileAsResourceList
         {
             get
             {
@@ -29,7 +29,7 @@ namespace FhirLoader.Common
             }
         }
 
-        public IEnumerable<ProcessedResource> ConvertToBundles()
+        private IEnumerable<ProcessedResource> ConvertToBundles()
         {
             JObject bundle;
             // We must read the full file

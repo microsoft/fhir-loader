@@ -16,7 +16,7 @@ namespace FhirLoader.Common
             _inputStream = inputStream;
         }
 
-        public override IEnumerable<ProcessedResource> FileAsBundles
+        public override IEnumerable<ProcessedResource> FileAsResourceList
         {
             get
             {

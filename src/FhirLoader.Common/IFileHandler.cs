@@ -14,6 +14,6 @@ namespace FhirLoader.Common
 
         public readonly int BundleSize;
 
-        public abstract IEnumerable<ProcessedResource>? FileAsBundles { get; }
+        public abstract IEnumerable<ProcessedResource>? FileAsResourceList { get; }
     }
 }

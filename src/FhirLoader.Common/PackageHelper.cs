@@ -21,7 +21,8 @@ namespace FhirLoader.Common
         /// <returns></returns>
         public bool ValidateRequiredFiles()
         {
-            if (!File.Exists($"{_packagePath}\\{indexjson}") || !File.Exists($"{_packagePath}\\{packagejson}"))
+            // The path must work cross platform.
+            if (!File.Exists($"{_packagePath}/{indexjson}") || !File.Exists($"{_packagePath}/{packagejson}"))
             {
                 return false;
             }
@@ -36,6 +37,7 @@ namespace FhirLoader.Common
         /// <returns></returns>
         public bool IsValidPackageType(out string? packageType)
         {
+            // The path must work cross platform.
             JObject data = JObject.Parse(File.ReadAllText($"{_packagePath}/{packagejson}"));
             packageType = data.GetValue("type")?.Value<string>();
             if (!string.IsNullOrEmpty(packageType) && CheckPackageType(packageType))
@@ -68,15 +70,15 @@ namespace FhirLoader.Common
         {
             IList<string> files = new List<string>();
             string packageType = string.Empty;
-            JObject jobject = JObject.Parse(File.ReadAllText($"{_packagePath}\\{indexjson}"));
+
+            // The path must work cross platform.
+            JObject jobject = JObject.Parse(File.ReadAllText($"{_packagePath}/{indexjson}"));
             if (jobject.Count > 0)
             {
-                files = jobject["files"]!.Select(t => $"{_packagePath}\\{t["filename"]?.Value<string>()}").ToList();
+                files = jobject["files"]!.Select(t => $"{_packagePath}/{t["filename"]?.Value<string>()}").ToList();
             }
 
             return files;
-        }        
-
+        }
     }
-
 }

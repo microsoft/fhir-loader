@@ -29,6 +29,9 @@ namespace FhirLoader.Tool
         [Option("skip-errors", Required = false, Default = false, HelpText = "Continue sending resources on HTTP error.")]
         public bool SkipErrors { get; set; }
 
+        [Option("strip-text", Required = false, Default = true, HelpText = "Strip the text of resources.")]
+        public bool StripText { get; set; }
+
         [Option("fhir", Required = true, HelpText = "Base URL of your FHIR server.")]
         public string? FhirUrl { get; set; }
 

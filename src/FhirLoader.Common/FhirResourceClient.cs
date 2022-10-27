@@ -114,29 +114,46 @@ namespace FhirLoader.Common
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogError($"Could not send resource(s) due to error from server: {response.StatusCode}. Adding request back to queue...");
+                   
                     var responseString = await response.Content.ReadAsStringAsync() ?? "{}";
+
+                    // Stopgap for duplicate search parameters. Really, the class calling this one should filter the search parameters by what already exists on the server.
+                    if (
+                        (responseString.Contains("SearchParameter", StringComparison.InvariantCultureIgnoreCase) &&
+                        responseString.Contains("already exists", StringComparison.InvariantCultureIgnoreCase)) ||
+                        (responseString.Contains("custom search parameter", StringComparison.CurrentCultureIgnoreCase) &&
+                        responseString.Contains("An item with the same key has already been added.", StringComparison.CurrentCultureIgnoreCase))
+                        )
+                    {
+                        _logger.LogInformation("Profile resource already exists on the server...skipping...");
+                        timer.Stop();
+                        break;
+                    }
+
+                    _logger.LogError($"Could not send resource(s) due to error from server: {response.StatusCode}. Adding request back to queue...");
+
+                    perFileFailedCount++;
+
                     try
                     {
                         var responseObject = JObject.Parse(responseString);
+
+                        if (perFileFailedCount >= 3)
+                        {
+                            if (_skipErrors)
+                            {
+                                _logger.LogWarning("Could not send bundle because of code {Code}. Skipping...", response.StatusCode);
+                                break;
+                            }
+
+                            throw new FatalFhirResourceClientException("Single bundle failed for 3 consecutive attempts.", response.StatusCode);
+                        }
+
                         _logger.LogError(responseObject.ToString(Formatting.Indented));
                     }
                     catch (JsonReaderException)
                     {
                         _logger.LogError(responseString);
-                    }
-
-                    perFileFailedCount++;
-
-                    if (perFileFailedCount >= 3)
-                    {
-                        if (_skipErrors)
-                        {
-                            _logger.LogWarning("Could not send bundle because of code {Code}. Skipping...", response.StatusCode);
-                            break;
-                        }
-
-                        throw new FatalFhirResourceClientException("Single bundle failed for 3 consecutive attempts.", response.StatusCode);
                     }
                         
                     await Task.Delay(30000);

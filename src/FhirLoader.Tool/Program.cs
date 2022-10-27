@@ -2,6 +2,7 @@
 using CommandLine;
 using FhirLoader.Common;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 using System.Threading.Tasks.Dataflow;
 
 
@@ -57,7 +58,7 @@ namespace FhirLoader.Tool
                     throw new ArgumentException("Either folder,package or blob must be inputted.");
 
                 // Create client and setup access token
-                var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 10,opt.SkipErrors,  _logger, opt.TenantId);
+                var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 10, opt.SkipErrors,  _logger, opt.TenantId);
                 await client.PrefetchToken(_cancelTokenSource.Token);
 
                 // Create a bundle sender
@@ -85,9 +86,16 @@ namespace FhirLoader.Tool
                         if (!blockAcceptingNewMessages)
                             break;
 
-                        foreach (var bundle in file.FileAsBundles!)
+                        foreach (var resource in file.FileAsResourceList!)
                         {
-                            if (!await actionBlock.SendAsync(bundle, _cancelTokenSource.Token))
+                            if (opt.StripText)
+                            {
+                                var resourceObj = JObject.Parse(resource.ResourceText!);
+                                resourceObj["text"] = new JObject();
+                                resource.ResourceText = resourceObj.ToString();
+                            }
+
+                            if (!await actionBlock.SendAsync(resource, _cancelTokenSource.Token))
                             {
                                 blockAcceptingNewMessages = false;
                                 _logger.LogError("Cannot send all bundles due to an internal error. Finishing and exiting.");

@@ -18,18 +18,18 @@ namespace FhirLoader.Common
             _logger = logger;
         }
 
-        public override IEnumerable<ProcessedResource> FileAsBundles
+        public override IEnumerable<ProcessedResource> FileAsResourceList
         {
             get
             {
                 if (_bundles is null)
-                    _bundles = ConvertToBundles();
+                    _bundles = ConvertToResourceCollection();
 
                 return _bundles;
             }
         }
 
-        public IEnumerable<ProcessedResource> ConvertToBundles()
+        private IEnumerable<ProcessedResource> ConvertToResourceCollection()
         {
             JObject bundle;
 
