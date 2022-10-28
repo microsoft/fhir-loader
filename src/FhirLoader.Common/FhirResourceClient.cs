@@ -125,7 +125,7 @@ namespace FhirLoader.Common
                         responseString.Contains("An item with the same key has already been added.", StringComparison.CurrentCultureIgnoreCase))
                         )
                     {
-                        _logger.LogInformation("Profile resource already exists on the server...skipping...");
+                        _logger.LogInformation("Search parameter resource already exists on the server...skipping...");
                         timer.Stop();
                         break;
                     }
