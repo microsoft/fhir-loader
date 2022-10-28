@@ -106,12 +106,12 @@ namespace FhirLoader.Common
                 throw new ArgumentException($"Package type {packageType} is not valid. Skipping the loading process.");
             }
 
-            var packageFiles = helper.GetPackageFiles();
+            IEnumerable<string> packageFiles = helper.GetPackageFiles();
 
             // Test code to determine if we can optimize creation of package resources
             if (bundlePackageFiles)
             {
-                _logger.LogInformation($"Found {packageFiles.Count} FHIR package files. Sending in bundles...");
+                _logger.LogInformation($"Found {packageFiles.Count()} FHIR package files. Sending in bundles...");
 
                 while (true)
                 {
@@ -142,13 +142,13 @@ namespace FhirLoader.Common
                     // #TODO - can write to temp path on disk until it's ready to send
                     byte[] byteArray = Encoding.UTF8.GetBytes(resourcesAsBundle.ToString());
                     MemoryStream stream = new MemoryStream(byteArray);
-                    yield return new ResourceFileHandler(stream, String.Join(',', fileChunk), fileChunk.Count(), _logger);
+                    yield return new ResourceFileHandler(stream, string.Join(',', fileChunk), fileChunk.Count(), _logger);
                 }
             }
             else
             {
-                _logger.LogInformation($"Found {packageFiles.Count} FHIR package files. Sending as individual resources...");
-                foreach (var filePath in packageFiles.OrderBy(x => x))
+                _logger.LogInformation($"Found {packageFiles.Count()} FHIR package files. Sending as individual resources...");
+                foreach (var filePath in packageFiles)
                 {
                     var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
                     var safeFileStream = Stream.Synchronized(fileStream);

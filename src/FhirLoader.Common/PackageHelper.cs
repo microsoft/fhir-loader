@@ -7,7 +7,7 @@ namespace FhirLoader.Common
     public class PackageHelper
     {
         private string _packagePath;
-        private const string indexjson = ".index.json";
+        private const string PACKAGE_INDEX_FILENAME = ".index.json";
         private const string packagejson = "package.json";
 
         public PackageHelper(string packagePath)
@@ -19,15 +19,7 @@ namespace FhirLoader.Common
         /// Check if the .index.json and package.json files exist in the given path.
         /// </summary>
         /// <returns></returns>
-        public bool ValidateRequiredFiles()
-        {
-            // The path must work cross platform.
-            if (!File.Exists($"{_packagePath}/{indexjson}") || !File.Exists($"{_packagePath}/{packagejson}"))
-            {
-                return false;
-            }
-            return true;
-        }
+        public bool ValidateRequiredFiles() => File.Exists(Path.Combine(_packagePath, PACKAGE_INDEX_FILENAME)) && File.Exists(Path.Combine(_packagePath, packagejson));
 
         /// <summary>
         /// Check if the given type in the package.json is valid or not.
@@ -37,8 +29,8 @@ namespace FhirLoader.Common
         /// <returns></returns>
         public bool IsValidPackageType(out string? packageType)
         {
-            // The path must work cross platform.
-            JObject data = JObject.Parse(File.ReadAllText($"{_packagePath}/{packagejson}"));
+            JObject data = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, packagejson)));
+
             packageType = data.GetValue("type")?.Value<string>();
             if (!string.IsNullOrEmpty(packageType) && CheckPackageType(packageType))
             {
@@ -66,19 +58,20 @@ namespace FhirLoader.Common
         /// Read the .index.json and return the list file name.
         /// </summary>
         /// <returns></returns>
-        public IList<string> GetPackageFiles()
+        public IEnumerable<string> GetPackageFiles()
         {
-            IList<string> files = new List<string>();
-            string packageType = string.Empty;
+            List<string> packageFiles = new();
+            JObject indexFile = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, PACKAGE_INDEX_FILENAME)));
 
-            // The path must work cross platform.
-            JObject jobject = JObject.Parse(File.ReadAllText($"{_packagePath}/{indexjson}"));
-            if (jobject.Count > 0)
+            if (indexFile.ContainsKey("files") && indexFile["files"]!.Type == JTokenType.Array)
             {
-                files = jobject["files"]!.Select(t => $"{_packagePath}/{t["filename"]?.Value<string>()}").ToList();
+                JArray files = (JArray) indexFile["files"]!;
+                return files
+                    .Where(f => f.Type == JTokenType.Object && ((JObject)f).ContainsKey("filename"))
+                    .Select(t => Path.Combine(_packagePath, t["filename"]?.Value<string>()!));
             }
 
-            return files;
+            return Enumerable.Empty<string>();
         }
     }
 }
