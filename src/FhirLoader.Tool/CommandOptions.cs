@@ -1,6 +1,6 @@
 ﻿using CommandLine;
 using CommandLine.Text;
-
+using FhirLoader.Tool.Extensions;
 
 namespace FhirLoader.Tool
 {
@@ -67,13 +67,27 @@ namespace FhirLoader.Tool
             BatchSize = BatchSize ?? Convert.ToInt32(DEFAULT_BUNDLE_SIZE);
 
             // Ensure the folder path exists
-            if (FolderPath is not null && !Directory.Exists(FolderPath))
+            try
+            {
+                if (FolderPath is not null)
+                {
+                    FolderPath = FolderPath!.ResolveDirectoryPath();
+                }
+            }
+            catch (DirectoryNotFoundException)
             {
                 throw new ArgumentException($"Path {FolderPath} could not be found or is not a directory.");
             }
 
             // Ensure the package path exists
-            if (PackagePath is not null && !Directory.Exists(PackagePath))
+            try
+            {
+                if (PackagePath is not null)
+                {
+                    PackagePath = PackagePath!.ResolveDirectoryPath();
+                }
+            }
+            catch (DirectoryNotFoundException)
             {
                 throw new ArgumentException($"Path {PackagePath} could not be found or is not a directory.");
             }
