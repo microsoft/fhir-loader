@@ -1,9 +1,10 @@
+using FhirLoader.Common;
 using FhirLoader.Tool;
 using FHIRLoader.Tool.Tests.E2E.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
-using static FhirLoader.Common.PackageTypeHelper;
 
 namespace FHIRLoader.Tool.Tests.E2E
 {
@@ -241,6 +242,64 @@ namespace FHIRLoader.Tool.Tests.E2E
             Assert.Throws<ArgumentException>(throwingAction);
 
         }
+
+        /// <summary>
+        /// Test Case for Search paramater resource type.
+        /// By passing the package path,
+        /// 1. First load the metadata response.
+        /// 2. Load the all defination property from metadata response.
+        /// 3. Compare it with .index.json file's url property.
+        ///    It will skip the resource if it is a search parameter and it exists in the SearchParameter list from metadata.
+        /// 4. The rest of all resources will be posted to the server.
+        /// 5. A ReIndex api call will be initiated to index the search parameter..
+        /// Throw an exception if the file does not exist.
+        /// </summary>
+        [Fact]
+        public async void LocalFhir_packageSearchparamater_Test()
+        {
+            CommandOptions commandOptions = new()
+            {
+                FhirUrl = _config.FhirURL,
+                PackagePath = @"../../../TestData/searchparamaterpackage",
+                BatchSize = _config.Batchsize,//Must be betweeen 1 & 500,Default 500
+                Concurrency = _config.Concurrency//Must be betweeen 1 & 50,Default 50
+            };
+            int response = await Program.Run(commandOptions);
+            Assert.Equal(0, response);
+        }
+
+        /// <summary>
+        ///Skipping the resources if it is a search parameter and it exists in the search parameter list from metadata. 
+        /// </summary>
+        [Fact]
+        public async void LocalFhir_SkippSearchparamater_Test()
+        {
+            ILogger<FHIRLoaderE2ETest> logger = ApplicationLogging.Instance.CreateLogger<FHIRLoaderE2ETest>();
+            var client = new FhirResourceClient(_config.FhirURL, logger);
+            JObject metadata = await client.Get("/metadata");
+            PackageHelper helper = new(@"../../../TestData/searchparamaterpackage");
+            var searchParamList = helper.GetSearchParams(metadata);
+
+            int i = 0;
+            JObject jobject = JObject.Parse(File.ReadAllText(@"../../../TestData/searchparamaterpackage/.index.json"));
+            if (jobject.Count > 0)
+            {
+                // if resourcetype is Search parameter and it exists in metadata, dont add it to files
+                foreach (var item in jobject["files"])
+                {
+                    if (item["resourceType"]?.Value<string>()?.ToLower() == "searchparameter" && searchParamList.Contains(item["url"]?.Value<string>()))
+                    {
+                        i++;
+                    }
+                }
+
+            }
+            if (i > 0)
+            {
+                Assert.Fail("Skipping the resources if it is a search parameter and it exists in the search parameter list from metadata.");
+            }
+        }
+
 
     }
 }

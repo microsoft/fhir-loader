@@ -1,15 +1,15 @@
 ﻿using Azure.Core;
 using Azure.Identity;
 using Microsoft.Extensions.Logging;
-using Polly.Wrap;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Polly;
+using Polly.CircuitBreaker;
+using Polly.Timeout;
+using Polly.Wrap;
+using System.Diagnostics;
 using System.Net;
 using System.Text;
-using Newtonsoft.Json.Linq;
-using Polly.CircuitBreaker;
-using System.Diagnostics;
-using Newtonsoft.Json;
-using Polly.Timeout;
 
 
 namespace FhirLoader.Common
@@ -25,6 +25,7 @@ namespace FhirLoader.Common
         AsyncPolicyWrap<HttpResponseMessage> _resiliencyStrategy;
 
         const string METADATA_SUFFIX = "/metadata";
+        const string REINDEX = "/$reindex";
 
         public FhirResourceClient(string baseUrl, ILogger logger, string? tenantId = null, AsyncPolicyWrap<HttpResponseMessage>? resiliencyStrategy = null)
         {
@@ -111,6 +112,108 @@ namespace FhirLoader.Common
             }
         }
 
+        public async Task<JObject?> Get(string requestUri)
+        {
+            HttpResponseMessage response = new();
+
+            var timer = new Stopwatch();
+            timer.Start();
+
+            try
+            {
+                _logger.LogTrace("Fetching metadata.");
+
+                response = await _resiliencyStrategy.ExecuteAsync(
+                   async ct => await _client.GetAsync(requestUri, ct),
+                   CancellationToken.None
+                     );
+
+            }
+            catch (TaskCanceledException tcex)
+            {
+                throw tcex;
+            }
+            catch (BrokenCircuitException bce)
+            {
+                throw new FatalBundleClientException($"Could not contact the FHIR Endpoint due to the following error: {bce.Message}", bce);
+            }
+            catch (Exception e)
+            {
+                throw new FatalBundleClientException($"Critical error: {e.Message}", e);
+            }
+
+            timer.Stop();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError($"Could not get metadata due to error from server: {response.StatusCode}");
+                var responseString = await response.Content.ReadAsStringAsync() ?? "{}";
+                try
+                {
+                    _logger.LogError(JObject.Parse(responseString).ToString(Formatting.Indented));
+                }
+                catch (JsonReaderException)
+                {
+                    _logger.LogError(responseString);
+                }
+
+                return null;
+            }
+            else
+            {
+                _logger.LogTrace("Metadata fetch succeeded.");
+                JObject metadata = JObject.Parse(await response.Content.ReadAsStringAsync());
+                return metadata;
+            }
+        }
+
+        public async Task ReIndex(string baseURL, CancellationToken? cancel = null)
+        {
+            HttpResponseMessage response;
+            try
+            {
+                _logger.LogInformation($"Calling reindex api..");
+                var content = new StringContent("{ \"resourceType\": \"Parameters\",\"parameter\": [] }", Encoding.UTF8, "application/json");
+                response = await _resiliencyStrategy.ExecuteAsync(
+                  async ct => await _client.PostAsync(REINDEX, content, ct),
+                  cancellationToken: cancel ?? CancellationToken.None
+                    );
+
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"Error while reindexing : {e.Message}");
+                throw new FatalBundleClientException($"Error while reindexing : {e.Message}", e);
+
+            }
+
+            var responseString = await response.Content.ReadAsStringAsync() ?? "{}";
+            if (response.IsSuccessStatusCode)
+            {
+
+                try
+                {
+                    JObject jObject = JObject.Parse(responseString);
+                    if (jObject != null && jObject.Count > 0)
+                    {
+                        _logger.LogError(JObject.Parse(responseString).ToString(Formatting.Indented));
+                        _logger.LogInformation("Use this command to check the status of the reindex job. : az rest --resource " + baseURL + " --url " + baseURL + "_operations/reindex/" + jObject["id"]?.ToString());
+
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Error while parsing reindex response : {ex.Message}", ex);
+                }
+            }
+            else
+            {
+                _logger.LogInformation(responseString);
+            }
+
+        }
+
         private AccessToken FetchToken(string? tenantId = null)
         {
             _logger.LogInformation($"Attempting to get access token for {_client.BaseAddress}...");
@@ -123,6 +226,7 @@ namespace FhirLoader.Common
             _logger.LogInformation($"Got token for FHIR server {_client.BaseAddress}!");
             return token;
         }
+
 
         public void Dispose()
         {

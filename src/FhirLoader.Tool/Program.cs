@@ -2,6 +2,7 @@
 using CommandLine;
 using FhirLoader.Common;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 using System.Threading.Tasks.Dataflow;
 
 
@@ -46,17 +47,19 @@ namespace FhirLoader.Tool
             {
                 IEnumerable<FhirFileHandler> files;
                 SourceFileHandler sourceHandler = new(_logger);
+                var client = new FhirResourceClient(opt.FhirUrl!, _logger, opt.TenantId);
 
                 if (opt.FolderPath is not null)
                     files = sourceHandler.LoadFromFilePath(opt.FolderPath, opt.BatchSize!.Value);
                 else if (opt.BlobPath is not null)
                     files = sourceHandler.LoadFromBlobPath(opt.BlobPath, opt.BatchSize!.Value);
                 else if (opt.PackagePath is not null)
-                    files = sourceHandler.LoadFromPackagePath(opt.PackagePath, opt.BatchSize!.Value);
+                {
+                    JObject metadata = await client.Get("/metadata");
+                    files = sourceHandler.LoadFromPackagePath(opt.PackagePath, opt.BatchSize!.Value, metadata);
+                }
                 else
                     throw new ArgumentException("Either folder,package or blob must be inputted.");
-
-                var client = new FhirResourceClient(opt.FhirUrl!, _logger, opt.TenantId);
 
                 // Create a bundle sender
                 Metrics.Instance.Start();
@@ -122,6 +125,10 @@ namespace FhirLoader.Tool
                     });
                 }
                 Console.WriteLine($"Done! Sent {Metrics.Instance.TotalResourcesSent} resources in {(int)(Metrics.Instance.TotalTimeInMilliseconds / 1000)} seconds.");
+                if (opt.PackagePath is not null)
+                {
+                    await client.ReIndex(opt.FhirUrl!);
+                }
             }
             catch (ArgumentException ex)
             {

@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json.Linq;
-using System.ComponentModel;
 using static FhirLoader.Common.PackageTypeHelper;
 
 namespace FhirLoader.Common
@@ -9,6 +8,7 @@ namespace FhirLoader.Common
         private string _packagePath;
         private const string indexjson = ".index.json";
         private const string packagejson = "package.json";
+        private const string searchParameter = "searchparameter";
 
         public PackageHelper(string packagePath)
         {
@@ -64,18 +64,69 @@ namespace FhirLoader.Common
         /// Read the .index.json and return the list file name.
         /// </summary>
         /// <returns></returns>
-        public IList<string> GetPackageFiles()
+        public IList<string> GetPackageFiles(List<string> searchParamList)
         {
             IList<string> files = new List<string>();
             string packageType = string.Empty;
+
             JObject jobject = JObject.Parse(File.ReadAllText($"{_packagePath}\\{indexjson}"));
             if (jobject.Count > 0)
             {
-                files = jobject["files"]!.Select(t => $"{_packagePath}\\{t["filename"]?.Value<string>()}").ToList();
-            }
+                // if resourcetype is Search parameter and it exists in metadata, dont add it to files
+                foreach (var item in jobject["files"])
+                {
+                    if (item["resourceType"]?.Value<string>()?.ToLower() == searchParameter && searchParamList.Contains(item["url"]?.Value<string>()))
+                    {
+                        continue;
+                    }
+                    else { files.Add($"{_packagePath}\\{item["filename"]?.Value<string>()}"); }
+                }
 
+            }
             return files;
-        }        
+        }
+
+        public List<string> GetSearchParams(JObject? metadata)
+        {
+            var searchParams = new List<string>();
+            try
+            {
+                if (metadata != null && metadata.Count > 0)
+                {
+                    var resources =
+                    from p in metadata["rest"][0]["resource"]
+                    select p;
+
+                    if (resources != null)
+                    {
+                        foreach (JObject resource in resources)
+                        {
+                            if (resource.ContainsKey("searchParam"))
+                            {
+                                var searchParam =
+                                from p in resource["searchParam"]
+                                select p;
+                                if (searchParam != null)
+                                {
+                                    foreach (var param in searchParam)
+                                    {
+                                        if (param != null)
+                                        {
+                                            searchParams.Add(Convert.ToString(param["definition"]));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                //_logger.LogInformation($"Error while reading serach params from metadata.");
+            }
+            return searchParams;
+        }
 
     }
 

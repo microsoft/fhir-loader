@@ -81,7 +81,7 @@ namespace FhirLoader.Common
             }
         }
 
-        public IEnumerable<FhirFileHandler> LoadFromPackagePath(string packagePath, int bundleSize)
+        public IEnumerable<FhirFileHandler> LoadFromPackagePath(string packagePath, int bundleSize, JObject? metadata)
         {
             _logger.LogInformation($"Searching {packagePath} for FHIR files.");
 
@@ -99,7 +99,8 @@ namespace FhirLoader.Common
                 throw new ArgumentException($"Package type {packageType} is not valid. Skipping the loading process.");
             }
 
-            var inputBundles = helper.GetPackageFiles();
+            var searchParamList = helper.GetSearchParams(metadata);
+            var inputBundles = helper.GetPackageFiles(searchParamList);
 
             _logger.LogInformation($"Found {inputBundles.Count} FHIR bundles.");
 
