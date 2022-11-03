@@ -72,7 +72,7 @@ namespace FHIRBulkImport
                 string msg = $"ImportFHIRBundles: FHIR Service Call Completed for bundle {name}{sresourcecnt}in {timefhir.ElapsedMilliseconds} ms";
                 if (resourcecnt > 0)
                 {
-                    double effrate = resourcecnt / (timefhir.ElapsedMilliseconds * 1000d);
+                    double effrate = resourcecnt / (timefhir.ElapsedMilliseconds / 1000d);
                     msg = msg + " Effective Rate: " + string.Format("{0:F1}", effrate) + " resources/sec";
                 }
                 log.LogInformation(msg);
