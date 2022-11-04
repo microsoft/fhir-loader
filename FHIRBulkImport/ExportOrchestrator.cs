@@ -96,7 +96,6 @@ namespace FHIRBulkImport
             JObject retVal = new JObject();
             HashSet<string> uniquePats = new HashSet<string>();
             retVal["instanceid"] = context.InstanceId;
-           
             string inputs = context.GetInput<string>();
             try
             {
@@ -108,7 +107,6 @@ namespace FHIRBulkImport
                 log.LogError("ExportOrchestrator: Not a valid JSON Object from starter input");
                 return new JArray(retVal);
             }
-            retVal["configuration"] = config;
             string query = (string)config["query"];
             string patreffield = (string)config["patientreferencefield"];
             JArray include = (JArray)config["include"];
@@ -206,8 +204,6 @@ namespace FHIRBulkImport
             {
                 filecounts.Add(j);
             }
-            retVal["orchestratoroutput"] = filecounts;
-            context.SetCustomStatus(retVal);
             string rm = retVal.ToString(Newtonsoft.Json.Formatting.None);
             await context.CallActivityAsync<bool>("AppendBlob", SetContextVariables(context.InstanceId, rm));
             log.LogInformation($"Completed orchestration with ID = '{context.InstanceId}'.");
