@@ -1,4 +1,12 @@
-﻿using Azure.Core;
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+using System.Diagnostics;
+using System.Net;
+using System.Text;
+using Azure.Core;
 using Azure.Identity;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -7,10 +15,6 @@ using Polly;
 using Polly.CircuitBreaker;
 using Polly.Timeout;
 using Polly.Wrap;
-using System.Diagnostics;
-using System.Net;
-using System.Text;
-using Polly.Retry;
 
 namespace FhirLoader.Common
 {

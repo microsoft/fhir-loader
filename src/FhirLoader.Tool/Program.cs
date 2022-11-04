@@ -1,11 +1,15 @@
-﻿using Azure.Identity;
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+using System.Threading.Tasks.Dataflow;
+using Azure.Identity;
 using CommandLine;
 using FhirLoader.Common;
 using FhirLoader.Common.FileTypeHandlers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using System.Threading.Tasks.Dataflow;
-
 
 namespace FhirLoader.Tool
 {
@@ -47,6 +51,7 @@ namespace FhirLoader.Tool
             try
             {
                 IEnumerable<BaseFileHandler> files;
+
                 // Create client and setup access token
                 var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 10, opt.SkipErrors, _logger, opt.TenantId);
 

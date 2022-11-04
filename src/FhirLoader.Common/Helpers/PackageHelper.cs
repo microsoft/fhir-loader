@@ -10,8 +10,13 @@ namespace FhirLoader.Common.Helpers
         private string _packagePath;
         private const string PACKAGE_INDEX_FILENAME = ".index.json";
         private const string packagejson = "package.json";
-        private const string searchParameter = "searchparameter";
 
+        // private const string searchParameter = "searchparameter";
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PackageHelper"/> class.
+        /// </summary>
+        /// <param name="packagePath">Path to the FHIR package.</param>
         public PackageHelper(string packagePath)
         {
             _packagePath = packagePath;
@@ -20,15 +25,15 @@ namespace FhirLoader.Common.Helpers
         /// <summary>
         /// Check if the .index.json and package.json files exist in the given path.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>Boolean signaling if the path has the required files</returns>
         public bool ValidateRequiredFiles() => File.Exists(Path.Combine(_packagePath, PACKAGE_INDEX_FILENAME)) && File.Exists(Path.Combine(_packagePath, packagejson));
 
         /// <summary>
         /// Check if the given type in the package.json is valid or not.
         /// It returns true if the type matches with Conformance, fhir.ig, or Core, otherwise false.
         /// </summary>
-        /// <param name="packageType"></param>
-        /// <returns></returns>
+        /// <param name="packageType">String of the package type.</param>
+        /// <returns>Bool signaling if the package type is valid.</returns>
         public bool IsValidPackageType(out string? packageType)
         {
             JObject data = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, packagejson)));
@@ -46,8 +51,8 @@ namespace FhirLoader.Common.Helpers
         /// Method that check passed value is exitst or not in PackageType Enum.
         /// If a match is found, return true; otherwise, return false. .
         /// </summary>
-        /// <param name="packageType"></param>
-        /// <returns></returns>
+        /// <param name="packageType">String of the package type.</param>
+        /// <returns>Enum of the package type.</returns>
         private static bool CheckPackageType(string packageType)
         {
             return Enum.GetValues(typeof(PackageType))
@@ -59,7 +64,7 @@ namespace FhirLoader.Common.Helpers
         /// <summary>
         /// Read the .index.json and return the list file name.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>List of files in the FHIR Package.</returns>
         public IEnumerable<string> GetPackageFiles()
         {
             List<string> packageFiles = new();
@@ -75,6 +80,8 @@ namespace FhirLoader.Common.Helpers
 
             return Enumerable.Empty<string>();
         }
+
+        /*
         public IList<string> GetPackageFiles(List<string> searchParamList)
         {
             List<string> files = new();
@@ -103,7 +110,9 @@ namespace FhirLoader.Common.Helpers
 
             return files;
         }
+        */
 
+        /*
         public List<string> GetSearchParams(JObject? metadata, ILogger logger)
         {
             var searchParams = new List<string>();
@@ -139,12 +148,13 @@ namespace FhirLoader.Common.Helpers
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 logger.LogInformation($"Error while reading serach params from metadata.");
             }
+
             return searchParams;
         }
-
+        */
     }
 }

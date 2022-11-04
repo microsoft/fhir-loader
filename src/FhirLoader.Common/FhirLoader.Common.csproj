@@ -29,6 +29,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)/../stylecop.json" Link="stylecop.json" />
   </ItemGroup>
 
 </Project>

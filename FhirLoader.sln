@@ -18,6 +18,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{69805EAF-18BC-4E0F-AF65-0C0A8983646C}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		src\stylecop.json = src\stylecop.json
 	EndProjectSection
 EndProject
 Global

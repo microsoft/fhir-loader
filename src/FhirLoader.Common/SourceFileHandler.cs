@@ -1,11 +1,14 @@
-﻿using Azure.Storage.Blobs;
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
+
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FhirLoader.Common.FileTypeHandlers;
 using FhirLoader.Common.Helpers;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Text;
 
 namespace FhirLoader.Common
 {
