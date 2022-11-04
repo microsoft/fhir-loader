@@ -23,9 +23,6 @@ namespace FhirLoader.Tool
         [Option("package", Required = false, HelpText = "Package path to FHIR data to load.")]
         public string? PackagePath { get; set; }
 
-        [Option("bundle-package-files", Required = false, Default = false, HelpText = "Combine package files into bundles for faster execution.")]
-        public bool BundlePackageFiles { get; set; }
-
         [Option("skip-errors", Required = false, Default = false, HelpText = "Continue sending resources on HTTP error.")]
         public bool SkipErrors { get; set; }
 
@@ -41,7 +38,7 @@ namespace FhirLoader.Tool
         [Option("concurrency", Required = false, HelpText = $"Number of bundles to send in parallel. Defaults to {DEFAULT_CONCURRENCY}. Must be between {CONCURRENCY_MIN} and {CONCURRENCY_MAX}."),]
         public int? Concurrency { get; set; }
 
-        [Option("tenant-id", Required = false, HelpText = "Tenant ID of your FHIR server (not needed for your default directory)."),]
+        [Option("tenant-id", Required = false, HelpText = "Specific tenant id of your FHIR Server (should not be needed)."),]
         public string? TenantId { get; set; }
 
         [Option("debug", Required = false, Default = false, HelpText = "Print more detailed information to the console.")]

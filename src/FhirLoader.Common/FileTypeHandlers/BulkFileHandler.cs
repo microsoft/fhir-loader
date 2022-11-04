@@ -3,9 +3,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 
-namespace FhirLoader.Common
+namespace FhirLoader.Common.FileTypeHandlers
 {
-    public class BulkFileHandler : FhirFileHandler
+    public class BulkFileHandler : BaseFileHandler
     {
         private readonly Stream _inputStream;
 
@@ -86,7 +86,7 @@ namespace FhirLoader.Common
             {
                 throw new Exception($"Error converting NDJSON file to Bundle {FileName}.", ex);
             }
-            
+
         }
     }
 }

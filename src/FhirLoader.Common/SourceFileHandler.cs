@@ -1,5 +1,7 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using FhirLoader.Common.FileTypeHandlers;
+using FhirLoader.Common.Helpers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -7,16 +9,9 @@ using System.Text;
 
 namespace FhirLoader.Common
 {
-    public class SourceFileHandler
+    public static class SourceFileHandler
     {
-        ILogger _logger;
-
-        public SourceFileHandler(ILogger logger)
-        {
-            _logger = logger;
-        }
-
-        public IEnumerable<FhirFileHandler> LoadFromBlobPath(string blobPath, int bundleSize)
+        public static IEnumerable<BaseFileHandler> LoadFromAzureBlobUri(string blobPath, int bundleSize, ILogger _logger)
         {
             _logger.LogInformation($"Searching {blobPath} for FHIR files.");
 
@@ -56,7 +51,7 @@ namespace FhirLoader.Common
             }
         }
 
-        public IEnumerable<FhirFileHandler> LoadFromFilePath(string bundlePath, int bundleSize)
+        public static IEnumerable<BaseFileHandler> LoadFromLocalFilePath(string bundlePath, int bundleSize, ILogger _logger)
         {
             _logger.LogInformation($"Searching {bundlePath} for FHIR files.");
 
@@ -88,7 +83,7 @@ namespace FhirLoader.Common
             }
         }
 
-        public IEnumerable<FhirFileHandler> LoadFromPackagePath(string packagePath, int bundleSize, bool bundlePackageFiles)
+        public static IEnumerable<BaseFileHandler> LoadFhirPackageFromLocalPath(string packagePath, int bundleSize, ILogger _logger)
         {
             _logger.LogInformation($"Searching {packagePath} for FHIR files.");
 
@@ -108,53 +103,13 @@ namespace FhirLoader.Common
 
             IEnumerable<string> packageFiles = helper.GetPackageFiles();
 
-            // Test code to determine if we can optimize creation of package resources
-            if (bundlePackageFiles)
+            _logger.LogInformation($"Found {packageFiles.Count()} FHIR package files. Sending as individual resources...");
+            foreach (var filePath in packageFiles)
             {
-                _logger.LogInformation($"Found {packageFiles.Count()} FHIR package files. Sending in bundles...");
+                var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                var safeFileStream = Stream.Synchronized(fileStream);
+                yield return new SingleResourceFileHandler(safeFileStream, filePath, 1, _logger);
 
-                while (true)
-                {
-                    var fileChunk = packageFiles.OrderBy(x => x).Take(bundleSize);
-                    packageFiles = packageFiles.Skip(bundleSize).ToList();
-
-                    if (fileChunk.Count() == 0)
-                        break;
-
-                    var resourcesAsBundle = JObject.FromObject(new
-                    {
-                        resourceType = "Bundle",
-                        type = "batch",
-                        entry =
-                        from r in fileChunk.Select(x => JObject.Parse(File.ReadAllText(x)))
-                        select new
-                        {
-                            resource = r,
-                            request = new
-                            {
-                                method = r.SelectToken("id") is not null ? "PUT" : "POST",
-                                url = r.SelectToken("id") is not null ? $"{r["resourceType"]}/{r["id"]}" : r["resourceType"]
-                            }
-                        }
-                    });
-
-                    // Convert compiled bundle to stream
-                    // #TODO - can write to temp path on disk until it's ready to send
-                    byte[] byteArray = Encoding.UTF8.GetBytes(resourcesAsBundle.ToString());
-                    MemoryStream stream = new MemoryStream(byteArray);
-                    yield return new ResourceFileHandler(stream, string.Join(',', fileChunk), fileChunk.Count(), _logger);
-                }
-            }
-            else
-            {
-                _logger.LogInformation($"Found {packageFiles.Count()} FHIR package files. Sending as individual resources...");
-                foreach (var filePath in packageFiles)
-                {
-                    var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-                    var safeFileStream = Stream.Synchronized(fileStream);
-                    yield return new ResourceFileHandler(safeFileStream, filePath, 1, _logger);
-
-                }
             }
         }
 

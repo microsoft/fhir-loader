@@ -1,11 +1,12 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using FhirLoader.Common.Helpers;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 
-namespace FhirLoader.Common
+namespace FhirLoader.Common.FileTypeHandlers
 {
-    public class BundleFileHandler : FhirFileHandler
+    public class BundleFileHandler : BaseFileHandler
     {
         private readonly Stream _inputStream;
         private readonly ILogger _logger;

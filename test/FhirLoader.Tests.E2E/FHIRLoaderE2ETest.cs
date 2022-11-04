@@ -3,7 +3,7 @@ using FHIRLoader.Tool.Tests.E2E.Configuration;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 using System.Reflection;
-using static FhirLoader.Common.PackageTypeHelper;
+using static FhirLoader.Common.Helpers.PackageTypeHelper;
 
 namespace FHIRLoader.Tool.Tests.E2E
 {

@@ -1,6 +1,7 @@
 ﻿using Azure.Identity;
 using CommandLine;
 using FhirLoader.Common;
+using FhirLoader.Common.FileTypeHandlers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using System.Threading.Tasks.Dataflow;
@@ -45,15 +46,14 @@ namespace FhirLoader.Tool
             _logger.LogInformation("Setting up Applied FHIR Loader, please wait...  ");
             try
             {
-                IEnumerable<FhirFileHandler> files;
-                SourceFileHandler sourceHandler = new(_logger);
+                IEnumerable<BaseFileHandler> files;;
 
                 if (opt.FolderPath is not null)
-                    files = sourceHandler.LoadFromFilePath(opt.FolderPath, opt.BatchSize!.Value);
+                    files = SourceFileHandler.LoadFromLocalFilePath(opt.FolderPath, opt.BatchSize!.Value, _logger);
                 else if (opt.BlobPath is not null)
-                    files = sourceHandler.LoadFromBlobPath(opt.BlobPath, opt.BatchSize!.Value);
+                    files = SourceFileHandler.LoadFromAzureBlobUri(opt.BlobPath, opt.BatchSize!.Value, _logger);
                 else if (opt.PackagePath is not null)
-                    files = sourceHandler.LoadFromPackagePath(opt.PackagePath, opt.BatchSize!.Value, opt.BundlePackageFiles);
+                    files = SourceFileHandler.LoadFhirPackageFromLocalPath(opt.PackagePath, opt.BatchSize!.Value, _logger);
                 else
                     throw new ArgumentException("Either folder,package or blob must be inputted.");
 

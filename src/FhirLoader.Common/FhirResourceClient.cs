@@ -175,9 +175,12 @@ namespace FhirLoader.Common
         {
             _logger.LogInformation($"Attempting to get access token for {_client.BaseAddress}...");
 
+            DefaultAzureCredentialOptions credentialOptions = new();
+            credentialOptions.AdditionallyAllowedTenants.Add("*");
+            DefaultAzureCredential credential = new(true);
+
             string[] scopes = new string[] { $"{_client.BaseAddress}/.default" };
             TokenRequestContext tokenRequestContext = new TokenRequestContext(scopes: scopes, tenantId: _tenantId);
-            var credential = new DefaultAzureCredential(true);
 
             var token = await credential.GetTokenAsync(tokenRequestContext, cancel);
 

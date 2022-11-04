@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json.Linq;
 using System.ComponentModel;
-using static FhirLoader.Common.PackageTypeHelper;
+using static FhirLoader.Common.Helpers.PackageTypeHelper;
 
-namespace FhirLoader.Common
+namespace FhirLoader.Common.Helpers
 {
     public class PackageHelper
     {
@@ -65,7 +65,7 @@ namespace FhirLoader.Common
 
             if (indexFile.ContainsKey("files") && indexFile["files"]!.Type == JTokenType.Array)
             {
-                JArray files = (JArray) indexFile["files"]!;
+                JArray files = (JArray)indexFile["files"]!;
                 return files
                     .Where(f => f.Type == JTokenType.Object && ((JObject)f).ContainsKey("filename"))
                     .Select(t => Path.Combine(_packagePath, t["filename"]?.Value<string>()!));

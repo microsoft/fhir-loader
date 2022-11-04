@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FhirLoader.Common
+namespace FhirLoader.Common.Helpers
 {
     public static class PackageTypeHelper
     {

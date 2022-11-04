@@ -1,13 +1,13 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace FhirLoader.Common
+namespace FhirLoader.Common.FileTypeHandlers
 {
-    public abstract class FhirFileHandler
+    public abstract class BaseFileHandler
     {
-        public FhirFileHandler(string fileName, int bundleSize)
+        public BaseFileHandler(string fileName, int bundleSize)
         {
             FileName = fileName;
-            BundleSize = bundleSize;    
+            BundleSize = bundleSize;
         }
 
         public readonly string FileName;

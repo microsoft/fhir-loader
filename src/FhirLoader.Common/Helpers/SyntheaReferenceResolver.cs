@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 
 
-namespace FhirLoader.Common
+namespace FhirLoader.Common.Helpers
 {
     ///<summary>
     /// Utility class for resolving Synthea bundle references
@@ -79,7 +79,7 @@ namespace FhirLoader.Common
                         throw new ArgumentException("Invalid resource found in bundle.");
                     }
 
-                    table.Add(fullUrl, new IdTypePair(id, resourceType ));
+                    table.Add(fullUrl, new IdTypePair(id, resourceType));
                 }
             }
             catch
