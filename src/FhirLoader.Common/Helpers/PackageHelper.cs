@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 using System.ComponentModel;
 using static FhirLoader.Common.Helpers.PackageTypeHelper;
 
@@ -76,27 +77,34 @@ namespace FhirLoader.Common.Helpers
         }
         public IList<string> GetPackageFiles(List<string> searchParamList)
         {
-            IList<string> files = new List<string>();
+            List<string> files = new();
             string packageType = string.Empty;
 
-            JObject jobject = JObject.Parse(File.ReadAllText($"{_packagePath}\\{indexjson}"));
-            if (jobject.Count > 0)
+            JObject indexFile = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, PACKAGE_INDEX_FILENAME)));
+
+            if (indexFile.ContainsKey("files") && indexFile["files"]!.Type == JTokenType.Array)
             {
                 // if resourcetype is Search parameter and it exists in metadata, dont add it to files
-                foreach (var item in jobject["files"])
+                foreach (var item in (JArray)indexFile["files"])
                 {
-                    if (item["resourceType"]?.Value<string>()?.ToLower() == searchParameter && searchParamList.Contains(item["url"]?.Value<string>()))
+                    if (
+                        item["resourceType"]?.Value<string>()?.ToLower() == searchParameter &&
+                        searchParamList.Contains(item["url"]?.Value<string>()))
                     {
                         continue;
                     }
-                    else { files.Add($"{_packagePath}\\{item["filename"]?.Value<string>()}"); }
+                    else
+                    {
+                        files.Add(Path.Combine(_packagePath, item["filename"]?.Value<string>()));
+                    }
                 }
 
             }
+
             return files;
         }
 
-        public List<string> GetSearchParams(JObject? metadata)
+        public List<string> GetSearchParams(JObject? metadata, ILogger logger)
         {
             var searchParams = new List<string>();
             try
@@ -120,7 +128,7 @@ namespace FhirLoader.Common.Helpers
                                 {
                                     foreach (var param in searchParam)
                                     {
-                                        if (param != null)
+                                        if (param != null && param is JObject)
                                         {
                                             searchParams.Add(Convert.ToString(param["definition"]));
                                         }
@@ -133,7 +141,7 @@ namespace FhirLoader.Common.Helpers
             }
             catch (Exception ex)
             {
-                //_logger.LogInformation($"Error while reading serach params from metadata.");
+                logger.LogInformation($"Error while reading serach params from metadata.");
             }
             return searchParams;
         }

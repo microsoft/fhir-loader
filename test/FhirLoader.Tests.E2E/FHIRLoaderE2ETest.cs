@@ -1,4 +1,5 @@
 using FhirLoader.Common;
+using FhirLoader.Common.Helpers;
 using FhirLoader.Tool;
 using FHIRLoader.Tool.Tests.E2E.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -272,13 +273,13 @@ namespace FHIRLoader.Tool.Tests.E2E
         ///Skipping the resources if it is a search parameter and it exists in the search parameter list from metadata. 
         /// </summary>
         [Fact]
-        public async void LocalFhir_SkippSearchparamater_Test()
+        public async Task LocalFhir_SkippSearchparamater_Test()
         {
             ILogger<FHIRLoaderE2ETest> logger = ApplicationLogging.Instance.CreateLogger<FHIRLoaderE2ETest>();
-            var client = new FhirResourceClient(_config.FhirURL, logger);
-            JObject metadata = await client.Get("/metadata");
+            var client = new FhirResourceClient(_config.FhirURL, _config.Concurrency, false, logger);
+            JObject? metadata = await client.Get("/metadata");
             PackageHelper helper = new(@"../../../TestData/searchparamaterpackage");
-            var searchParamList = helper.GetSearchParams(metadata);
+            var searchParamList = helper.GetSearchParams(metadata, logger);
 
             int i = 0;
             JObject jobject = JObject.Parse(File.ReadAllText(@"../../../TestData/searchparamaterpackage/.index.json"));

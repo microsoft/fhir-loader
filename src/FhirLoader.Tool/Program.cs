@@ -46,9 +46,9 @@ namespace FhirLoader.Tool
             _logger.LogInformation("Setting up Applied FHIR Loader, please wait...  ");
             try
             {
-                IEnumerable<BaseFileHandler> files;;
-                SourceFileHandler sourceHandler = new(_logger);
-                var client = new FhirResourceClient(opt.FhirUrl!, _logger, opt.TenantId);
+                IEnumerable<BaseFileHandler> files;
+                // Create client and setup access token
+                var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 10, opt.SkipErrors, _logger, opt.TenantId);
 
                 if (opt.FolderPath is not null)
                 {
@@ -60,12 +60,14 @@ namespace FhirLoader.Tool
                 }
                 else if (opt.PackagePath is not null)
                 {
-                    JObject metadata = await client.Get("/metadata");
-                    files = sourceHandler.LoadFromPackagePath(opt.PackagePath, opt.BatchSize!.Value, metadata);
+                    JObject? metadata = await client.Get("/metadata");
+                    files = SourceFileHandler.LoadFhirPackageFromLocalPath(opt.PackagePath, opt.BatchSize!.Value, metadata, _logger);
+                }
+                else
+                {
+                    throw new ArgumentException("Unknown input type.");
                 }
 
-                // Create client and setup access token
-                var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 10, opt.SkipErrors,  _logger, opt.TenantId);
                 await client.PrefetchToken(_cancelTokenSource.Token);
 
                 // Create a bundle sender

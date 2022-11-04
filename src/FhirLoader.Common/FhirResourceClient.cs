@@ -195,11 +195,11 @@ namespace FhirLoader.Common
             }
             catch (BrokenCircuitException bce)
             {
-                throw new FatalBundleClientException($"Could not contact the FHIR Endpoint due to the following error: {bce.Message}", bce);
+                throw new FatalFhirResourceClientException($"Could not contact the FHIR Endpoint due to the following error: {bce.Message}", bce);
             }
             catch (Exception e)
             {
-                throw new FatalBundleClientException($"Critical error: {e.Message}", e);
+                throw new FatalFhirResourceClientException($"Critical error: {e.Message}", e);
             }
 
             timer.Stop();
@@ -243,7 +243,7 @@ namespace FhirLoader.Common
             catch (Exception e)
             {
                 _logger.LogInformation($"Error while reindexing : {e.Message}");
-                throw new FatalBundleClientException($"Error while reindexing : {e.Message}", e);
+                throw new FatalFhirResourceClientException($"Error while reindexing : {e.Message}", e);
 
             }
 
@@ -370,20 +370,6 @@ namespace FhirLoader.Common
                 });
 
             return Policy.WrapAsync(waitAndRetryPolicy, circuitBreakerWrappingTimeout, tokenRefreshPolicy);
-        }
-    }
-
-    public class FatalFhirResourceClientException : Exception
-    {
-        public HttpStatusCode? Code; 
-
-        public FatalFhirResourceClientException(string message, HttpStatusCode? code) : base(message) 
-        {
-            Code = code;
-        }
-        public FatalFhirResourceClientException(string message, Exception inner, HttpStatusCode? code) : base(message, inner)
-        {
-            Code = code;
         }
     }
 }

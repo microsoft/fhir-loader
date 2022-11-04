@@ -83,33 +83,33 @@ namespace FhirLoader.Common
             }
         }
 
-        public static IEnumerable<BaseFileHandler> LoadFhirPackageFromLocalPath(string packagePath, int bundleSize, JObject? metadata, ILogger _logger)
+        public static IEnumerable<BaseFileHandler> LoadFhirPackageFromLocalPath(string packagePath, int bundleSize, JObject? metadata, ILogger logger)
         {
-            _logger.LogInformation($"Searching {packagePath} for FHIR files.");
+            logger.LogInformation($"Searching {packagePath} for FHIR files.");
 
             string? packageType;
 
             PackageHelper helper = new(packagePath);
             if (!helper.ValidateRequiredFiles())
             {
-                _logger.LogError($"Provided package path does not have .index.json and/or package.json file. Skipping the loading process.");
+                logger.LogError($"Provided package path does not have .index.json and/or package.json file. Skipping the loading process.");
                 throw new ArgumentException("Provided package path does not have .index.json and/or package.json file. Skipping the loading process.");
             }
             if (!helper.IsValidPackageType(out packageType))
             {
-                _logger.LogError($"Package type {packageType} is not valid. Skipping the loading process.");
+                logger.LogError($"Package type {packageType} is not valid. Skipping the loading process.");
                 throw new ArgumentException($"Package type {packageType} is not valid. Skipping the loading process.");
             }
 
-            var searchParamList = helper.GetSearchParams(metadata);
-            var inputBundles = helper.GetPackageFiles(searchParamList);
+            var searchParamList = helper.GetSearchParams(metadata, logger);
+            var packageFiles = helper.GetPackageFiles(searchParamList);
 
-            _logger.LogInformation($"Found {packageFiles.Count()} FHIR package files. Sending as individual resources...");
+            logger.LogInformation($"Found {packageFiles.Count()} FHIR package files. Sending as individual resources...");
             foreach (var filePath in packageFiles)
             {
                 var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
                 var safeFileStream = Stream.Synchronized(fileStream);
-                yield return new SingleResourceFileHandler(safeFileStream, filePath, 1, _logger);
+                yield return new SingleResourceFileHandler(safeFileStream, filePath, 1, logger);
 
             }
         }
