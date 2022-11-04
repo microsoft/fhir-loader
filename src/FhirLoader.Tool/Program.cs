@@ -47,15 +47,22 @@ namespace FhirLoader.Tool
             try
             {
                 IEnumerable<BaseFileHandler> files;;
+                SourceFileHandler sourceHandler = new(_logger);
+                var client = new FhirResourceClient(opt.FhirUrl!, _logger, opt.TenantId);
 
                 if (opt.FolderPath is not null)
+                {
                     files = SourceFileHandler.LoadFromLocalFilePath(opt.FolderPath, opt.BatchSize!.Value, _logger);
+                }
                 else if (opt.BlobPath is not null)
+                {
                     files = SourceFileHandler.LoadFromAzureBlobUri(opt.BlobPath, opt.BatchSize!.Value, _logger);
+                }
                 else if (opt.PackagePath is not null)
-                    files = SourceFileHandler.LoadFhirPackageFromLocalPath(opt.PackagePath, opt.BatchSize!.Value, _logger);
-                else
-                    throw new ArgumentException("Either folder,package or blob must be inputted.");
+                {
+                    JObject metadata = await client.Get("/metadata");
+                    files = sourceHandler.LoadFromPackagePath(opt.PackagePath, opt.BatchSize!.Value, metadata);
+                }
 
                 // Create client and setup access token
                 var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 10, opt.SkipErrors,  _logger, opt.TenantId);
@@ -132,6 +139,10 @@ namespace FhirLoader.Tool
                     });
                 }
                 Console.WriteLine($"Done! Sent {Metrics.Instance.TotalResourcesSent} resources in {(int)(Metrics.Instance.TotalTimeInMilliseconds / 1000)} seconds.");
+                if (opt.PackagePath is not null)
+                {
+                    await client.ReIndex(opt.FhirUrl!);
+                }
             }
             catch (ArgumentException ex)
             {

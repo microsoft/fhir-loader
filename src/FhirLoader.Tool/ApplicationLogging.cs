@@ -7,7 +7,7 @@ namespace FhirLoader.Tool
     /// Class to create loggers for our application.
     /// https://stackoverflow.com/a/65046691
     /// </summary>
-    internal class ApplicationLogging
+    public class ApplicationLogging
     {
         public static ApplicationLogging Instance = new ApplicationLogging();
         public ILoggerFactory? LogFactory = null;

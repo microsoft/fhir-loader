@@ -83,7 +83,7 @@ namespace FhirLoader.Common
             }
         }
 
-        public static IEnumerable<BaseFileHandler> LoadFhirPackageFromLocalPath(string packagePath, int bundleSize, ILogger _logger)
+        public static IEnumerable<BaseFileHandler> LoadFhirPackageFromLocalPath(string packagePath, int bundleSize, JObject? metadata, ILogger _logger)
         {
             _logger.LogInformation($"Searching {packagePath} for FHIR files.");
 
@@ -101,7 +101,8 @@ namespace FhirLoader.Common
                 throw new ArgumentException($"Package type {packageType} is not valid. Skipping the loading process.");
             }
 
-            IEnumerable<string> packageFiles = helper.GetPackageFiles();
+            var searchParamList = helper.GetSearchParams(metadata);
+            var inputBundles = helper.GetPackageFiles(searchParamList);
 
             _logger.LogInformation($"Found {packageFiles.Count()} FHIR package files. Sending as individual resources...");
             foreach (var filePath in packageFiles)
