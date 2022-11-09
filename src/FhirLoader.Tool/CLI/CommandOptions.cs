@@ -3,21 +3,22 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
+using System.Globalization;
 using CommandLine;
 using CommandLine.Text;
 using FhirLoader.Tool.Extensions;
 
-namespace FhirLoader.Tool
+namespace FhirLoader.Tool.CLI
 {
     public class CommandOptions
     {
-        private const string DEFAULT_BUNDLE_SIZE = "500";
-        private const string BUNDLE_SIZE_MIN = "1";
-        private const string BUNDLE_SIZE_MAX = "500";
+        public const string DefaultBundleSize = "500";
+        public const string BundleSizeMin = "1";
+        public const string BundleSizeMax = "500";
 
-        private const string CONCURRENCY_MIN = "1";
-        private const string CONCURRENCY_MAX = "50";
-        private const string DEFAULT_CONCURRENCY = "8";
+        public const string ConcurrencyMin = "1";
+        public const string ConcurrencyMax = "50";
+        public const string DefaultConcurrency = "8";
 
         [Option("folder", Required = false, HelpText = "Folder path to FHIR data to load.")]
         public string? FolderPath { get; set; }
@@ -37,10 +38,10 @@ namespace FhirLoader.Tool
         [Option("fhir", Required = true, HelpText = "Base URL of your FHIR server.")]
         public string? FhirUrl { get; set; }
 
-        [Option("batch", Required = false, HelpText = $"Size of bundles to split large files into when sending resources. Defaults to {DEFAULT_BUNDLE_SIZE}. Must be between {BUNDLE_SIZE_MIN} and {BUNDLE_SIZE_MAX}"),]
+        [Option("batch", Required = false, HelpText = $"Size of bundles to split large files into when sending resources. Defaults to {DefaultBundleSize}. Must be between {BundleSizeMin} and {BundleSizeMax}"),]
         public int? BatchSize { get; set; }
 
-        [Option("concurrency", Required = false, HelpText = $"Number of bundles to send in parallel. Defaults to {DEFAULT_CONCURRENCY}. Must be between {CONCURRENCY_MIN} and {CONCURRENCY_MAX}."),]
+        [Option("concurrency", Required = false, HelpText = $"Number of bundles to send in parallel. Defaults to {DefaultConcurrency}. Must be between {ConcurrencyMin} and {ConcurrencyMax}."),]
         public int? Concurrency { get; set; }
 
         [Option("tenant-id", Required = false, HelpText = "Specific tenant id of your FHIR Server (should not be needed)."),]
@@ -54,7 +55,8 @@ namespace FhirLoader.Tool
         {
             get
             {
-                return new List<Example>() {
+                return new List<Example>() 
+                {
                     new Example("Load synthea files to an Azure Health Data Services FHIR service", new CommandOptions { FolderPath = "~/synthea/fhir", FhirUrl = "https://workspace-fhirservice.fhir.azurehealthcareapis.com/" }),
                     new Example("Control the size of bundles sent", new CommandOptions { FolderPath = "~/synthea/fhir", FhirUrl = "https://workspace-fhirservice.fhir.azurehealthcareapis.com/", BatchSize = 100 }),
                     new Example("Use another tenant ID other than your default", new CommandOptions{ FolderPath = "~/synthea/fhir", FhirUrl = "https://workspace-fhirservice.fhir.azurehealthcareapis.com/", TenantId = "12345678-90ab-cdef-1234-567890abcdef" }),
@@ -65,8 +67,8 @@ namespace FhirLoader.Tool
         public void Validate()
         {
             // Set Defaults
-            Concurrency = Concurrency ?? Convert.ToInt32(DEFAULT_CONCURRENCY);
-            BatchSize = BatchSize ?? Convert.ToInt32(DEFAULT_BUNDLE_SIZE);
+            Concurrency ??= Convert.ToInt32(DefaultConcurrency, NumberFormatInfo.InvariantInfo);
+            BatchSize ??= Convert.ToInt32(DefaultBundleSize, NumberFormatInfo.InvariantInfo);
 
             // Ensure the folder path exists
             try
@@ -94,21 +96,15 @@ namespace FhirLoader.Tool
                 throw new ArgumentException($"Path {PackagePath} could not be found or is not a directory.");
             }
 
-            if (BatchSize < Convert.ToInt32(BUNDLE_SIZE_MIN) || BatchSize > Convert.ToInt32(BUNDLE_SIZE_MAX))
+            if (BatchSize < Convert.ToInt32(BundleSizeMin, NumberFormatInfo.InvariantInfo) || BatchSize > Convert.ToInt32(BundleSizeMax, NumberFormatInfo.InvariantInfo))
             {
-                throw new ArgumentValidationException($"Batch {BatchSize} must be an integer between {BUNDLE_SIZE_MIN} and {BUNDLE_SIZE_MAX}");
+                throw new ArgumentValidationException($"Batch {BatchSize} must be an integer between {BundleSizeMin} and {BundleSizeMax}");
             }
 
-            if (Concurrency < Convert.ToInt32(CONCURRENCY_MIN) || Concurrency > Convert.ToInt32(CONCURRENCY_MAX))
+            if (Concurrency < Convert.ToInt32(ConcurrencyMin, NumberFormatInfo.InvariantInfo) || Concurrency > Convert.ToInt32(ConcurrencyMax, NumberFormatInfo.InvariantInfo))
             {
-                throw new ArgumentValidationException($"Concurrency {Concurrency} must be an integer between {CONCURRENCY_MIN} and {CONCURRENCY_MAX}");
+                throw new ArgumentValidationException($"Concurrency {Concurrency} must be an integer between {ConcurrencyMin} and {ConcurrencyMax}");
             }
         }
-    }
-
-    // https://github.com/commandlineparser/commandline/issues/146#issuecomment-523514501
-    public class ArgumentValidationException : Exception
-    {
-        public ArgumentValidationException(string message) : base(message) { }
     }
 }

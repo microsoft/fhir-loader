@@ -6,8 +6,10 @@
 using System.Threading.Tasks.Dataflow;
 using Azure.Identity;
 using CommandLine;
-using FhirLoader.Common;
-using FhirLoader.Common.FileTypeHandlers;
+using FhirLoader.Tool.CLI;
+using FhirLoader.Tool.Client;
+using FhirLoader.Tool.FileSource;
+using FhirLoader.Tool.FileTypeHandlers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -18,7 +20,7 @@ namespace FhirLoader.Tool
         private static ILogger<Program> _logger = ApplicationLogging.Instance.CreateLogger<Program>();
         private static CancellationTokenSource _cancelTokenSource = new CancellationTokenSource();
 
-        static async Task<int> Main(string[] args)
+        internal static async Task<int> Main(string[] args)
         {
             Console.CancelKeyPress += OnConsoleCancel;
 
@@ -47,58 +49,43 @@ namespace FhirLoader.Tool
 
         public static async Task<int> Run(CommandOptions opt)
         {
-            _logger.LogInformation("Setting up Applied FHIR Loader, please wait...  ");
+            _logger.LogInformation("Setting up Microsoft FHIR Loader Tool, please wait...  ");
             try
             {
-                IEnumerable<BaseFileHandler> files;
+                IEnumerable<BaseFhirFile> files;
 
                 // Create client and setup access token
-                var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 10, opt.SkipErrors, _logger, opt.TenantId);
+                var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 8, opt.SkipErrors, _logger, opt.TenantId, _cancelTokenSource.Token);
 
-                if (opt.FolderPath is not null)
-                {
-                    files = SourceFileHandler.LoadFromLocalFilePath(opt.FolderPath, opt.BatchSize!.Value, _logger);
-                }
-                else if (opt.BlobPath is not null)
-                {
-                    files = SourceFileHandler.LoadFromAzureBlobUri(opt.BlobPath, opt.BatchSize!.Value, _logger);
-                }
-                else if (opt.PackagePath is not null)
-                {
-                    JObject? metadata = await client.Get("/metadata");
-                    files = SourceFileHandler.LoadFhirPackageFromLocalPath(opt.PackagePath, opt.BatchSize!.Value, metadata, _logger);
-                }
-                else
-                {
-                    throw new ArgumentException("Unknown input type.");
-                }
+                // Get file streams from the specified source
+                BaseFileSource fileSource = ParseFileSource(opt);
 
-                await client.PrefetchToken(_cancelTokenSource.Token);
-
-                // Create a bundle sender
+                // Start our metrics tracking for the console output.
                 Metrics.Instance.Start();
 
                 // Send bundles in parallel
                 try
                 {
-                    var actionBlock = new ActionBlock<ProcessedResource>(async bundleWrapper =>
+                    var actionBlock = new ActionBlock<ProcessedResource>(
+                        async bundleWrapper =>
                     {
                         await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
                     },
-                       new ExecutionDataflowBlockOptions
+                        new ExecutionDataflowBlockOptions
                        {
                            MaxDegreeOfParallelism = opt.Concurrency!.Value,
                            BoundedCapacity = opt.Concurrency!.Value * 2,
-                           CancellationToken = _cancelTokenSource.Token
-                       }
-                   );
+                           CancellationToken = _cancelTokenSource.Token,
+                       });
 
                     // For each file, send segmented bundles
                     bool blockAcceptingNewMessages = true;
                     foreach (var file in files)
                     {
                         if (!blockAcceptingNewMessages)
+                        {
                             break;
+                        }
 
                         foreach (var resource in file.FileAsResourceList!)
                         {
@@ -130,7 +117,7 @@ namespace FhirLoader.Tool
                     if (ex.InnerException is not TaskCanceledException)
                     {
                         _cancelTokenSource.Cancel();
-                        var message = String.IsNullOrEmpty(ex.Message) ? ex.InnerException?.Message : ex.Message;
+                        var message = string.IsNullOrEmpty(ex.Message) ? ex.InnerException?.Message : ex.Message;
                         _logger.LogCritical("Failed to send all bundles because: ", ex.Message);
                     }
                 }
@@ -140,11 +127,11 @@ namespace FhirLoader.Tool
                     // exceptions are propagated through an AggregateException object.
                     ae.Handle(e =>
                     {
-                        Console.WriteLine("Encountered {0}: {1}",
-                           e.GetType().Name, e.Message);
+                        Console.WriteLine("Encountered {0}: {1}", e.GetType().Name, e.Message);
                         return true;
                     });
                 }
+
                 Console.WriteLine($"Done! Sent {Metrics.Instance.TotalResourcesSent} resources in {(int)(Metrics.Instance.TotalTimeInMilliseconds / 1000)} seconds.");
                 if (opt.PackagePath is not null)
                 {
@@ -169,12 +156,32 @@ namespace FhirLoader.Tool
             {
                 ApplicationLogging.Instance.LogFactory.Dispose();
             }
-            
+
             Metrics.Instance.Stop();
             return 0;
         }
 
-        static void OnConsoleCancel(object? sender, ConsoleCancelEventArgs e)
+        internal static BaseFileSource ParseFileSource(CommandOptions opt)
+        {
+            if (opt.FolderPath is not null)
+            {
+                return new LocalFolderSource(opt.FolderPath, _logger);
+            }
+            else if (opt.BlobPath is not null)
+            {
+                return new AzureBlobSource(opt.BlobPath, _logger);
+            }
+            else if (opt.PackagePath is not null)
+            {
+                // # TODO - fix metadata parameter issues.
+                // JObject? metadata = await client.Get("/metadata");
+                return new FhirPackageSource(opt.PackagePath, _logger);
+            }
+
+            throw new ArgumentException("Unknown input type.");
+        }
+
+        internal static void OnConsoleCancel(object? sender, ConsoleCancelEventArgs e)
         {
             _logger.LogWarning("Gracefully shutting down...");
             _cancelTokenSource.Cancel();

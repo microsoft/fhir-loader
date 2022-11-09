@@ -1,15 +1,18 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.ComponentModel;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using System.ComponentModel;
 using static FhirLoader.Common.Helpers.PackageTypeHelper;
 
 namespace FhirLoader.Common.Helpers
 {
+    /// <summary>
+    /// Helper functions for FHIR Package paths.
+    /// </summary>
     public class PackageHelper
     {
         private string _packagePath;
-        private const string PACKAGE_INDEX_FILENAME = ".index.json";
-        private const string packagejson = "package.json";
+        private const string PackageIndexFileName = ".index.json";
+        private const string PackageJsonFileName = "package.json";
 
         // private const string searchParameter = "searchparameter";
 
@@ -25,8 +28,8 @@ namespace FhirLoader.Common.Helpers
         /// <summary>
         /// Check if the .index.json and package.json files exist in the given path.
         /// </summary>
-        /// <returns>Boolean signaling if the path has the required files</returns>
-        public bool ValidateRequiredFiles() => File.Exists(Path.Combine(_packagePath, PACKAGE_INDEX_FILENAME)) && File.Exists(Path.Combine(_packagePath, packagejson));
+        /// <returns>Boolean signaling if the path has the required files.</returns>
+        public bool ValidateRequiredFiles() => File.Exists(Path.Combine(_packagePath, PackageIndexFileName)) && File.Exists(Path.Combine(_packagePath, PackageJsonFileName));
 
         /// <summary>
         /// Check if the given type in the package.json is valid or not.
@@ -36,9 +39,9 @@ namespace FhirLoader.Common.Helpers
         /// <returns>Bool signaling if the package type is valid.</returns>
         public bool IsValidPackageType(out string? packageType)
         {
-            JObject data = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, packagejson)));
+            JObject data = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, PackageJsonFileName)));
 
-            packageType = data.GetValue("type")?.Value<string>();
+            packageType = data.GetValue("type", StringComparison.OrdinalIgnoreCase)?.Value<string>();
             if (!string.IsNullOrEmpty(packageType) && CheckPackageType(packageType))
             {
                 return true;
@@ -68,7 +71,7 @@ namespace FhirLoader.Common.Helpers
         public IEnumerable<string> GetPackageFiles()
         {
             List<string> packageFiles = new();
-            JObject indexFile = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, PACKAGE_INDEX_FILENAME)));
+            JObject indexFile = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, PackageIndexFileName)));
 
             if (indexFile.ContainsKey("files") && indexFile["files"]!.Type == JTokenType.Array)
             {
@@ -87,7 +90,7 @@ namespace FhirLoader.Common.Helpers
             List<string> files = new();
             string packageType = string.Empty;
 
-            JObject indexFile = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, PACKAGE_INDEX_FILENAME)));
+            JObject indexFile = JObject.Parse(File.ReadAllText(Path.Combine(_packagePath, PackageIndexFileName)));
 
             if (indexFile.ContainsKey("files") && indexFile["files"]!.Type == JTokenType.Array)
             {

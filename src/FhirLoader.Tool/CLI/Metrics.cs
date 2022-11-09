@@ -3,11 +3,11 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Logging;
 
-namespace FhirLoader.Tool
+namespace FhirLoader.Tool.CLI
 {
     internal class Metrics
     {
@@ -47,7 +47,7 @@ namespace FhirLoader.Tool
             };
             meterListener.SetMeasurementEventCallback<int>(OnMeasurementRecorded);
         }
-        
+
 
         public void Start()
         {

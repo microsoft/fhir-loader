@@ -5,7 +5,7 @@
 
 using Microsoft.Extensions.Logging;
 
-namespace FhirLoader.Tool
+namespace FhirLoader.Tool.CLI
 {
     /// <summary>
     /// Class to create loggers for our application.
@@ -27,7 +27,7 @@ namespace FhirLoader.Tool
             return this;
         }
 
-        internal ILoggerFactory GetLogFactory(LogLevel level = LogLevel.Information )
+        internal ILoggerFactory GetLogFactory(LogLevel level = LogLevel.Information)
         {
             return LoggerFactory.Create(builder =>
             {
@@ -43,7 +43,8 @@ namespace FhirLoader.Tool
             });
         }
 
-        public ILogger<T> CreateLogger<T>(){
+        public ILogger<T> CreateLogger<T>()
+        {
             if (LogFactory is null)
             {
                 LogFactory = GetLogFactory();
@@ -51,9 +52,10 @@ namespace FhirLoader.Tool
 
             return LogFactory.CreateLogger<T>();
 
-        } 
+        }
 
-        public ILogger CreateLogger(string name) {
+        public ILogger CreateLogger(string name)
+        {
             if (LogFactory is null)
             {
                 LogFactory = GetLogFactory();

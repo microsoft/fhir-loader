@@ -1,6 +1,7 @@
-using FhirLoader.Common;
-using FhirLoader.Common.Helpers;
 using FhirLoader.Tool;
+using FhirLoader.Tool.Helpers;
+using FhirLoader.Tool;
+using FhirLoader.Tool.CLI;
 using FHIRLoader.Tool.Tests.E2E.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;

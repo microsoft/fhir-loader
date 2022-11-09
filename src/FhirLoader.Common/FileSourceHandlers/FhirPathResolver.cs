@@ -10,24 +10,24 @@ using FhirLoader.Common.Helpers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
-namespace FhirLoader.Common
+namespace FhirLoader.Common.SourceHandlers
 {
-    public static class SourceFileHandler
+    public static class FhirPathResolver
     {
-        public static IEnumerable<BaseFileHandler> LoadFromAzureBlobUri(string blobPath, int bundleSize, ILogger _logger)
+        public static IEnumerable<BaseFileHandler> FromAzureBlobUri(string blobPath, ILogger logger)
         {
-            _logger.LogInformation($"Searching {blobPath} for FHIR files.");
+            logger.LogInformation($"Searching {blobPath} for FHIR files.");
 
             var blobPathUri = new Uri(blobPath);
             var blobUriParsed = new BlobUriBuilder(blobPathUri);
             var accountUrl = new Uri($"https://{blobUriParsed.Host}");
 
-            BlobServiceClient blobServiceClient = new BlobServiceClient(serviceUri: accountUrl);
+            var blobServiceClient = new BlobServiceClient(serviceUri: accountUrl);
             var containerClient = blobServiceClient.GetBlobContainerClient(blobUriParsed.BlobContainerName);
 
             // Get list of bulk files and bundler
             // Using the orig Uri as BlobUriBuilder drops the last slash
-            string blobPrefix = "";
+            string blobPrefix = string.Empty;
             if (blobPathUri.Segments.Length >= 2)
             {
                 blobPrefix = string.Join('/', blobPathUri.Segments.Skip(2));
@@ -36,10 +36,10 @@ namespace FhirLoader.Common
             // TODO - change to async.
             IEnumerable<BlobItem> blobsPrefixFiltered = containerClient.GetBlobs(prefix: blobPrefix);
 
-            List<BlobItem> inputBundles = blobsPrefixFiltered.Where(_ => _.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)).ToList();
-            List<BlobItem> inputBulkfiles = blobsPrefixFiltered.Where(_ => _.Name.EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase)).ToList();
+            var inputBundles = blobsPrefixFiltered.Where(_ => _.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)).ToList();
+            var inputBulkfiles = blobsPrefixFiltered.Where(_ => _.Name.EndsWith(".ndjson", StringComparison.OrdinalIgnoreCase)).ToList();
 
-            _logger.LogInformation($"Found {inputBundles.Count()} FHIR bundles and {inputBulkfiles.Count()} FHIR bulk data files.");
+            logger.LogInformation($"Found {inputBundles.Count} FHIR bundles and {inputBulkfiles.Count} FHIR bulk data files.");
 
             foreach (var blob in inputBundles.Concat(inputBulkfiles).OrderBy(_ => _.Name))
             {
@@ -124,7 +124,7 @@ namespace FhirLoader.Common
         /// <returns></returns>
         private static string? CheckResourceType(string filepath)
         {
-            JObject data = JObject.Parse(File.ReadAllText(filepath));
+            var data = JObject.Parse(File.ReadAllText(filepath));
             return data.GetValue("resourceType")?.Value<string>();
         }
     }

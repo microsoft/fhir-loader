@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.32804.182
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.Common", "src\FhirLoader.Common\FhirLoader.Common.csproj", "{62C95C8A-6F43-4A1E-BE9C-159CDD6776B2}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.BulkFunction", "src\FhirLoader.BulkFunction\FhirLoader.BulkFunction.csproj", "{4359B7A4-3A18-43E3-ACB3-2774F2EEFF06}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.Tool", "src\FhirLoader.Tool\FhirLoader.Tool.csproj", "{838B9439-81FB-4601-8B26-AD649995BEF1}"
@@ -18,6 +16,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{69805EAF-18BC-4E0F-AF65-0C0A8983646C}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		src\CustomAnalysisRules.ruleset = src\CustomAnalysisRules.ruleset
 		src\stylecop.json = src\stylecop.json
 	EndProjectSection
 EndProject
@@ -27,10 +26,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{62C95C8A-6F43-4A1E-BE9C-159CDD6776B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{62C95C8A-6F43-4A1E-BE9C-159CDD6776B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{62C95C8A-6F43-4A1E-BE9C-159CDD6776B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{62C95C8A-6F43-4A1E-BE9C-159CDD6776B2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4359B7A4-3A18-43E3-ACB3-2774F2EEFF06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4359B7A4-3A18-43E3-ACB3-2774F2EEFF06}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4359B7A4-3A18-43E3-ACB3-2774F2EEFF06}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -48,7 +43,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{62C95C8A-6F43-4A1E-BE9C-159CDD6776B2} = {3F2DB00C-7EE4-42AE-99DB-BDCC3535D90F}
 		{4359B7A4-3A18-43E3-ACB3-2774F2EEFF06} = {3F2DB00C-7EE4-42AE-99DB-BDCC3535D90F}
 		{838B9439-81FB-4601-8B26-AD649995BEF1} = {3F2DB00C-7EE4-42AE-99DB-BDCC3535D90F}
 		{ED33573A-A15A-4FB6-8289-614221759D5F} = {8D01CD5A-1541-4124-8B37-D104F79FBDB4}
