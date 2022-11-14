@@ -9,49 +9,49 @@ using Microsoft.Extensions.Logging;
 
 namespace FhirLoader.Tool.CLI
 {
-    internal class Metrics
+    internal class Metrics : IDisposable
     {
-        public static Metrics Instance = new Metrics();
+        private Meter _meter;
+        private Counter<int>? _resourcesProcessed;
 
-        private Meter s_meter;
-        static Counter<int>? s_resourcesProcessed;
-
-        private MeterListener meterListener = new MeterListener();
+        private MeterListener _meterListener = new MeterListener();
         private ILogger _logger = ApplicationLogging.Instance.CreateLogger("Metrics");
 
         // Used to print resource rates
-        const int OUTPUT_REFRESH = 5000;
+        private const int OutputRefresh = 5000;
         private DateTime _lastPrintTime = DateTime.Now;
         private DateTime _startTime = DateTime.Now;
         private DateTime? _stopTime;
         private readonly ConcurrentBag<int> _resourceCount;
-        private int _windowIndex = 0;
-
-        // Aggregators
-        public long TotalResourcesSent => _resourceCount.Sum();
-        public double TotalTimeInMilliseconds => ((_stopTime ?? DateTime.Now) - _startTime).TotalMilliseconds;
+        private int _windowIndex;
 
         public Metrics()
         {
-            s_meter = new Meter("Applied.FhirLoader.Tool", "1.0.0");
-            s_resourcesProcessed = s_meter.CreateCounter<int>(name: "resources-processed", unit: "Resources", description: "The number of FHIR resources processed by the server");
+            _meter = new Meter("Applied.FhirLoader.Tool", "1.0.0");
+            _resourcesProcessed = _meter.CreateCounter<int>(name: "resources-processed", unit: "Resources", description: "The number of FHIR resources processed by the server");
             _resourceCount = new ConcurrentBag<int>();
 
-            meterListener = new MeterListener();
-            meterListener.InstrumentPublished = (instrument, listener) =>
+            _meterListener = new MeterListener();
+            _meterListener.InstrumentPublished = (instrument, listener) =>
             {
-                if (instrument.Meter.Name == s_meter.Name)
+                if (instrument.Meter.Name == _meter.Name)
                 {
                     listener.EnableMeasurementEvents(instrument);
                 }
             };
-            meterListener.SetMeasurementEventCallback<int>(OnMeasurementRecorded);
+            _meterListener.SetMeasurementEventCallback<int>(OnMeasurementRecorded);
         }
 
+        public static Metrics Instance { get; } = new Metrics();
+
+        // Aggregators
+        public long TotalResourcesSent => _resourceCount.Sum();
+
+        public double TotalTimeInMilliseconds => ((_stopTime ?? DateTime.Now) - _startTime).TotalMilliseconds;
 
         public void Start()
         {
-            meterListener.Start();
+            _meterListener.Start();
             _lastPrintTime = DateTime.Now;
             _startTime = DateTime.Now;
         }
@@ -59,18 +59,18 @@ namespace FhirLoader.Tool.CLI
         public void Stop()
         {
             _stopTime = DateTime.Now;
-            meterListener.Dispose();
+            _meterListener.Dispose();
         }
 
         public void RecordBundlesSent(int resourceCount, long time)
         {
-            s_resourcesProcessed!.Add(resourceCount);
-            meterListener.RecordObservableInstruments();
+            _resourcesProcessed!.Add(resourceCount);
+            _meterListener.RecordObservableInstruments();
         }
 
-        void OnMeasurementRecorded(Instrument instrument, int measurement, ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state)
+        private void OnMeasurementRecorded(Instrument instrument, int measurement, ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state)
         {
-            if (instrument.Name != s_resourcesProcessed!.Name)
+            if (instrument.Name != _resourcesProcessed!.Name)
             {
                 _logger.LogTrace($"{instrument.Name} recorded measurement {measurement}");
                 return;
@@ -80,7 +80,7 @@ namespace FhirLoader.Tool.CLI
             _logger.LogDebug($"Bundle processed with {measurement} resources. {TotalResourcesSent} total resources processed.");
 
             var timeChange = (DateTime.Now - _lastPrintTime).TotalMilliseconds;
-            if (timeChange > OUTPUT_REFRESH)
+            if (timeChange > OutputRefresh)
             {
                 _lastPrintTime = DateTime.Now;
                 int windowTotal = _resourceCount.Skip(_windowIndex).Sum();
@@ -90,6 +90,12 @@ namespace FhirLoader.Tool.CLI
                 int totalRate = (int)(Convert.ToDouble(TotalResourcesSent) / (TotalTimeInMilliseconds / 1000));
                 _logger.LogInformation($"Current processing Rate: {currentRate} resources/second. Total processing rate {totalRate} resources/second.");
             }
+        }
+
+        public void Dispose()
+        {
+            _meter.Dispose();
+            _meterListener.Dispose();
         }
     }
 }

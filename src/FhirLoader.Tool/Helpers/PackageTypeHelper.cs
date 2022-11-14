@@ -18,8 +18,8 @@ namespace FhirLoader.Tool.Helpers
                 var attribute = memberInfo.GetCustomAttributes(typeof(DescriptionAttribute), false)[0];
                 displayName = ((DescriptionAttribute)attribute).Description;
             }
+
             return displayName;
         }
-
     }
 }

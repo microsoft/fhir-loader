@@ -41,6 +41,8 @@ namespace FhirLoader.Tool.CLI
         [Option("batch", Required = false, HelpText = $"Size of bundles to split large files into when sending resources. Defaults to {DefaultBundleSize}. Must be between {BundleSizeMin} and {BundleSizeMax}"),]
         public int? BatchSize { get; set; }
 
+        internal int BatchSizeInternal => BatchSize ?? Convert.ToInt32(DefaultBundleSize, NumberFormatInfo.InvariantInfo);
+
         [Option("concurrency", Required = false, HelpText = $"Number of bundles to send in parallel. Defaults to {DefaultConcurrency}. Must be between {ConcurrencyMin} and {ConcurrencyMax}."),]
         public int? Concurrency { get; set; }
 
@@ -55,11 +57,11 @@ namespace FhirLoader.Tool.CLI
         {
             get
             {
-                return new List<Example>() 
+                return new List<Example>
                 {
                     new Example("Load synthea files to an Azure Health Data Services FHIR service", new CommandOptions { FolderPath = "~/synthea/fhir", FhirUrl = "https://workspace-fhirservice.fhir.azurehealthcareapis.com/" }),
                     new Example("Control the size of bundles sent", new CommandOptions { FolderPath = "~/synthea/fhir", FhirUrl = "https://workspace-fhirservice.fhir.azurehealthcareapis.com/", BatchSize = 100 }),
-                    new Example("Use another tenant ID other than your default", new CommandOptions{ FolderPath = "~/synthea/fhir", FhirUrl = "https://workspace-fhirservice.fhir.azurehealthcareapis.com/", TenantId = "12345678-90ab-cdef-1234-567890abcdef" }),
+                    new Example("Use another tenant ID other than your default", new CommandOptions { FolderPath = "~/synthea/fhir", FhirUrl = "https://workspace-fhirservice.fhir.azurehealthcareapis.com/", TenantId = "12345678-90ab-cdef-1234-567890abcdef" }),
                 };
             }
         }

@@ -1,16 +1,17 @@
-﻿using Newtonsoft.Json.Linq;
+﻿// -------------------------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
+// -------------------------------------------------------------------------------------------------
 
+using Newtonsoft.Json.Linq;
 
 namespace FhirLoader.Tool.Helpers
 {
-    ///<summary>
-    /// Utility class for resolving Synthea bundle references
-    ///</summary>
+    /// <summary>
+    /// Utility class for resolving Synthea bundle references.
+    /// </summary>
     public class SyntheaReferenceResolver
     {
-        ///<summary>
-        /// Resolves all UUIDs in Synthea bundle
-        ///</summary>
         public static void ConvertUUIDs(JObject bundle)
         {
             ConvertUUIDs(bundle, CreateUUIDLookUpTable(bundle));
@@ -93,15 +94,15 @@ namespace FhirLoader.Tool.Helpers
 
         private class IdTypePair
         {
-            public string Id { get; set; }
-
-            public string ResourceType { get; set; }
-
             public IdTypePair(string id, string resourceType)
             {
                 Id = id;
                 ResourceType = resourceType;
             }
+
+            public string Id { get; set; }
+
+            public string ResourceType { get; set; }
         }
     }
 }

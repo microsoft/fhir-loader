@@ -9,17 +9,18 @@ namespace FhirLoader.Tool.CLI
 {
     /// <summary>
     /// Class to create loggers for our application.
-    /// https://stackoverflow.com/a/65046691
+    /// https://stackoverflow.com/a/65046691.
     /// </summary>
     public class ApplicationLogging
     {
-        public static ApplicationLogging Instance = new ApplicationLogging();
-        public ILoggerFactory? LogFactory = null;
-
         public ApplicationLogging()
         {
             LogFactory = GetLogFactory()!;
         }
+
+        public static ApplicationLogging Instance { get; } = new ApplicationLogging();
+
+        public ILoggerFactory? LogFactory { get; set;  }
 
         public ApplicationLogging Configure(LogLevel level)
         {
@@ -27,11 +28,12 @@ namespace FhirLoader.Tool.CLI
             return this;
         }
 
-        internal ILoggerFactory GetLogFactory(LogLevel level = LogLevel.Information)
+        internal static ILoggerFactory GetLogFactory(LogLevel level = LogLevel.Information)
         {
             return LoggerFactory.Create(builder =>
             {
                 builder.ClearProviders();
+
                 // Clear Microsoft's default providers (like eventlogs and others)
                 builder.AddSimpleConsole(options =>
                 {
@@ -51,7 +53,6 @@ namespace FhirLoader.Tool.CLI
             }
 
             return LogFactory.CreateLogger<T>();
-
         }
 
         public ILogger CreateLogger(string name)

@@ -9,6 +9,7 @@ using CommandLine;
 using FhirLoader.Tool.CLI;
 using FhirLoader.Tool.Client;
 using FhirLoader.Tool.FileSource;
+using FhirLoader.Tool.FileType;
 using FhirLoader.Tool.FileTypeHandlers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -52,8 +53,6 @@ namespace FhirLoader.Tool
             _logger.LogInformation("Setting up Microsoft FHIR Loader Tool, please wait...  ");
             try
             {
-                IEnumerable<BaseFhirFile> files;
-
                 // Create client and setup access token
                 var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 8, opt.SkipErrors, _logger, opt.TenantId, _cancelTokenSource.Token);
 
@@ -66,7 +65,7 @@ namespace FhirLoader.Tool
                 // Send bundles in parallel
                 try
                 {
-                    var actionBlock = new ActionBlock<ProcessedResource>(
+                    var actionBlock = new ActionBlock<BaseProcessedResource>(
                         async bundleWrapper =>
                     {
                         await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
@@ -80,14 +79,17 @@ namespace FhirLoader.Tool
 
                     // For each file, send segmented bundles
                     bool blockAcceptingNewMessages = true;
-                    foreach (var file in files)
+
+                    foreach (var file in fileSource.Files)
                     {
                         if (!blockAcceptingNewMessages)
                         {
                             break;
                         }
 
-                        foreach (var resource in file.FileAsResourceList!)
+                        var processedResourceList = BaseProcessedResource.ProcessedResourceFromFileStream(file.Data, file.Name, opt.BatchSizeInternal, _logger);
+
+                        foreach (var resource in processedResourceList)
                         {
                             if (opt.StripText)
                             {

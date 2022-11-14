@@ -8,7 +8,7 @@ using System.Net;
 using System.Text;
 using Azure.Core;
 using Azure.Identity;
-using FhirLoader.Tool;
+using FhirLoader.Tool.FileType;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -20,7 +20,7 @@ using Polly.Wrap;
 namespace FhirLoader.Tool.Client
 {
     /// <summary>
-    /// FHIR version agnostic client for sending FHIR Resources (bundles or plain resources)
+    /// FHIR version agnostic client for sending FHIR Resources (bundles or plain resources).
     /// </summary>
     public class FhirResourceClient : IDisposable
     {
@@ -57,7 +57,7 @@ namespace FhirLoader.Tool.Client
             SetAccessTokenAsync(cancel).GetAwaiter().GetResult();
         }
 
-        public async Task Send(ProcessedResource processedResource, Action<int, long>? metricsCallback = null, CancellationToken cancel = default)
+        public async Task Send(BaseProcessedResource processedResource, Action<int, long>? metricsCallback = null, CancellationToken cancel = default)
         {
             var content = new StringContent(processedResource.ResourceText!, Encoding.UTF8, "application/json");
             HttpResponseMessage response = new();
@@ -69,7 +69,6 @@ namespace FhirLoader.Tool.Client
 
             while (true)
             {
-
                 timer.Start();
 
                 try
@@ -80,17 +79,14 @@ namespace FhirLoader.Tool.Client
                     {
                         response = await _resiliencyStrategy.ExecuteAsync(
                             async ct => await _client.PutAsync(requestUri, content, ct),
-                            cancellationToken: cancel
-                        );
+                            cancellationToken: cancel);
                     }
                     else
                     {
                         response = await _resiliencyStrategy.ExecuteAsync(
                             async ct => await _client.PostAsync(requestUri, content, ct),
-                            cancellationToken: cancel
-                        );
+                            cancellationToken: cancel);
                     }
-
                 }
                 catch (TaskCanceledException tcex)
                 {
@@ -103,13 +99,13 @@ namespace FhirLoader.Tool.Client
                 catch (TimeoutRejectedException)
                 {
                     _logger.LogWarning("Maximum client timeout reached, delaying and retrying...");
-                    await Task.Delay(30000);
+                    await Task.Delay(30000, cancel);
                     continue;
                 }
                 catch (HttpRequestException)
                 {
                     _logger.LogWarning("Network error encountered, delaying and retrying...");
-                    await Task.Delay(30000);
+                    await Task.Delay(30000, cancel);
                     continue;
                 }
                 catch (Exception e)
@@ -119,16 +115,14 @@ namespace FhirLoader.Tool.Client
 
                 if (!response.IsSuccessStatusCode)
                 {
-
-                    var responseString = await response.Content.ReadAsStringAsync() ?? "{}";
+                    var responseString = await response.Content.ReadAsStringAsync(cancel) ?? "{}";
 
                     // Stopgap for duplicate search parameters. Really, the class calling this one should filter the search parameters by what already exists on the server.
                     if (
-                        responseString.Contains("SearchParameter", StringComparison.InvariantCultureIgnoreCase) &&
-                        responseString.Contains("already exists", StringComparison.InvariantCultureIgnoreCase) ||
-                        responseString.Contains("custom search parameter", StringComparison.CurrentCultureIgnoreCase) &&
-                        responseString.Contains("An item with the same key has already been added.", StringComparison.CurrentCultureIgnoreCase)
-                        )
+                        (responseString.Contains("SearchParameter", StringComparison.OrdinalIgnoreCase) &&
+                        responseString.Contains("already exists", StringComparison.OrdinalIgnoreCase)) ||
+                        (responseString.Contains("custom search parameter", StringComparison.OrdinalIgnoreCase) &&
+                        responseString.Contains("An item with the same key has already been added.", StringComparison.OrdinalIgnoreCase)))
                     {
                         _logger.LogInformation("Search parameter resource already exists on the server...skipping...");
                         timer.Stop();
@@ -161,17 +155,18 @@ namespace FhirLoader.Tool.Client
                         _logger.LogError(responseString);
                     }
 
-                    await Task.Delay(30000);
+                    await Task.Delay(30000, cancel);
                     continue;
                 }
 
                 timer.Stop();
                 break;
-
             }
 
             if (metricsCallback is not null)
+            {
                 metricsCallback(processedResource.ResourceCount, timer.ElapsedMilliseconds);
+            }
 
             _logger.LogTrace("Successfully sent bundle.");
         }
@@ -189,9 +184,7 @@ namespace FhirLoader.Tool.Client
 
                 response = await _resiliencyStrategy.ExecuteAsync(
                    async ct => await _client.GetAsync(requestUri, ct),
-                   CancellationToken.None
-                     );
-
+                   CancellationToken.None);
             }
             catch (TaskCanceledException tcex)
             {
@@ -240,21 +233,17 @@ namespace FhirLoader.Tool.Client
                 var content = new StringContent("{ \"resourceType\": \"Parameters\",\"parameter\": [] }", Encoding.UTF8, "application/json");
                 response = await _resiliencyStrategy.ExecuteAsync(
                   async ct => await _client.PostAsync(ReindexSuffix, content, ct),
-                  cancellationToken: cancel ?? CancellationToken.None
-                    );
-
+                  cancellationToken: cancel ?? CancellationToken.None);
             }
             catch (Exception e)
             {
                 _logger.LogInformation($"Error while reindexing : {e.Message}");
                 throw new FatalFhirResourceClientException($"Error while reindexing : {e.Message}", e);
-
             }
 
             var responseString = await response.Content.ReadAsStringAsync() ?? "{}";
             if (response.IsSuccessStatusCode)
             {
-
                 try
                 {
                     var jObject = JObject.Parse(responseString);
@@ -262,9 +251,7 @@ namespace FhirLoader.Tool.Client
                     {
                         _logger.LogError(JObject.Parse(responseString).ToString(Formatting.Indented));
                         _logger.LogInformation("Use this command to check the status of the reindex job. : az rest --resource " + baseURL + " --url " + baseURL + "_operations/reindex/" + jObject["id"]?.ToString());
-
                     }
-
                 }
                 catch (Exception ex)
                 {
@@ -275,7 +262,6 @@ namespace FhirLoader.Tool.Client
             {
                 _logger.LogInformation(responseString);
             }
-
         }
 
         private async Task<AccessToken> SetAccessTokenAsync(CancellationToken cancel = default)
@@ -299,10 +285,10 @@ namespace FhirLoader.Tool.Client
             return token;
         }
 
-
         public void Dispose()
         {
             _client.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         public AsyncPolicyWrap<HttpResponseMessage> CreateDefaultResiliencyStrategy(int expectedParallelRequests)
@@ -310,7 +296,8 @@ namespace FhirLoader.Tool.Client
             var rnd = new Random();
 
             // Retry when these status codes are encountered.
-            HttpStatusCode[] httpStatusCodesWorthRetrying = {
+            HttpStatusCode[] httpStatusCodesWorthRetrying =
+            {
                HttpStatusCode.InternalServerError, // 500
                HttpStatusCode.BadGateway, // 502
                HttpStatusCode.GatewayTimeout, // 504
@@ -319,13 +306,13 @@ namespace FhirLoader.Tool.Client
             // Define our waitAndRetry policy: retry n times with an exponential backoff in case the FHIR API throttles us for too many requests.
             var waitAndRetryPolicy = Policy
                 .HandleResult<HttpResponseMessage>(e => e.StatusCode == HttpStatusCode.ServiceUnavailable || e.StatusCode == (HttpStatusCode)429 || e.StatusCode == HttpStatusCode.TooManyRequests)
-                .WaitAndRetryAsync(expectedParallelRequests * 3,
+                .WaitAndRetryAsync(
+                    expectedParallelRequests * 3,
                     attempt => TimeSpan.FromMilliseconds(500 * rnd.Next(8) * Math.Pow(2, attempt)),
                     (exception, calculatedWaitDuration) =>
                     {
                         _logger.LogWarning($"FHIR API server throttling our requests. Automatically delaying for {calculatedWaitDuration.TotalMilliseconds / 1000} seconds");
-                    }
-                );
+                    });
 
             // Define our first CircuitBreaker policy: Break if the action fails 5 times in a row.
             // This is designed to handle Exceptions from the FHIR API, as well as
@@ -342,14 +329,12 @@ namespace FhirLoader.Tool.Client
                         _logger.LogWarning($"Polly Circuit Breaker logging: Breaking the circuit for {breakDelay.TotalMilliseconds}ms due to response {outcome.Result}. More Details: {outcome.Exception?.Message}");
                     },
                     onReset: () => _logger.LogWarning("Polly Circuit Breaker logging: Call ok... closed the circuit again"),
-                    onHalfOpen: () => _logger.LogWarning("Polly Circuit Breaker logging: Half-open: Next call is a trial")
-                );
+                    onHalfOpen: () => _logger.LogWarning("Polly Circuit Breaker logging: Half-open: Next call is a trial"));
 
             // Timeout before HttpClient timeout of 100ms
             var timeoutPolicy = Policy.TimeoutAsync<HttpResponseMessage>(
                 TimeSpan.FromSeconds(95),
-                TimeoutStrategy.Optimistic
-            );
+                TimeoutStrategy.Optimistic);
 
             var circuitBreakerWrappingTimeout = circuitBreakerPolicyForRecoverable.
                 WrapAsync(timeoutPolicy);

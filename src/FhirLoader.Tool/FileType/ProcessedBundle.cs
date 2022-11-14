@@ -3,20 +3,13 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-namespace FhirLoader.Common.FileTypeHandlers
+namespace FhirLoader.Tool.FileType
 {
-    public abstract class BaseFileHandler
+    public class ProcessedBundle : BaseProcessedResource
     {
-        public BaseFileHandler(string fileName, int bundleSize)
+        public ProcessedBundle()
         {
-            FileName = fileName;
-            BundleSize = bundleSize;
+            ResourceType = "Bundle";
         }
-
-        public readonly string FileName;
-
-        public readonly int BundleSize;
-
-        public abstract IEnumerable<ProcessedResource>? FileAsResourceList { get; }
     }
 }
