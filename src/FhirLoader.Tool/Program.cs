@@ -54,7 +54,7 @@ namespace FhirLoader.Tool
             try
             {
                 // Create client and setup access token
-                var client = new FhirResourceClient(opt.FhirUrl!, opt.Concurrency ?? 8, opt.SkipErrors, _logger, opt.TenantId, _cancelTokenSource.Token);
+                var client = new FhirResourceClient(opt.FhirUrl!, opt.ConcurrencyInternal, opt.SkipErrors, _logger, opt.TenantId, _cancelTokenSource.Token);
 
                 // Get file streams from the specified source
                 BaseFileSource fileSource = ParseFileSource(opt);

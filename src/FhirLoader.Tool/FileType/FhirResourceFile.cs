@@ -51,6 +51,7 @@ namespace FhirLoader.Tool.FileTypeHandlers
                     ResourceFileName = _fileName,
                     ResourceType = resource["resourceType"]?.ToString(),
                 };
+                yield break;
             }
 
             try

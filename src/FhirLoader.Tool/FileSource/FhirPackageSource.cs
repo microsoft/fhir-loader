@@ -29,13 +29,13 @@ namespace FhirLoader.Tool.FileSource
 
             string? packageType;
 
-            if (ValidateRequiredFiles())
+            if (!PackageHasNeededMetadataFiles())
             {
                 Logger.LogError($"Provided package path does not have .index.json and/or package.json file. Skipping the loading process.");
                 throw new ArgumentException("Provided package path does not have .index.json and/or package.json file. Skipping the loading process.");
             }
 
-            if (IsValidPackageType(out packageType))
+            if (!IsValidPackageType(out packageType))
             {
                 Logger.LogError($"Package type {packageType} is not valid. Skipping the loading process.");
                 throw new ArgumentException($"Package type {packageType} is not valid. Skipping the loading process.");
@@ -109,7 +109,13 @@ namespace FhirLoader.Tool.FileSource
         /// Check if the .index.json and package.json files exist in the given path.
         /// </summary>
         /// <returns>Boolean signaling if the path has the required files.</returns>
-        public bool ValidateRequiredFiles() => File.Exists(System.IO.Path.Combine(Path, PackageIndexFileName)) && File.Exists(System.IO.Path.Combine(Path, PackageJsonFileName));
+        public bool PackageHasNeededMetadataFiles()
+        {
+            string indexPath = System.IO.Path.Combine(Path, PackageIndexFileName);
+            string packagePath = System.IO.Path.Combine(Path, PackageJsonFileName);
+
+            return File.Exists(indexPath) && File.Exists(packagePath);
+        }
 
         /// <summary>
         /// Check if the given type in the package.json is valid or not.

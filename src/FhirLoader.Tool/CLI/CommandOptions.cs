@@ -46,6 +46,8 @@ namespace FhirLoader.Tool.CLI
         [Option("concurrency", Required = false, HelpText = $"Number of bundles to send in parallel. Defaults to {DefaultConcurrency}. Must be between {ConcurrencyMin} and {ConcurrencyMax}."),]
         public int? Concurrency { get; set; }
 
+        internal int ConcurrencyInternal => Concurrency ?? Convert.ToInt32(DefaultConcurrency, NumberFormatInfo.InvariantInfo);
+
         [Option("tenant-id", Required = false, HelpText = "Specific tenant id of your FHIR Server (should not be needed)."),]
         public string? TenantId { get; set; }
 
