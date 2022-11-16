@@ -1,7 +1,7 @@
 using FhirLoader.Tool;
-using FhirLoader.Tool.Helpers;
-using FhirLoader.Tool;
 using FhirLoader.Tool.CLI;
+using FhirLoader.Tool.Client;
+using FhirLoader.Tool.FileSource;
 using FHIRLoader.Tool.Tests.E2E.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -10,11 +10,13 @@ using System.Reflection;
 
 namespace FHIRLoader.Tool.Tests.E2E
 {
-    public class FHIRLoaderE2ETest
+    public class Tests
     {
         private readonly TestConfig _config;
 
-        public FHIRLoaderE2ETest()
+        ILogger<Tests> _logger = ApplicationLogging.Instance.CreateLogger<Tests>();
+
+        public Tests()
         {
             IConfigurationBuilder builder = new ConfigurationBuilder()
                 .AddUserSecrets(Assembly.GetExecutingAssembly(), true)
@@ -273,14 +275,13 @@ namespace FHIRLoader.Tool.Tests.E2E
         /// <summary>
         ///Skipping the resources if it is a search parameter and it exists in the search parameter list from metadata. 
         /// </summary>
-        [Fact]
+        /*[Fact]
         public async Task LocalFhir_SkippSearchparamater_Test()
         {
-            ILogger<FHIRLoaderE2ETest> logger = ApplicationLogging.Instance.CreateLogger<FHIRLoaderE2ETest>();
-            var client = new FhirResourceClient(_config.FhirURL, _config.Concurrency, false, logger);
+            var client = new FhirResourceClient(_config.FhirURL, _config.Concurrency, false, _logger);
             JObject? metadata = await client.Get("/metadata");
-            PackageHelper helper = new(@"../../../TestData/searchparamaterpackage");
-            var searchParamList = helper.GetSearchParams(metadata, logger);
+            FhirPackageSource helper = new(@"../../../TestData/searchparamaterpackage", _logger);
+            var searchParamList = helper.GetSearchParams(metadata, _logger);
 
             int i = 0;
             JObject jobject = JObject.Parse(File.ReadAllText(@"../../../TestData/searchparamaterpackage/.index.json"));
@@ -300,8 +301,6 @@ namespace FHIRLoader.Tool.Tests.E2E
             {
                 Assert.Fail("Skipping the resources if it is a search parameter and it exists in the search parameter list from metadata.");
             }
-        }
-
-
+        }*/
     }
 }

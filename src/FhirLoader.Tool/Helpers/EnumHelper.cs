@@ -7,7 +7,7 @@ using System.ComponentModel;
 
 namespace FhirLoader.Tool.Helpers
 {
-    public static class PackageTypeHelper
+    public static class EnumHelper
     {
         public static string GetDisplayName<T>(object enumValue)
         {

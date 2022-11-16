@@ -8,7 +8,7 @@ using FhirLoader.Tool.FileTypeHandlers;
 using FhirLoader.Tool.Helpers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using static FhirLoader.Tool.Helpers.PackageTypeHelper;
+using static FhirLoader.Tool.Helpers.EnumHelper;
 
 namespace FhirLoader.Tool.FileSource
 {
