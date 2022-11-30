@@ -12,7 +12,7 @@
  * Run this below command in cmd.
 
  ```sh
- npm --registry https://packages.simplifier.net install hl7.fhir.us.core@4.1.0
+ npm --registry https://packages.simplifier.net install hl7.fhir.us.core@3.1.1
  ```
 
  * It will download all the Us Core Files.
