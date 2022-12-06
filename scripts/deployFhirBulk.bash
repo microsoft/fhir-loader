@@ -671,7 +671,8 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	fahost=$(az functionapp create --name $bulkAppName --storage-account $deployPrefix$storageAccountNameSuffix  --plan $deployPrefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 4 --query "defaultHostName" --output tsv --only-show-errors)
 	stepresult=$(az functionapp config set --net-framework-version v6.0 --name $bulkAppName --resource-group $resourceGroupName)
 	stepresult=$(az functionapp update --name $bulkAppName --resource-group $resourceGroupName --set httpsOnly=true)
-
+	
+	# Result Echo
 	echo "FHIR Bulk Loader & Export Function hostname is: "$fahost
 	
 	# Setup Auth 

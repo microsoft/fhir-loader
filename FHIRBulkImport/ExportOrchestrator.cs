@@ -15,6 +15,8 @@ using System;
 using System.Threading;
 using System.Net.Http.Headers;
 using DurableTask.Core;
+using Azure.Storage.Blobs.Specialized;
+using System.ComponentModel;
 
 namespace FHIRBulkImport
 {
@@ -92,6 +94,7 @@ namespace FHIRBulkImport
             [OrchestrationTrigger] IDurableOrchestrationContext context,
             ILogger log)
         {
+            
             JObject config = null;
             JObject retVal = new JObject();
             HashSet<string> uniquePats = new HashSet<string>();
@@ -330,13 +333,10 @@ namespace FHIRBulkImport
                                 sq = sq.Replace("$IDS", ids);
                                 string rt = sq.Split("?")[0];
                                 string key = $"{vars["instanceId"].ToString()}-{rt}";
-                                var entityId = new EntityId(nameof(FileTracker),key);
-                                int fileno = await context.CallEntityAsync<int>(entityId, "Get");
                                 JObject ctxparms = new JObject();
                                 ctxparms["instanceid"] = vars["instanceId"].ToString();
                                 ctxparms["ids"] = sq;
                                 ctxparms["resourcetype"] = rt;
-                                ctxparms["fileno"] = fileno;
                                 subtasks.Add(context.CallActivityAsync<string>("ExportOrchestrator_GatherResources", ctxparms));
                             }
                         
@@ -371,54 +371,36 @@ namespace FHIRBulkImport
             return retVal;
         }
         [FunctionName("FileTracker")]
-        public static void FileTracker ([EntityTrigger] IDurableEntityContext ctx)
+        public static void FileTracker ([EntityTrigger] IDurableEntityContext ctx,ILogger log)
         {
+            
             switch (ctx.OperationName.ToLowerInvariant())
             {
-                //Get CurrentFile Numbers
+                //Set File Number
+                case "set":
+                    ctx.SetState(ctx.GetInput<int>());
+                    break;
                 case "get":
-                    string[] en = ctx.EntityKey.Split("-");
-                    string instanceid = en[0];
-                    string rt = en[1];
-                    int fileno = ctx.GetState<int>();
-                    if (fileno == 0)
-                    {
-                        fileno = 1;
-                        ctx.SetState(fileno);
-                        ctx.Return(fileno);
-                    }
-                    else
-                    {
-                        var filename = rt + "-" + fileno + ".ndjson";
-                        var client = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", filename);
-                        long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "-1") * 1024000;
-                        var props = client.GetProperties();
-                        if (props.Value.BlobCommittedBlockCount > 49500 || (maxfilesizeinbytes > 0 && props.Value.ContentLength >= maxfilesizeinbytes))
-                        {
-                            fileno++;
-                            ctx.SetState(fileno);
-                        }
-                        ctx.Return(fileno);
-                    }
+                    ctx.Return(ctx.GetState<int>());
                     break;
             }
         }
         [FunctionName("ExportOrchestrator_GatherResources")]
-        public static async Task<string> GatherResources([ActivityTrigger] IDurableActivityContext context, ILogger log)
+        public static async Task<string> GatherResources([ActivityTrigger] IDurableActivityContext context, [DurableClient] IDurableEntityClient entityclient, ILogger log)
         {
-            
+           
+
             JToken vars = context.GetInput<JToken>();
             int total = 0;
             string query = vars["ids"].ToString();
             string instanceid = vars["instanceid"].ToString();
-            int fileno = (int)vars["fileno"];
             var rt = (string)vars["resourcetype"];
             var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
             if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
             {
 
                     var resource = JObject.Parse(fhirresp.Content);
-                    total = total + await ConvertToNDJSON(resource,rt,instanceid,fileno,log);
+                    total = total + await ConvertToNDJSON(resource,instanceid,rt,entityclient,log);
                     bool nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                     while (nextlink)
                     {
@@ -432,19 +414,18 @@ namespace FHIRBulkImport
                         else
                         {
                             resource = JObject.Parse(fhirresp.Content);
-                            total = total + await ConvertToNDJSON(resource, rt, instanceid,fileno,log);
-                            nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
+                            total = total + await ConvertToNDJSON(resource, instanceid, rt, entityclient, log);
+                        nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                         }
                     }
             } else
             {
                 log.LogError($"ExportOrchestrator: FHIR Server Call Failed: {fhirresp.Status} Content:{fhirresp.Content} Query:{query}");
             }
-            
             return $"{rt}:{total}";
         }
        
-        private static async Task<int> ConvertToNDJSON(JToken bundle, string resourceType,string instanceId, int fileno,ILogger log)
+        private static async Task<int> ConvertToNDJSON(JToken bundle, string instanceId, string resourceType, IDurableEntityClient entityclient,ILogger log)
         {
           
             int cnt = 0;
@@ -468,7 +449,24 @@ namespace FHIRBulkImport
                 }
                 if (sb.Length > 0)
                 {
-                    var rslt = await FileHolderManager.WriteAppendBlobAsync(instanceId, resourceType, fileno, sb.ToString(), log);
+                    string key = $"{instanceId}-{resourceType}";
+                    var entityId = new EntityId(nameof(FileTracker), key);
+                    var esresp = await entityclient.ReadEntityStateAsync<int>(entityId);
+                    int fileno = esresp.EntityState;
+                    var filename = resourceType + "-" + (fileno + 1) + ".ndjson";
+                    var blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
+                    long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "-1") * 1024000;
+                    int bytestoadd = System.Text.ASCIIEncoding.UTF8.GetByteCount(sb.ToString());
+                    var props = blobclient.GetProperties();
+                    long filetotalbytes = props.Value.ContentLength + bytestoadd;
+                    if (props.Value.BlobCommittedBlockCount > 49500 || (maxfilesizeinbytes > 0 && filetotalbytes >= maxfilesizeinbytes))
+                    {
+                        fileno++;
+                        filename = resourceType + "-" + (fileno + 1) + ".ndjson";
+                        blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
+                        await entityclient.SignalEntityAsync(entityId, "set", fileno);
+                    }
+                    var rslt = await FileHolderManager.WriteAppendBlobAsync(blobclient, sb.ToString(), log);
                 }
                 
             }

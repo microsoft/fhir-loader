@@ -49,16 +49,15 @@ namespace FHIRBulkImport
             });
         public static async System.Threading.Tasks.Task<FHIRResponse> CallFHIRServer(string path, string body, HttpMethod method, ILogger log)
         {
-                string _bearerToken = null;
-                _tokens.TryGetValue("fhirtoken", out _bearerToken);
-                if (ADUtils.isTokenExpired(_bearerToken))
-                {
-                        log.LogInformation("Bearer Token is expired...Obtaining new bearer token...");
-                        _bearerToken = ADUtils.GetOAUTH2BearerToken(System.Environment.GetEnvironmentVariable("FS-RESOURCE"), System.Environment.GetEnvironmentVariable("FS-TENANT-NAME"),
-                                                                 System.Environment.GetEnvironmentVariable("FS-CLIENT-ID"), System.Environment.GetEnvironmentVariable("FS-SECRET")).GetAwaiter().GetResult();
-                        _tokens.AddOrUpdate("fhirtoken", _bearerToken, (key, oldValue) => _bearerToken);
-                }
-                var retryPolicy = Policy
+            string _bearerToken = null;
+            _tokens.TryGetValue("fhirtoken", out _bearerToken);
+            if (ADUtils.isTokenExpired(_bearerToken))
+            {
+                    log.LogInformation("CallFHIRServer:Bearer Token is expired...Obtaining new bearer token...");
+                    _bearerToken = await ADUtils.GetOAUTH2BearerToken(log,Utils.GetEnvironmentVariable("FS-RESOURCE"), Utils.GetEnvironmentVariable("FS-TENANT-NAME"), Utils.GetEnvironmentVariable("FS-CLIENT-ID"), Utils.GetEnvironmentVariable("FS-SECRET"));
+                    _tokens["fhirtoken"]=_bearerToken;
+            }
+            var retryPolicy = Policy
                 .Handle<HttpRequestException>()
                 .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
                 .WaitAndRetryAsync(Utils.GetIntEnvironmentVariable("FBI-POLLY-MAXRETRIES","3"), retryAttempt =>
