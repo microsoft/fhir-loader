@@ -11,7 +11,7 @@ namespace FHIRBulkImport
 {
     public static class StorageUtils
     {
-       
+     
         public static AppendBlobClient GetAppendBlobClientSync(string saconnectionString, string container, string blobname)
         {
             var retVal = new AppendBlobClient(saconnectionString, container, blobname);

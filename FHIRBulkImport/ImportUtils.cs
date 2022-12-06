@@ -7,19 +7,25 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.IdentityModel.Abstractions;
 
 namespace FHIRBulkImport
 {
     public static class ImportUtils
     {
-        public static async Task ImportBundle(Stream myBlob, string name, ILogger log)
+        public static async Task ImportBundle(Stream myBlob, string name, ILogger log, TelemetryClient telemetryClient)
         {
+            // Setup for metrics
             bool trbundles = Utils.GetBoolEnvironmentVariable("FBI-TRANSFORMBUNDLES", true);
             if (myBlob == null) return;
             log.LogInformation($"ImportFHIRBundles: Processing file Name:{name} \n Size: {myBlob.Length}");
             var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI-STORAGEACCT"));
             StreamReader reader = new StreamReader(myBlob);
             var trtext = await reader.ReadToEndAsync();
+            telemetryClient.GetMetric("BundlesReceivedCount").TrackValue(1);
             //If not a Batch or Transaction Bundle move it to error and quit
             var bt = FHIRUtils.DetermineBundleType(trtext, log);
             if (bt != BundleType.Transaction && bt != BundleType.Batch)
@@ -32,11 +38,15 @@ namespace FHIRBulkImport
             //If it's a transaction bundle convert it to batch if flag is set
             if (bt == BundleType.Transaction && trbundles)
             {
+                var timer = Stopwatch.StartNew();
                 trtext = FHIRUtils.TransformBundle(trtext, log);
+                timer.Stop();
+                telemetryClient.GetMetric("BundleTransformDuration").TrackValue(timer.Elapsed.TotalMilliseconds);
                 bt = BundleType.Batch;
             }
             if (bt == BundleType.Batch)
             {
+                var timer = Stopwatch.StartNew();
                 string[] bundlearr = FHIRUtils.SplitBundle(trtext, name, log);
                 //If max entries allowed and is a batch then go ahead and split entries to process move original
                 if (bundlearr.Length > 1)
@@ -49,12 +59,18 @@ namespace FHIRBulkImport
                         await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{fn}-{cnt}.json", t, log);
                         cnt++;
                     }
+                    timer.Stop();
+                    telemetryClient.GetMetric("LargeBundleSplitDuration").TrackValue(timer.Elapsed.TotalMilliseconds);
                     return;
                 }
+                timer.Stop();
+                telemetryClient.GetMetric("LargeBundleSplitDuration").TrackValue(timer.Elapsed.TotalMilliseconds);
             }
             //OK we can try and process it
+            Stopwatch timefhir = null;
             try
             {
+               
                 string sresourcecnt = "";
                 int resourcecnt = 0;
                 using (var jsonDoc = JsonDocument.Parse(trtext))
@@ -65,18 +81,25 @@ namespace FHIRBulkImport
                         sresourcecnt = $" with {resourcecnt} resources ";
                     }
                 }
-                Stopwatch timefhir = Stopwatch.StartNew();
-                log.LogInformation($"ImportFHIRBundles: Calling FHIR Service for bundle {name}{sresourcecnt}file size {trtext.Length} bytes.");
+                var starttime = DateTime.UtcNow;
+                timefhir = Stopwatch.StartNew();
                 var fhirbundle = await FHIRUtils.CallFHIRServer("", trtext, HttpMethod.Post, log);
                 timefhir.Stop();
-                string msg = $"ImportFHIRBundles: FHIR Service Call Completed for bundle {name}{sresourcecnt}in {timefhir.ElapsedMilliseconds} ms";
-                if (resourcecnt > 0)
+                telemetryClient.TrackDependency(new DependencyTelemetry()
                 {
-                    double effrate = resourcecnt / (timefhir.ElapsedMilliseconds / 1000);
-                    msg = msg + " Effective Rate: " + string.Format("{0:F1}", effrate) + " resources/sec";
-                }
-                log.LogInformation(msg);
+                    Name = "FHIR Server",
+                    Data = $"POST bundle {name}{sresourcecnt} file size {trtext.Length} bytes",
+                    Timestamp = starttime,
+                    Duration = timefhir.Elapsed,
+                    Success = fhirbundle.Success,
+                    Type = "FHIR Call"
+                });
+                telemetryClient.GetMetric("FHIRPostBundleDuration").TrackValue(timefhir.Elapsed.TotalMilliseconds);
+                telemetryClient.GetMetric("FHIRBundleNumberResources").TrackValue(resourcecnt);
+                timefhir = Stopwatch.StartNew();
                 var result = LoadErrorsDetected(trtext, fhirbundle, name, log);
+                timefhir.Stop();
+                telemetryClient.GetMetric("DetectLoadErrorsDuration").TrackValue(timefhir.Elapsed.TotalMilliseconds);
                 //Bundle Post was Throttled we can retry
                 if (!fhirbundle.Success && fhirbundle.Status == System.Net.HttpStatusCode.TooManyRequests)
                 {
