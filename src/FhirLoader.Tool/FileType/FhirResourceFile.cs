@@ -80,40 +80,42 @@ namespace FhirLoader.Tool.FileTypeHandlers
                     ResourceCount = bundleResources.Count(),
                 };
             }
-
-            while (true)
+            else
             {
-                var resourceChunk = bundleResources.Take(_bundleSize);
-                bundleResources = bundleResources.Skip(_bundleSize);
-
-                if (!resourceChunk.Any())
+                while (true)
                 {
-                    break;
-                }
+                    var resourceChunk = bundleResources.Take(_bundleSize);
+                    bundleResources = bundleResources.Skip(_bundleSize);
 
-                var newBundle = JObject.FromObject(new
-                {
-                    resourceType = "Bundle",
-                    type = "batch",
-                    entry =
-                    from r in resourceChunk
-                    select new
+                    if (!resourceChunk.Any())
                     {
-                        resource = r,
-                        request = new
-                        {
-                            method = r.SelectToken("id") is not null ? "PUT" : "POST",
-                            url = r.SelectToken("id") is not null ? $"{r["resourceType"]}/{r["id"]}" : r["resourceType"],
-                        },
-                    },
-                });
+                        break;
+                    }
 
-                yield return new ProcessedBundle
-                {
-                    ResourceFileName = _fileName,
-                    ResourceText = newBundle.ToString(Formatting.Indented),
-                    ResourceCount = resourceChunk.Count(),
-                };
+                    var newBundle = JObject.FromObject(new
+                    {
+                        resourceType = "Bundle",
+                        type = "batch",
+                        entry =
+                        from r in resourceChunk
+                        select new
+                        {
+                            resource = r,
+                            request = new
+                            {
+                                method = r.SelectToken("id") is not null ? "PUT" : "POST",
+                                url = r.SelectToken("id") is not null ? $"{r["resourceType"]}/{r["id"]}" : r["resourceType"],
+                            },
+                        },
+                    });
+
+                    yield return new ProcessedBundle
+                    {
+                        ResourceFileName = _fileName,
+                        ResourceText = newBundle.ToString(Formatting.Indented),
+                        ResourceCount = resourceChunk.Count(),
+                    };
+                }
             }
         }
     }
