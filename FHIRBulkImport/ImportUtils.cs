@@ -11,20 +11,29 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.IdentityModel.Abstractions;
+using System.ComponentModel;
 
 namespace FHIRBulkImport
 {
     public static class ImportUtils
     {
-        public static async Task ImportBundle(Stream myBlob, string name, ILogger log, TelemetryClient telemetryClient)
+        public static async Task ImportBundle(string name, ILogger log, TelemetryClient telemetryClient)
         {
             // Setup for metrics
             bool trbundles = Utils.GetBoolEnvironmentVariable("FBI-TRANSFORMBUNDLES", true);
-            if (myBlob == null) return;
-            log.LogInformation($"ImportFHIRBundles: Processing file Name:{name} \n Size: {myBlob.Length}");
-            var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI-STORAGEACCT"));
-            StreamReader reader = new StreamReader(myBlob);
-            var trtext = await reader.ReadToEndAsync();
+            log.LogInformation($"ImportFHIRBundles: Processing file Name:{name}...");
+            var cbclient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+            string container = Utils.GetEnvironmentVariable("FBI-CONTAINER-BUNDLES", "bundles");
+            Stream myBlob = await StorageUtils.GetStreamForBlob(cbclient, container, name, log);
+            if (myBlob == null)
+            {
+                log.LogWarning($"ImportBundle:The blob {name} in container {container} does not exist or cannot be read.");
+                return;
+            }
+            string trtext = "";
+            using (StreamReader reader = new StreamReader(myBlob)) { 
+                trtext = await reader.ReadToEndAsync();
+            }
             telemetryClient.GetMetric("BundlesReceivedCount").TrackValue(1);
             //If not a Batch or Transaction Bundle move it to error and quit
             var bt = FHIRUtils.DetermineBundleType(trtext, log);
@@ -127,7 +136,7 @@ namespace FHIRBulkImport
                 //Handle Throttled Requests inside of bundle so we will create a new bundle to retry
                 if (fhirbundle.Success && ((JArray)result["throttled"]).Count > 0)
                 {
-                    var nb = ImportNDJSON.initBundle();
+                    var nb = ImportUtils.initBundle();
                     nb["entry"] = result["throttled"];
                     string fn = $"retry{Guid.NewGuid().ToString().Replace("-", "")}.json";
                     await StorageUtils.MoveTo(cbclient, "bundles", "bundlesprocessed", name, $"{name}.processed", log);
@@ -222,6 +231,28 @@ namespace FHIRBulkImport
                 log.LogError($"ImportFHIRBundles: Unable to parse server response to check for errors file {name}:{e.Message}");
                 return retVal;
             }
+        }
+        public static JObject initBundle()
+        {
+            JObject rv = new JObject();
+            rv["resourceType"] = "Bundle";
+            rv["type"] = "batch";
+            rv["entry"] = new JArray();
+            return rv;
+        }
+        public static void addResource(JObject bundle, JToken tok)
+        {
+            JObject rv = new JObject();
+            string rt = (string)tok["resourceType"];
+            string rid = (string)tok["id"];
+            rv["fullUrl"] = $"{rt}/{rid}";
+            rv["resource"] = tok;
+            JObject req = new JObject();
+            req["method"] = "PUT";
+            req["url"] = $"{rt}/{rid}";
+            rv["request"] = req;
+            JArray entries = (JArray)bundle["entry"];
+            entries.Add(rv);
         }
     }
 }

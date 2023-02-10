@@ -1,5 +1,6 @@
 {
   "version": "2.0",
+  "functionTimout": "24:00:00",
   "logging": {
     "applicationInsights": {
       "samplingSettings": {
@@ -10,6 +11,9 @@
   "extensions": {
     "http": {
       "routePrefix": ""
+    },
+    "queues": {
+      "visibilityTimeout": "00:00:10"
     },
     "durableTask": {
       "storageProvider": {

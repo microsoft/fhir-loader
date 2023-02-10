@@ -29,6 +29,14 @@ namespace FHIRBulkImport
     }
     public static class FHIRUtils
     {
+        //AD Settings
+        private static bool isMsi = Utils.GetBoolEnvironmentVariable("FS-ISMSI", false);
+        private static string resource = Utils.GetEnvironmentVariable("FS-RESOURCE");
+        private static string tenant = Utils.GetEnvironmentVariable("FS-TENANT-NAME");
+        private static string clientid = Utils.GetEnvironmentVariable("FS-CLIENT-ID");
+        private static string secret = Utils.GetEnvironmentVariable("FS-SECRET");
+        private static string authority = Utils.GetEnvironmentVariable("FS-AUTHORITY", "https://login.microsoftonline.com");
+        private static string fsurl = Utils.GetEnvironmentVariable("FS-URL");
         private static ConcurrentDictionary<string,string> _tokens = new ConcurrentDictionary<string, string>();
         private static readonly HttpStatusCode[] httpStatusCodesWorthRetrying = {
             HttpStatusCode.RequestTimeout, // 408
@@ -38,14 +46,14 @@ namespace FHIRBulkImport
             HttpStatusCode.GatewayTimeout, // 504
             HttpStatusCode.TooManyRequests //429
         };
-
         private static HttpClient _fhirClient = new HttpClient(
             new SocketsHttpHandler()
             {
                 ResponseDrainTimeout = TimeSpan.FromSeconds(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-RESPONSEDRAINSECS", "60")),
                 PooledConnectionLifetime = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-LIFETIME", "5")),
                 PooledConnectionIdleTimeout = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-IDLETO", "2")),
-                MaxConnectionsPerServer = Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-MAXCONNECTIONS", "20")
+                MaxConnectionsPerServer = Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-MAXCONNECTIONS", "20"),
+                
             });
         public static async System.Threading.Tasks.Task<FHIRResponse> CallFHIRServer(string path, string body, HttpMethod method, ILogger log)
         {
@@ -54,7 +62,7 @@ namespace FHIRBulkImport
             if (ADUtils.isTokenExpired(_bearerToken))
             {
                     log.LogInformation("CallFHIRServer:Bearer Token is expired...Obtaining new bearer token...");
-                    _bearerToken = await ADUtils.GetOAUTH2BearerToken(log,Utils.GetEnvironmentVariable("FS-RESOURCE"), Utils.GetEnvironmentVariable("FS-TENANT-NAME"), Utils.GetEnvironmentVariable("FS-CLIENT-ID"), Utils.GetEnvironmentVariable("FS-SECRET"));
+                    _bearerToken = await ADUtils.GetAADAccessToken($"{authority}/{tenant}", clientid,secret,resource, isMsi,log);
                     _tokens["fhirtoken"]=_bearerToken;
             }
             var retryPolicy = Policy
@@ -72,7 +80,7 @@ namespace FHIRBulkImport
             {
                 HttpRequestMessage _fhirRequest;
                 var fhirurl = path;
-                if (!fhirurl.StartsWith("http")) fhirurl = $"{Environment.GetEnvironmentVariable("FS-URL")}/{path}";
+                if (!fhirurl.StartsWith("http")) fhirurl = $"{fsurl}/{path}";
                 _fhirRequest = new HttpRequestMessage(method, fhirurl);
                 _fhirRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _bearerToken);
                 _fhirRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -148,7 +156,7 @@ namespace FHIRBulkImport
                         log.LogInformation($"SplitBundle: Bundle {originname} is a batch bundle that contains {entries.Count} resources splitting...");
                         int numbundles = 1;
                         int numentries = 0;
-                        JObject bundle = ImportNDJSON.initBundle();
+                        JObject bundle = ImportUtils.initBundle();
                         JArray newentries = (JArray)bundle["entry"];
                         foreach (JToken t in entries)
                         {
@@ -158,7 +166,7 @@ namespace FHIRBulkImport
                             {
                                 retVal.Add(bundle.ToString(Newtonsoft.Json.Formatting.None));
                                 bundle = null;
-                                bundle = ImportNDJSON.initBundle();
+                                bundle = ImportUtils.initBundle();
                                 newentries = (JArray)bundle["entry"];
                                 numentries = 0;
                                 numbundles++;
@@ -229,7 +237,7 @@ namespace FHIRBulkImport
 
                     }
                     tok["request"]["method"] = "PUT";
-                    tok["request"]["url"] = $"{rt}?_id={rid}";
+                    tok["request"]["url"] = $"{rt}/{rid}";
                 }
 
             }

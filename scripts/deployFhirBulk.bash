@@ -659,8 +659,12 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	stepresult=$(az storage container create -n export --connection-string $storageConnectionString)
 	echo "  Export trigger"
 	stepresult=$(az storage container create -n export-trigger --connection-string $storageConnectionString)
-
-
+	echo "Creating storage queues..."
+	echo "  Ndjson queue"
+	stepresult=$(az storage queue create -n ndjsonqueue --connection-string $storageConnectionString)
+	echo "  Bundles queue"
+	stepresult=$(az storage queue create -n bundlequeue --connection-string $storageConnectionString)
+	
 	# Create Service Plan
 	#
 	echo "Creating FHIR Loader Function App Serviceplan ["$deployPrefix$serviceplanSuffix"]..."
@@ -704,7 +708,7 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	# Note:  We need to by default disable the ImportBlobTrigger as that will conflict with the EventGridTrigger
 	#
 	echo "Applying Static App settings for FHIR Bulk Loader & Export App ["$bulkAppName"]..."
-	stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings AzureWebJobs.ImportBundleBlobTrigger.Disabled=1 FBI-TRANSFORMBUNDLES=true FBI-POOLEDCON-MAXCONNECTIONS=20)
+	stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings AzureWebJobs.ImportBundleBlobTrigger.Disabled=1 FBI-TRANSFORMBUNDLES=true FBI-POOLEDCON-MAXCONNECTIONS=20 AzureFunctionsJobHost__functionTimeout=23:00:00)
 
 
 	# Deploy Function Application code

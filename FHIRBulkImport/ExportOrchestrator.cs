@@ -250,7 +250,7 @@ namespace FHIRBulkImport
                         if (!ga.IsNullOrEmpty())
                         {
                             int cnt = 0;
-                            var bundle = ImportNDJSON.initBundle();
+                            var bundle = ImportUtils.initBundle();
                             foreach (JToken t in ga)
                             {
                                 string prv = (string)t["entity"]["reference"];
@@ -258,12 +258,12 @@ namespace FHIRBulkImport
                                 o["resourceType"] = "GroupInternal";
                                 o["entity"] = new JObject();
                                 o["entity"]["reference"] = prv;
-                                ImportNDJSON.addResource(bundle, o);
+                                ImportUtils.addResource(bundle, o);
                                 cnt++;
                                 if (cnt % 50 == 0)
                                 {
                                     IdentifyUniquePatientReferences(bundle, "entity", uniquePats);
-                                    bundle = ImportNDJSON.initBundle();
+                                    bundle = ImportUtils.initBundle();
                                 }
                             }
                             if (((JArray)bundle["entry"]).Count > 0)
