@@ -79,7 +79,7 @@ Azure Components installed
  - Function App with App Insights and Storage 
  - Function App Service plan 
  - EventGrid 
- - Storage Account (with containers)
+ - Storage Account (with containers/queues)
  - Keyvault (if none exist)
 
 Information needed by this script 
@@ -128,5 +128,8 @@ AzureWebJobs.ImportBundleBlobTrigger.Disabled     | 1      | Prevents Conflicts 
 FBI-POOLEDCON-MAXCONNECTIONS                      | 20     | Limits service timeouts
 WEBSITE_RUN_FROM_PACKAGE                          | 1      | Optional - sets app to read only
  
+## Upgrade from previous fhir-loader
+If you are upgrading from a previous version of fhir-loader you will need to redeploy using the instructions in step 1. of this document. New infrastructure components were added to the fhir-loader
+
  
 
