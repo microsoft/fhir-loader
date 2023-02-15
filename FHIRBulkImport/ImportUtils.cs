@@ -12,13 +12,19 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.IdentityModel.Abstractions;
 using System.ComponentModel;
+using System.Linq;
 
 namespace FHIRBulkImport
 {
     public static class ImportUtils
     {
+        //Unahandeled Exceptions worth retrying
+        public static string MESSAGE_RETRY_SETTING = "request was canceled due to the configured HttpClient.Timeout,target machine actively refused it,an error occurred while sending the request";
+        public static string[] EXCEPTION_MESSAGE_STRINGS_RETRY = Utils.GetEnvironmentVariable("FBI-UNHANDLED-RETRY-MESSAGES",MESSAGE_RETRY_SETTING).Split(',');
+        
         public static async Task ImportBundle(string name, ILogger log, TelemetryClient telemetryClient)
         {
+          
             // Setup for metrics
             bool trbundles = Utils.GetBoolEnvironmentVariable("FBI-TRANSFORMBUNDLES", true);
             log.LogInformation($"ImportFHIRBundles: Processing file Name:{name}...");
@@ -152,6 +158,12 @@ namespace FHIRBulkImport
             catch (Exception e)
             {
                 log.LogError($"ImportFHIRBundles:Unhandled Exception on bundle {name}: {e.Message}", e);
+                //Check for Unhandled Connection Exceptions and convert to transient error to requeue message
+                if (ExceptionWorthRetrying(e))
+                {
+                    log.LogWarning($"ImportFHIRBundles: Unhandled server exception on bundle {name} worth retrying...requeuing");
+                    throw new TransientError(e.Message);
+                }
                 await StorageUtils.MoveTo(cbclient, "bundles", "bundleserr", name, $"{name}.err", log);
                 await StorageUtils.WriteStringToBlob(cbclient, "bundleserr", $"{name}.err.response",$"Unhandled Error:{e.Message}\r\n{e.StackTrace}", log);
                 
@@ -231,6 +243,14 @@ namespace FHIRBulkImport
                 log.LogError($"ImportFHIRBundles: Unable to parse server response to check for errors file {name}:{e.Message}");
                 return retVal;
             }
+        }
+        public static bool ExceptionWorthRetrying(Exception e)
+        {
+            foreach (string s in EXCEPTION_MESSAGE_STRINGS_RETRY)
+            {
+                if (e.Message.Contains(s,StringComparison.InvariantCultureIgnoreCase)) return true;
+            }
+            return false;
         }
         public static JObject initBundle()
         {
