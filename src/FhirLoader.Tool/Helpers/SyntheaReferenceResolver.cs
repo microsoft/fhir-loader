@@ -72,15 +72,16 @@ namespace FhirLoader.Tool.Helpers
                 {
                     JToken? resource = resourceWrapper?["resource"];
                     string? fullUrl = resourceWrapper?["fullUrl"]?.ToString();
+                    string? url = resourceWrapper?["request"]?["url"]?.ToString();
                     string? resourceType = resource?["resourceType"]?.ToString();
                     string? id = resource?["id"]?.ToString();
 
-                    if (resourceWrapper is null || resource is null || fullUrl is null || resourceType is null || id is null)
+                    if (resourceWrapper is null || resource is null || (fullUrl is null && url is null) || resourceType is null || id is null)
                     {
                         throw new ArgumentException("Invalid resource found in bundle.");
                     }
 
-                    table.Add(fullUrl, new IdTypePair(id, resourceType));
+                    table.Add(fullUrl ?? url!, new IdTypePair(id, resourceType));
                 }
             }
             catch
