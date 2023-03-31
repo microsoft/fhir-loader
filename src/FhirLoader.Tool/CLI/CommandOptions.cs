@@ -38,6 +38,9 @@ namespace FhirLoader.Tool.CLI
         [Option("fhir", Required = true, HelpText = "Base URL of your FHIR server.")]
         public string? FhirUrl { get; set; }
 
+        [Option("audience", Required = false, HelpText = "Alternate audience for your FHIR Service instead of FHIR URL.")]
+        public string? Audience { get; set; }
+
         [Option("batch", Required = false, HelpText = $"Size of bundles to split large files into when sending resources. Defaults to {DefaultBundleSize}. Must be between {BundleSizeMin} and {BundleSizeMax}"),]
         public int? BatchSize { get; set; }
 

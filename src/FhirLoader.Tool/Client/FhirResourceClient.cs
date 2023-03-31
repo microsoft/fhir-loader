@@ -28,6 +28,7 @@ namespace FhirLoader.Tool.Client
         private readonly bool _skipErrors;
         private readonly ILogger _logger;
         private readonly string? _tenantId;
+        private readonly string? _audience;
         private AsyncPolicyWrap<HttpResponseMessage> _resiliencyStrategy;
 
         // Used to get/refresh access token across threads
@@ -36,12 +37,13 @@ namespace FhirLoader.Tool.Client
         private const string MetadataSuffix = "/metadata";
         private const string ReindexSuffix = "/$reindex";
 
-        public FhirResourceClient(string baseUrl, int expectedParallelRequests, bool skipErrors, ILogger logger, string? tenantId = null, CancellationToken cancel = default)
+        public FhirResourceClient(string baseUrl, int expectedParallelRequests, bool skipErrors, ILogger logger, string? tenantId = null, string? audience = null, CancellationToken cancel = default)
         {
             _logger = logger;
             _skipErrors = skipErrors;
             _client = new HttpClient();
             _tenantId = tenantId;
+            _audience = audience;
 
             if (baseUrl.EndsWith(MetadataSuffix, StringComparison.Ordinal))
             {
@@ -272,7 +274,7 @@ namespace FhirLoader.Tool.Client
             credentialOptions.AdditionallyAllowedTenants.Add("*");
             DefaultAzureCredential credential = new(true);
 
-            string[] scopes = new string[] { $"{_client.BaseAddress}/.default" };
+            string[] scopes = new string[] { $"{_audience ?? _client.BaseAddress?.ToString()}/user_impersonation" };
             var tokenRequestContext = new TokenRequestContext(scopes: scopes, tenantId: _tenantId);
 
             var token = await credential.GetTokenAsync(tokenRequestContext, cancel);
