@@ -10,7 +10,6 @@ using FhirLoader.Tool.CLI;
 using FhirLoader.Tool.Client;
 using FhirLoader.Tool.FileSource;
 using FhirLoader.Tool.FileType;
-using FhirLoader.Tool.FileTypeHandlers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
