@@ -131,6 +131,11 @@ namespace FhirLoader.Tool.Client
                         break;
                     }
 
+                    if (response.StatusCode == HttpStatusCode.Unauthorized)
+                    {
+                        _logger.LogWarning($"Token rejected as unauthorized. Inspect token against your FHIR Service configuration and try again. {_client.DefaultRequestHeaders.Authorization?.Parameter}.");
+                    }
+
                     _logger.LogError($"Could not send resource(s) due to error from server: {response.StatusCode}. Adding request back to queue...");
 
                     perFileFailedCount++;
@@ -268,14 +273,14 @@ namespace FhirLoader.Tool.Client
 
         private async Task<AccessToken> SetAccessTokenAsync(CancellationToken cancel = default)
         {
-            _logger.LogInformation($"Attempting to get access token for {_client.BaseAddress}...");
-
             DefaultAzureCredentialOptions credentialOptions = new();
             credentialOptions.AdditionallyAllowedTenants.Add("*");
             DefaultAzureCredential credential = new(true);
 
             string[] scopes = new string[] { $"{_audience ?? _client.BaseAddress?.ToString()}/.default" };
             var tokenRequestContext = new TokenRequestContext(scopes: scopes, tenantId: _tenantId);
+
+            _logger.LogInformation($"Attempting to get access token for {_client.BaseAddress} with scopes {string.Join(", ", scopes)}...");
 
             var token = await credential.GetTokenAsync(tokenRequestContext, cancel);
 
