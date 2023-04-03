@@ -277,7 +277,7 @@ namespace FhirLoader.Tool.Client
             credentialOptions.AdditionallyAllowedTenants.Add("*");
             DefaultAzureCredential credential = new(true);
 
-            string[] scopes = new string[] { $"{_audience ?? _client.BaseAddress?.ToString()}/.default" };
+            string[] scopes = new string[] { $"{_audience ?? _client.BaseAddress?.ToString()}/user_impersonation" };
             var tokenRequestContext = new TokenRequestContext(scopes: scopes, tenantId: _tenantId);
 
             _logger.LogInformation($"Attempting to get access token for {_client.BaseAddress} with scopes {string.Join(", ", scopes)}...");
