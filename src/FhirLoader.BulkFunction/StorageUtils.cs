@@ -11,7 +11,7 @@ namespace FHIRBulkImport
 {
     public static class StorageUtils
     {
-       
+     
         public static AppendBlobClient GetAppendBlobClientSync(string saconnectionString, string container, string blobname)
         {
             var retVal = new AppendBlobClient(saconnectionString, container, blobname);
@@ -41,9 +41,20 @@ namespace FHIRBulkImport
         public static async Task WriteStringToBlob(CloudBlobClient blobClient,string containerName,string filePath,string contents, ILogger log)
         {
             var sourceContainer = blobClient.GetContainerReference(containerName);
-            await sourceContainer.CreateIfNotExistsAsync();
+            if (!await sourceContainer.ExistsAsync())
+            {
+                await sourceContainer.CreateAsync();
+            }
             CloudBlockBlob sourceBlob = sourceContainer.GetBlockBlobReference(filePath);
             await sourceBlob.UploadTextAsync(contents);
+        }
+        public static async Task<System.IO.Stream> GetStreamForBlob(CloudBlobClient blobClient, string containerName, string filePath, ILogger log)
+        {
+            var sourceContainer = blobClient.GetContainerReference(containerName);
+            CloudBlockBlob sourceBlob = sourceContainer.GetBlockBlobReference(filePath);
+            if (await sourceBlob.ExistsAsync())
+                return await sourceBlob.OpenReadAsync();
+            return null;
         }
         public static async Task Delete(CloudBlobClient blobClient, string sourceContainerName, string name,ILogger log)
         {
@@ -61,7 +72,7 @@ namespace FHIRBulkImport
             }
             catch (Exception e)
             {
-                log.LogError($"Error Moving file {name}:{e.Message}");
+                log.LogError($"Error Deleting file {name}:{e.Message}");
             }
         }
         /*Moves Source File in Container to Destination Container and Deletes Source - Same Storage Account*/
@@ -78,7 +89,10 @@ namespace FHIRBulkImport
                 
                 var sourceContainer = blobClient.GetContainerReference(sourceContainerName);
                 var destContainer = blobClient.GetContainerReference(destContainerName);
-                await destContainer.CreateIfNotExistsAsync();
+                if (!await destContainer.ExistsAsync())
+                {
+                    await destContainer.CreateAsync();
+                }
                 CloudBlockBlob sourceBlob = sourceContainer.GetBlockBlobReference(sourceFilePath);
                 CloudBlockBlob destBlob = destContainer.GetBlockBlobReference(destFilePath);
                 await destBlob.StartCopyAsync(sourceBlob);

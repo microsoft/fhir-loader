@@ -10,11 +10,18 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Net.Http;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights;
 
 namespace FHIRBulkImport
 {
-    public static class ImportBundleHTTP
+    public class ImportBundleHTTP
     {
+        private readonly TelemetryClient _telemetryClient;
+        public ImportBundleHTTP(TelemetryConfiguration telemetryConfiguration)
+        {
+            _telemetryClient = new TelemetryClient(telemetryConfiguration);
+        }
         [FunctionName("ImportBundleHTTP")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = "importbundle")] HttpRequest req,

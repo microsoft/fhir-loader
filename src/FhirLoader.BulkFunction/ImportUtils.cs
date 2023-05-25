@@ -7,19 +7,40 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.IdentityModel.Abstractions;
+using System.ComponentModel;
+using System.Linq;
 
 namespace FHIRBulkImport
 {
     public static class ImportUtils
     {
-        public static async Task ImportBundle(Stream myBlob, string name, ILogger log)
+        //Unahandeled Exceptions worth retrying
+        public static string MESSAGE_RETRY_SETTING = "request was canceled due to the configured HttpClient.Timeout,target machine actively refused it,an error occurred while sending the request";
+        public static string[] EXCEPTION_MESSAGE_STRINGS_RETRY = Utils.GetEnvironmentVariable("FBI-UNHANDLED-RETRY-MESSAGES",MESSAGE_RETRY_SETTING).Split(',');
+        
+        public static async Task ImportBundle(string name, ILogger log, TelemetryClient telemetryClient)
         {
+          
+            // Setup for metrics
             bool trbundles = Utils.GetBoolEnvironmentVariable("FBI-TRANSFORMBUNDLES", true);
-            if (myBlob == null) return;
-            log.LogInformation($"ImportFHIRBundles: Processing file Name:{name} \n Size: {myBlob.Length}");
-            var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI-STORAGEACCT"));
-            StreamReader reader = new StreamReader(myBlob);
-            var trtext = await reader.ReadToEndAsync();
+            log.LogInformation($"ImportFHIRBundles: Processing file Name:{name}...");
+            var cbclient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+            string container = Utils.GetEnvironmentVariable("FBI-CONTAINER-BUNDLES", "bundles");
+            Stream myBlob = await StorageUtils.GetStreamForBlob(cbclient, container, name, log);
+            if (myBlob == null)
+            {
+                log.LogWarning($"ImportBundle:The blob {name} in container {container} does not exist or cannot be read.");
+                return;
+            }
+            string trtext = "";
+            using (StreamReader reader = new StreamReader(myBlob)) { 
+                trtext = await reader.ReadToEndAsync();
+            }
+            telemetryClient.GetMetric("BundlesReceivedCount").TrackValue(1);
             //If not a Batch or Transaction Bundle move it to error and quit
             var bt = FHIRUtils.DetermineBundleType(trtext, log);
             if (bt != BundleType.Transaction && bt != BundleType.Batch)
@@ -32,11 +53,15 @@ namespace FHIRBulkImport
             //If it's a transaction bundle convert it to batch if flag is set
             if (bt == BundleType.Transaction && trbundles)
             {
+                var timer = Stopwatch.StartNew();
                 trtext = FHIRUtils.TransformBundle(trtext, log);
+                timer.Stop();
+                telemetryClient.GetMetric("BundleTransformDuration").TrackValue(timer.Elapsed.TotalMilliseconds);
                 bt = BundleType.Batch;
             }
             if (bt == BundleType.Batch)
             {
+                var timer = Stopwatch.StartNew();
                 string[] bundlearr = FHIRUtils.SplitBundle(trtext, name, log);
                 //If max entries allowed and is a batch then go ahead and split entries to process move original
                 if (bundlearr.Length > 1)
@@ -49,12 +74,18 @@ namespace FHIRBulkImport
                         await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{fn}-{cnt}.json", t, log);
                         cnt++;
                     }
+                    timer.Stop();
+                    telemetryClient.GetMetric("LargeBundleSplitDuration").TrackValue(timer.Elapsed.TotalMilliseconds);
                     return;
                 }
+                timer.Stop();
+                telemetryClient.GetMetric("LargeBundleSplitDuration").TrackValue(timer.Elapsed.TotalMilliseconds);
             }
             //OK we can try and process it
+            Stopwatch timefhir = null;
             try
             {
+               
                 string sresourcecnt = "";
                 int resourcecnt = 0;
                 using (var jsonDoc = JsonDocument.Parse(trtext))
@@ -65,18 +96,25 @@ namespace FHIRBulkImport
                         sresourcecnt = $" with {resourcecnt} resources ";
                     }
                 }
-                Stopwatch timefhir = Stopwatch.StartNew();
-                log.LogInformation($"ImportFHIRBundles: Calling FHIR Service for bundle {name}{sresourcecnt}file size {trtext.Length} bytes.");
+                var starttime = DateTime.UtcNow;
+                timefhir = Stopwatch.StartNew();
                 var fhirbundle = await FHIRUtils.CallFHIRServer("", trtext, HttpMethod.Post, log);
                 timefhir.Stop();
-                string msg = $"ImportFHIRBundles: FHIR Service Call Completed for bundle {name}{sresourcecnt}in {timefhir.ElapsedMilliseconds} ms";
-                if (resourcecnt > 0)
+                telemetryClient.TrackDependency(new DependencyTelemetry()
                 {
-                    double effrate = resourcecnt / (timefhir.ElapsedMilliseconds / 1000);
-                    msg = msg + " Effective Rate: " + string.Format("{0:F1}", effrate) + " resources/sec";
-                }
-                log.LogInformation(msg);
+                    Name = "FHIR Server",
+                    Data = $"POST bundle {name}{sresourcecnt} file size {trtext.Length} bytes",
+                    Timestamp = starttime,
+                    Duration = timefhir.Elapsed,
+                    Success = fhirbundle.Success,
+                    Type = "FHIR Call"
+                });
+                telemetryClient.GetMetric("FHIRPostBundleDuration").TrackValue(timefhir.Elapsed.TotalMilliseconds);
+                telemetryClient.GetMetric("FHIRBundleNumberResources").TrackValue(resourcecnt);
+                timefhir = Stopwatch.StartNew();
                 var result = LoadErrorsDetected(trtext, fhirbundle, name, log);
+                timefhir.Stop();
+                telemetryClient.GetMetric("DetectLoadErrorsDuration").TrackValue(timefhir.Elapsed.TotalMilliseconds);
                 //Bundle Post was Throttled we can retry
                 if (!fhirbundle.Success && fhirbundle.Status == System.Net.HttpStatusCode.TooManyRequests)
                 {
@@ -104,7 +142,7 @@ namespace FHIRBulkImport
                 //Handle Throttled Requests inside of bundle so we will create a new bundle to retry
                 if (fhirbundle.Success && ((JArray)result["throttled"]).Count > 0)
                 {
-                    var nb = ImportNDJSON.initBundle();
+                    var nb = ImportUtils.initBundle();
                     nb["entry"] = result["throttled"];
                     string fn = $"retry{Guid.NewGuid().ToString().Replace("-", "")}.json";
                     await StorageUtils.MoveTo(cbclient, "bundles", "bundlesprocessed", name, $"{name}.processed", log);
@@ -120,6 +158,12 @@ namespace FHIRBulkImport
             catch (Exception e)
             {
                 log.LogError($"ImportFHIRBundles:Unhandled Exception on bundle {name}: {e.Message}", e);
+                //Check for Unhandled Connection Exceptions and convert to transient error to requeue message
+                if (ExceptionWorthRetrying(e))
+                {
+                    log.LogWarning($"ImportFHIRBundles: Unhandled server exception on bundle {name} worth retrying...requeuing");
+                    throw new TransientError(e.Message);
+                }
                 await StorageUtils.MoveTo(cbclient, "bundles", "bundleserr", name, $"{name}.err", log);
                 await StorageUtils.WriteStringToBlob(cbclient, "bundleserr", $"{name}.err.response",$"Unhandled Error:{e.Message}\r\n{e.StackTrace}", log);
                 
@@ -199,6 +243,36 @@ namespace FHIRBulkImport
                 log.LogError($"ImportFHIRBundles: Unable to parse server response to check for errors file {name}:{e.Message}");
                 return retVal;
             }
+        }
+        public static bool ExceptionWorthRetrying(Exception e)
+        {
+            foreach (string s in EXCEPTION_MESSAGE_STRINGS_RETRY)
+            {
+                if (e.Message.Contains(s,StringComparison.InvariantCultureIgnoreCase)) return true;
+            }
+            return false;
+        }
+        public static JObject initBundle()
+        {
+            JObject rv = new JObject();
+            rv["resourceType"] = "Bundle";
+            rv["type"] = "batch";
+            rv["entry"] = new JArray();
+            return rv;
+        }
+        public static void addResource(JObject bundle, JToken tok)
+        {
+            JObject rv = new JObject();
+            string rt = (string)tok["resourceType"];
+            string rid = (string)tok["id"];
+            rv["fullUrl"] = $"{rt}/{rid}";
+            rv["resource"] = tok;
+            JObject req = new JObject();
+            req["method"] = "PUT";
+            req["url"] = $"{rt}/{rid}";
+            rv["request"] = req;
+            JArray entries = (JArray)bundle["entry"];
+            entries.Add(rv);
         }
     }
 }

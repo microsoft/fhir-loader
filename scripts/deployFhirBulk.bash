@@ -40,8 +40,8 @@ declare genPostmanEnv="yes"
 #  Function Variables 
 #########################################
 # the import variables and Subscription variables should come from the source code.  The eg endpoints variables are placeholders  
-declare importNdjsonvar="ImportNDJSON"
-declare importBundle="ImportBundleEventGrid"
+declare importNdjsonvar="ndjsonqueue"
+declare importBundle="bundlequeue"
 declare eventGridEndpointNDJSON=""
 declare eventGridEndpointBundle=""
 declare egNdjsonSubscription="ndjsoncreated"
@@ -659,8 +659,12 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	stepresult=$(az storage container create -n export --connection-string $storageConnectionString)
 	echo "  Export trigger"
 	stepresult=$(az storage container create -n export-trigger --connection-string $storageConnectionString)
-
-
+	echo "Creating storage queues..."
+	echo "  Ndjson queue"
+	stepresult=$(az storage queue create -n ndjsonqueue --connection-string $storageConnectionString)
+	echo "  Bundles queue"
+	stepresult=$(az storage queue create -n bundlequeue --connection-string $storageConnectionString)
+	
 	# Create Service Plan
 	#
 	echo "Creating FHIR Loader Function App Serviceplan ["$deployPrefix$serviceplanSuffix"]..."
@@ -668,8 +672,11 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	
 	# Create the function app
 	echo "Creating FHIR Bulk Loader & Export Function App ["$bulkAppName"]..."
-	fahost=$(az functionapp create --name $bulkAppName --storage-account $deployPrefix$storageAccountNameSuffix  --plan $deployPrefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 4 --query "defaultHostName" --output tsv)
-
+	fahost=$(az functionapp create --name $bulkAppName --storage-account $deployPrefix$storageAccountNameSuffix  --plan $deployPrefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 4 --query "defaultHostName" --output tsv --only-show-errors)
+	stepresult=$(az functionapp config set --net-framework-version v6.0 --name $bulkAppName --resource-group $resourceGroupName)
+	stepresult=$(az functionapp update --name $bulkAppName --resource-group $resourceGroupName --set httpsOnly=true)
+	
+	# Result Echo
 	echo "FHIR Bulk Loader & Export Function hostname is: "$fahost
 	
 	# Setup Auth 
@@ -701,7 +708,7 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	# Note:  We need to by default disable the ImportBlobTrigger as that will conflict with the EventGridTrigger
 	#
 	echo "Applying Static App settings for FHIR Bulk Loader & Export App ["$bulkAppName"]..."
-	stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings AzureWebJobs.ImportBundleBlobTrigger.Disabled=1 FBI-TRANSFORMBUNDLES=true FBI-POOLEDCON-MAXCONNECTIONS=20)
+	stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings AzureWebJobs.ImportBundleBlobTrigger.Disabled=1 FBI-TRANSFORMBUNDLES=true FBI-POOLEDCON-MAXCONNECTIONS=20 AzureFunctionsJobHost__functionTimeout=23:00:00 FBI-POISONQUEUE-TIMER-CRON="0 */2 * * * *")
 
 
 	# Deploy Function Application code
@@ -719,68 +726,52 @@ echo "Creating Event Grid Subscription...  this may take a while"
 	# assigning source input / id 
 	storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployPrefix$storageAccountNameSuffix
 	
-	# Replaced these with a call to the function app below
-	#egndjsonresource=$faresourceid"/functions/ImportNDJSON"
-	#egbundleresource=$faresourceid"/functions/ImportBundleEventGrid"
-	
-	# Replacing the assignements above, retreive the Function Name from the Function App
-	echo "Assigning Endpoint for "...$importNdjsonvar
-	eventGridEndpointNDJSON=$(az functionapp function show --resource-group $resourceGroupName --name $bulkAppName --function-name $importNdjsonvar --query id --output tsv)
-	if [ -z "$eventGridEndpointNDJSON" ]; then
-		echo "Function App ImportNDJSON not found, retrying"
-		# some times the Region may be slow to provision the apps - pushing this into the retry function 
-		sleep 30
-		eventGridEndpointNDJSON=$(retry az functionapp function show --resource-group $resourceGroupName --name $bulkAppName --function-name $importNdjsonvar --query id --output tsv)
-	fi
-	
-	# Replacing the assignements above, retreive the Function Name from the Function App
-	echo "Assigning Endpoint for "...$importBundle
-	eventGridEndpointBundle=$(retry az functionapp function show -g $resourceGroupName -n $bulkAppName --function-name $importBundle --query id --output tsv)
-	if [ -z "$eventGridEndpointBundle" ]; then
-		echo "Function App ImportBundle not found, retrying"
-		# some times the Region may be slow to provision the apps - pushing this into the retry function 
-		sleep 30
-		eventGridEndpointBundle=$(retry az functionapp function show --resource-group $resourceGroupName --name $bulkAppName --function-name $importBundle --query id --output tsv)
-	fi
-	
-	
+	#EventGrid Storage Queue Endpoints
+	eventGridEndpointNDJSON="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployPrefix$storageAccountNameSuffix"/queueservices/default/queues/"$importNdjsonvar
+	eventGridEndpointBundle="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployPrefix$storageAccountNameSuffix"/queueservices/default/queues/"$importBundle
 	echo " "
 	echo "Creating NDJSON Subscription "
-	# step is still valid, it is simply re-written below for ease of readability 
-	#stepresult=$(retry az eventgrid event-subscription create --name ndjsoncreated --source-resource-id $storesourceid --endpoint $egndjsonresource --endpoint-type azurefunction  --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
 	echo "Source input: $storesourceid"
 	echo "Topic name: $egndjsonresource"
-	echo "Function name: $importNdjsonvar"
+	echo "Storage Queue name: $importNdjsonvar"
 	echo "Endpoint: $eventGridEndpointNDJSON"
-	sleep 30
+
 	stepresult=$(az eventgrid event-subscription create --name $egNdjsonSubscription \
      --source-resource-id $storesourceid \
      --endpoint $eventGridEndpointNDJSON  \
-     --endpoint-type azurefunction --subject-begins-with /blobServices/default/containers/ndjson --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
+     --endpoint-type storagequeue --subject-begins-with /blobServices/default/containers/ndjson --subject-ends-with .ndjson --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
+
 	
 	echo " "
 	echo "Creating BUNDLE Subscription "
-	# step is still valid, it is simply re-written below for ease of readability 
-	#stepresult=$(retry az eventgrid event-subscription create --name bundlecreated --source-resource-id $storesourceid --endpoint $egbundleresource --endpoint-type azurefunction  --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose) 
+	
 	echo "Source input: $storesourceid"
 	echo "Topic name: $egbundleresource"
-	echo "Function name: $importBundle"
+	echo "Storage Queue name: $importBundle"
 	echo "Endpoint: $eventGridEndpointBundle"
+
 	sleep 30
+
 	stepresult=$(az eventgrid event-subscription create --name $egBundleSubscription \
      --source-resource-id $storesourceid \
      --endpoint $eventGridEndpointBundle  \
-     --endpoint-type azurefunction --subject-begins-with /blobServices/default/containers/bundles --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
+     --endpoint-type storagequeue --subject-begins-with /blobServices/default/containers/bundles --subject-ends-with .json --advanced-filter data.api stringin CopyBlob PutBlob PutBlockList FlushWithClose)
+
+
 	#---
+
 	echo " "
 	echo "**************************************************************************************"
 	echo "FHIR Loader has successfully been deployed to group "$resourceGroupName" on "$(date)
 	echo "Please note the following reference information for future use:"
-	echo "Your FHIRLoader URL is: "$fahost
+	echo "Your Loader Destination FHIR Service/Proxy URL is: "$fhirServiceUrl
 	echo "Your FHIRLoader Storage Account name is: "$deployPrefix$storageAccountNameSuffix
 	echo "***************************************************************************************"
 	echo " "
+
 )
+
 if [ $? != 0 ] ; then
 	echo "FHIR-Loader deployment had errors. Consider deleting the resources and trying again..."
 fi
+
