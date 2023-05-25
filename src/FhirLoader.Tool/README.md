@@ -32,13 +32,17 @@ microsoft-fhir-loader --package "~/Downloads/my-package" --fhir "fhir-server-url
 ```
 Here, my-package means the folder in which you store the files from the npm command.
 
+This tool will read all the files from the above given location. If any error occurs while reading the file to the FHIR server, it will skip that file, print the warning, and process the next file.
+
+### Examples :
+
+This tool can be used to load FHIR implementation guide profiles, such as US Core, mCode, and others. Please see below examples on how to set up and send profiles and files to the FHIR server. This example is not limited to mentioned profiles below, you can upload any implementation guide package.
+
 Use the below command to install the files using npm.
 
 ```sh
 npm --registry "your npm package path"
 ```
-
-This tool will read all the files from the above given location. If any error occurs while reading the file to the FHIR server, it will skip that file, print the warning, and process the next file.
 
 Please [see](./uscore_README.md) this to learn more about how to set up and send US Core profiles to fhir server.
 
