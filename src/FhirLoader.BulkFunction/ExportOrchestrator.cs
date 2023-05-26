@@ -370,6 +370,7 @@ namespace FHIRBulkImport
             }            
             return retVal;
         }
+#pragma warning disable DF0305 // Allow function name to be different from entity name.
         [FunctionName("FileTracker")]
         public static void FileTracker ([EntityTrigger] IDurableEntityContext ctx,ILogger log)
         {
@@ -385,6 +386,7 @@ namespace FHIRBulkImport
                     break;
             }
         }
+#pragma warning restore DF0305
         [FunctionName("ExportOrchestrator_GatherResources")]
         public static async Task<string> GatherResources([ActivityTrigger] IDurableActivityContext context, [DurableClient] IDurableEntityClient entityclient, ILogger log)
         {

@@ -5,22 +5,23 @@ VisualStudioVersion = 17.4.32804.182
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.BulkFunction", "src\FhirLoader.BulkFunction\FhirLoader.BulkFunction.csproj", "{4359B7A4-3A18-43E3-ACB3-2774F2EEFF06}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.Tool", "src\FhirLoader.Tool\FhirLoader.Tool.csproj", "{838B9439-81FB-4601-8B26-AD649995BEF1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.CommandLineTool", "src\FhirLoader.CommandLineTool\FhirLoader.CommandLineTool.csproj", "{838B9439-81FB-4601-8B26-AD649995BEF1}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{8D01CD5A-1541-4124-8B37-D104F79FBDB4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3F2DB00C-7EE4-42AE-99DB-BDCC3535D90F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FHIRLoader.Tool.Tests.E2E", "test\FhirLoader.Tests.E2E\FHIRLoader.Tool.Tests.E2E.csproj", "{ED33573A-A15A-4FB6-8289-614221759D5F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.CommandLineTool.Tests.E2E", "tests\FhirLoader.CommandLineTool.Tests.E2E\FhirLoader.CommandLineTool.Tests.E2E.csproj", "{ED33573A-A15A-4FB6-8289-614221759D5F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FhirLoader.CommandLineTool.Tests.Unit", "tests\FhirLoader.CommandLineTool.Tests.Unit\FhirLoader.CommandLineTool.Tests.Unit.csproj", "{CD4A9CE6-349A-45C6-9B28-87C6D6F2F315}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{69805EAF-18BC-4E0F-AF65-0C0A8983646C}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
-		src\CustomAnalysisRules.ruleset = src\CustomAnalysisRules.ruleset
-		src\stylecop.json = src\stylecop.json
+		CustomAnalysisRules.ruleset = CustomAnalysisRules.ruleset
+		CustomAnalysisRules.Test.ruleset = CustomAnalysisRules.Test.ruleset
+		stylecop.json = stylecop.json
 	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FhirLoader.Tool.Tests.Unit", "test\FhirLoader.Tool.Tests.Unit\FhirLoader.Tool.Tests.Unit.csproj", "{CD4A9CE6-349A-45C6-9B28-87C6D6F2F315}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

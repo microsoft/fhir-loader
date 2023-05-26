@@ -1,0 +1,66 @@
+<Project>
+
+  <!-- Nuget related properties.-->
+  <PropertyGroup>
+    <Authors>Microsoft Health Team</Authors>
+    <Company>Microsoft Corporation</Company>
+    <Copyright>Copyright © Microsoft Corporation. All rights reserved.</Copyright>
+    <DebugType>Portable</DebugType>
+    <Deterministic>true</Deterministic>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <HighEntropyVA>true</HighEntropyVA>
+    <LangVersion>latest</LangVersion>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Product>Microsoft FHIR Loader</Product>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <RepositoryUrl>https://github.com/microsoft/fhir-loader/</RepositoryUrl>
+    <IsPackable>false</IsPackable>
+    <TargetFrameworks>net7.0</TargetFrameworks>
+    <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" IncludeAssets="Runtime;Build;Native;contentFiles;Analyzers" />
+  </ItemGroup>
+
+  <Choose>
+    <When Condition="!$(MSBuildProjectName.Contains('BulkFunction'))">      
+      <ItemGroup>
+        <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435" PrivateAssets="all" IncludeAssets="Runtime;Build;Native;contentFiles;Analyzers" />
+        <AdditionalFiles Include="$(MSBuildThisFileDirectory)/stylecop.json" Link="stylecop.json" />
+      </ItemGroup>
+
+      <Choose>
+        <When Condition="$(MSBuildProjectName.Contains('Test'))">
+          <PropertyGroup>
+            <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)/CustomAnalysisRules.Test.ruleset</CodeAnalysisRuleSet>
+          </PropertyGroup>
+          
+          <ItemGroup>
+            <PackageReference Include="coverlet.collector" Version="3.1.2" PrivateAssets="all" IncludeAssets="Runtime;Build;Native;contentFiles;Analyzers" />
+            <AdditionalFiles Include="$(MSBuildThisFileDirectory)/CustomAnalysisRules.ruleset" Link="CustomAnalysisRules.ruleset" />
+            <AdditionalFiles Include="$(MSBuildThisFileDirectory)/CustomAnalysisRules.Test.ruleset" Link="CustomAnalysisRules.Test.ruleset" />
+          </ItemGroup>
+        </When>
+        <Otherwise>
+          <PropertyGroup>
+            <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)/CustomAnalysisRules.ruleset</CodeAnalysisRuleSet>
+          </PropertyGroup>
+
+          <ItemGroup>
+            <AdditionalFiles Include="$(MSBuildThisFileDirectory)/CustomAnalysisRules.ruleset" Link="CustomAnalysisRules.ruleset" />
+          </ItemGroup>
+        </Otherwise>
+      </Choose>
+    </When>
+    <Otherwise>
+      <!-- For the BulkLoader, override target framework to .NET 6 -->
+      <PropertyGroup>
+        <TargetFrameworks>net6.0</TargetFrameworks>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+
+</Project>
