@@ -3,30 +3,33 @@
 ## Introduction 
 
 **FHIR-Bulk Loader & Export** is an Azure Function App solution that provides the following services for ingesting and exporting FHIR data:
- + Imports FHIR Bundles (compressed and non-compressed) and NDJSON files into a FHIR service 
- + High Speed Parallel Event Grid that triggers from storage accounts or other event grid resources
- + Complete Auditing, Error logging and Retry for throttled transactions
- + High Speed Parallel Orchestrated Patient-centric Export Capability 
+- Automatically imports FHIR bundles (compressed and non-compressed) and NDJSON files into a FHIR server.
+- High-speed, parallel Azure Event Grid that triggers from FHIR data uploaded to Azure Storage accounts or even other event grid resources.
+- Complete auditing, error logging and retry for throttled transactions.
+- High-speed parallel orchestrated patient-centric export for Azure API for FHIR
+  - Azure Health Data Services users should use [$export](https://learn.microsoft.com/azure/healthcare-apis/fhir/export-data).
 
 ## Architecture Overview
 ![Bulk Loader](/docs/BulkImport/images/architecture/bulkloadarch.png)
 
-## Prerequsites
-1. The FHIR-Bulk Loader & Export requires the following components: 
-   + Azure API for FHIR, Azure Health Data Services FHIR service, or OSS FHIR Server
-   + *Optional* FHIR-Proxy (with Key Vault)
+## Prerequisites
+> The following prerequisites are required to deploy and use this tool. Please ensure that you have the proper Azure resources and configuration before continuing.
 
-2. You must have at least a Contributor role in your Azure subscription so that you can create/update the following resources:
-   + Resource Group
-   + Storage Account 
-   + App Service Plan 
-   + Function App 
-   + Event Grid
-
-3. You must be assigned a Key Vault access policy to read/write secrets in the specified Key Vault.
+-  Deployed FHIR server on Azure.
+    - A FHIR Service inside an Azure Health Data Services workspace.
+    - An Azure API for FHIR.
+    - An open-source FHIR Server deployed on Azure.
+- *Optional*: FHIR Proxy (with Azure Key Vault).
+-  You must have at least a Contributor role in your Azure subscription so that you can create/update the following resources:
+    - Resource Group
+    - Storage Account 
+    - App Service Plan 
+    - Function App 
+    - Event Grid
+- *Optional*: For FHIR Proxy deployments, you must be assigned a Key Vault access policy to read/write secrets in the specified Key Vault.
 
 ## Deployed Components
-_Larger image [here](/docs/BulkImport/images/architecture/install-components.png)_
+*Larger image [here](/docs/BulkImport/images/architecture/install-components.png)*
 
 ![install-componenents-small](/docs/BulkImport/images/architecture/install-components-small.png)
 
