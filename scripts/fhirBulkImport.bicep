@@ -7,8 +7,8 @@ param location string = resourceGroup().location
 @description('The full URL of the FHIR Service to load resources.')
 param fhirUrl string
 
-@description('Resource for connection to the FHIR Server. Leave blank to use the FHIR url.')
-param fhirResource string = ''
+@description('Audience used for FHIR Server tokens. Leave blank to use the FHIR url which will work for default FHIR deployments.')
+param fhirAudience string = ''
 
 @allowed(['B1', 'B2', 'B3', 'S1', 'S2', 'S3', 'P1v2', 'P2v2', 'P3v2', 'P1v3', 'P2v3', 'P3v3'])
 @description('Size of the app service to run loader function')
@@ -51,6 +51,13 @@ param transformTransactionBundles bool = false
 ])
 @description('What type of FHIR Server to setup a managed identity connection for.')
 param setManagedIdentityForFhir string = 'FhirService'
+
+@description('If not using MSI, client ID of the service account used to connect to the FHIR Server')
+param serviceAccountClientId string = ''
+
+@description('If not using MSI, client secret of the service account used to connect to the FHIR Server')
+@secure()
+param serviceAccountSecret string = ''
 
 @description('Storage account used for loading files')
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
@@ -194,10 +201,16 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
     'FS-URL': fhirUrl
 
     // Resource for the FHIR endpoint.
-    'FS-RESOURCE': fhirResource
+    'FS-RESOURCE': fhirAudience
 
     // Tenant of FHIR Server
     'FS-TENANT-NAME': tenantId
+
+    'FS-ISMSI': setManagedIdentityForFhir == 'none' ? 'false' : 'true'
+
+    'FS-CLIENT-ID': setManagedIdentityForFhir == 'none' ? serviceAccountClientId : ''
+
+    'FS-SECRET': setManagedIdentityForFhir == 'none' ? serviceAccountSecret : ''
 
     // When loading bundles, convert transaction to batch bundles. Transform UUIDs and resolve ifNoneExist
     TRANSFORMBUNDLES: '${transformTransactionBundles}'
