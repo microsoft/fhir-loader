@@ -14,7 +14,13 @@ This repository contains two FHIR Loader tools:
 
 ### FHIR Bulk Loader & Export
 
-Check out the [deployment guide here](/docs/BulkImport/deployment.md). For more information, checkout the [README document here](/src/FhirLoader.BulkImport/README.md).
+To quickly deploy the FHIR Bulk Loader, you can use the Azure deployment below. This will provide only simple configuration.
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Ffhir-loader-cli%2Fscripts%2FfhirBulkImport.json)
+
+For a more configurable deployment, you can use the script deployment. Check out the [deployment guide here](/docs/BulkImport/deployment.md). 
+
+For more information, checkout the [README document here](/src/FhirLoader.BulkImport/README.md).
 
 ### FHIR Loader Command Line Tool
 

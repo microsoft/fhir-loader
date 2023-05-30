@@ -4,7 +4,7 @@ param prefix string = 'bulk'
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
-@description('The full URL of the FHIR Service to import data')
+@description('The full URL of the FHIR Service to load resources.')
 param fhirUrl string
 
 @description('Resource for connection to the FHIR Server. Leave blank to use the FHIR url.')
@@ -22,7 +22,7 @@ var appTags = {
     AppID: 'fhir-loader-function'
 }
 
-var uniqueResourceIdentifier = substring(uniqueString(resourceGroup().id), 0, 4)
+var uniqueResourceIdentifier = substring(uniqueString(resourceGroup().id, prefix), 0, 4)
 var prefixNameClean = '${replace(prefix, '-', '')}${uniqueResourceIdentifier}'
 var prefixNameCleanShort = length(prefixNameClean) > 16 ? substring(prefixNameClean, 0, 8) : prefixNameClean
 
