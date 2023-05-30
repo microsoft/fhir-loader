@@ -12,11 +12,11 @@ This repository contains two FHIR Loader tools:
 
 ## Getting started
 
-**FHIR Bulk Loader & Export:**
+### FHIR Bulk Loader & Export
 
 Check out the [deployment guide here](/docs/BulkImport/deployment.md). For more information, checkout the [README document here](/src/FhirLoader.BulkImport/README.md).
 
-**FHIR Loader Command Line Tool** 
+### FHIR Loader Command Line Tool
 
 Check ouf the [README document here](/src/FhirLoader.CommandLineTool/README.md).
 
