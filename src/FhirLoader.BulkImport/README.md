@@ -9,7 +9,7 @@
  + High Speed Parallel Orchestrated Patient-centric Export Capability 
 
 ## Architecture Overview
-![Bulk Loader](docs/images/architecture/bulkloadarch.png)
+![Bulk Loader](/docs/BulkImport/images/architecture/bulkloadarch.png)
 
 ## Prerequsites
 1. The FHIR-Bulk Loader & Export requires the following components: 
@@ -26,9 +26,9 @@
 3. You must be assigned a Key Vault access policy to read/write secrets in the specified Key Vault.
 
 ## Deployed Components
-_Larger image [here](./docs/images/architecture/install-components.png)_
+_Larger image [here](/docs/BulkImport/images/architecture/install-components.png)_
 
-![install-componenents-small](./docs/images/architecture/install-components-small.png)
+![install-componenents-small](/docs/BulkImport/images/architecture/install-components-small.png)
 
 ## Deployment
 1. [Open Azure Cloud Shell](https://shell.azure.com) - you can also access this from [Azure Portal](https://portal.azure.com)
@@ -39,12 +39,12 @@ git clone https://github.com/microsoft/fhir-loader.git
 ```
 4. Execute ```deployFhirBulk.bash``` for direct FHIR Server access or ```deployFhirBulk.bash -o proxy``` to use FHIR Proxy access.
 
-Detailed instructions can be found [here](./scripts/Readme.md).
+Detailed instructions can be found [here](/scripts/README.md).
 
 ## Importing FHIR Data
 Once deployment is complete, go to the storage account created for the FHIR-Bulk Loader and Export and click on the **Storage browser (preview)** blade.
 
-<img src="./docs/images/FHIR-Bulk_Loader_Blob_Containers_edit.png" height="428">
+<img src="/docs/BulkImport/images/FHIR-Bulk_Loader_Blob_Containers_edit.png" height="428">
 
 The containers for importing data are created during deployment. A different container is created for each input file type.
 - for FHIR Bundles (transactional or batch), use the "bundles" container
@@ -141,22 +141,4 @@ The FHIR-Bulk Loader deploys with a Standard App Service plan that can support t
 
 **Note:** Scaling to hundreds of thousands of files per hour requires additional scaling on the FHIR API to handle the incoming messages. High rates of 429's at the API or Cosmos data plane indicate that additional scaling is necessary. 
 
-Detailed performance guidelines can be found [here](docs/performance.md). 
-
----
-
-# Contributing
-
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
-
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
-FHIR is the registered trademark of HL7 and is used with the permission of HL7.
+Detailed performance guidelines can be found [here](/docs/BulkImport/performance.md).

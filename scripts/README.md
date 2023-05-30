@@ -40,7 +40,7 @@ Launch Azure Cloud Shell (Bash Environment)
 
 **CTRL+click** (Windows or Linux) or **CMD+click** (Mac) to open in a new window or tab   
 
-[![Launch Azure Shell](/docs/images/launchcloudshell.png "Launch Cloud Shell")](https://shell.azure.com/bash?target="_blank")
+[![Launch Azure Shell](/docs/BulkImport/images/launchcloudshell.png "Launch Cloud Shell")](https://shell.azure.com/bash?target="_blank")
 
 Clone the repo to your Bash Shell (CLI) environment 
 ```azurecli-interactive

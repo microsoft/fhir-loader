@@ -28,3 +28,6 @@ msbuild.wrn
 
 # Test Result
 TestResults/
+
+# For the Mac tribe
+.DS_Store

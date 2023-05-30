@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.32804.182
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.BulkFunction", "src\FhirLoader.BulkFunction\FhirLoader.BulkFunction.csproj", "{4359B7A4-3A18-43E3-ACB3-2774F2EEFF06}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.BulkImport", "src\FhirLoader.BulkFunction\FhirLoader.BulkImport.csproj", "{4359B7A4-3A18-43E3-ACB3-2774F2EEFF06}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FhirLoader.CommandLineTool", "src\FhirLoader.CommandLineTool\FhirLoader.CommandLineTool.csproj", "{838B9439-81FB-4601-8B26-AD649995BEF1}"
 EndProject
