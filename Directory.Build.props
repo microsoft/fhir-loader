@@ -15,7 +15,6 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryUrl>https://github.com/microsoft/fhir-loader/</RepositoryUrl>
     <IsPackable>false</IsPackable>
-    <TargetFrameworks>net7.0</TargetFrameworks>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
@@ -26,7 +25,10 @@
   </ItemGroup>
 
   <Choose>
-    <When Condition="!$(MSBuildProjectName.Contains('Bulk'))">      
+    <When Condition="!$(MSBuildProjectName.Contains('Bulk'))">
+      <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+      </PropertyGroup>
       <ItemGroup>
         <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435" PrivateAssets="all" IncludeAssets="Runtime;Build;Native;contentFiles;Analyzers" />
         <AdditionalFiles Include="$(MSBuildThisFileDirectory)/stylecop.json" Link="stylecop.json" />
