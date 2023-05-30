@@ -10,12 +10,15 @@ This repository contains two FHIR Loader tools:
 
 - **[FHIR Loader Command Line Tool](/src/FhirLoader.CommandLineTool/README.md)** is a .NET, command line application executed on your computer that can automatically load FHIR packages/profiles and small sets of FHIR data.
 
----
-
 ## Getting started
 
-- **FHIR Bulk Loader & Export:** Check out the [deployment guide here](/docs/BulkImport/deployment.md). For more information, checkout the [README document here](/src/FhirLoader.BulkImport/README.md).
-- **FHIR Loader Command Line Tool:** Check ouf the [README document here](/src/FhirLoader.CommandLineTool/README.md).
+**FHIR Bulk Loader & Export:**
+
+Check out the [deployment guide here](/docs/BulkImport/deployment.md). For more information, checkout the [README document here](/src/FhirLoader.BulkImport/README.md).
+
+**FHIR Loader Command Line Tool** 
+
+Check ouf the [README document here](/src/FhirLoader.CommandLineTool/README.md).
 
 ## Features
 
