@@ -15,6 +15,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryUrl>https://github.com/microsoft/fhir-loader/</RepositoryUrl>
     <IsPackable>false</IsPackable>
+    <TargetFrameworks>net7.0</TargetFrameworks>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
@@ -25,11 +26,7 @@
   </ItemGroup>
 
   <Choose>
-    <When Condition="!$(MSBuildProjectName.Contains('BulkFunction'))">      
-      <PropertyGroup>
-        <TargetFrameworks>net7.0</TargetFrameworks>
-      </PropertyGroup>
-
+    <When Condition="!$(MSBuildProjectName.Contains('Bulk'))">      
       <ItemGroup>
         <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435" PrivateAssets="all" IncludeAssets="Runtime;Build;Native;contentFiles;Analyzers" />
         <AdditionalFiles Include="$(MSBuildThisFileDirectory)/stylecop.json" Link="stylecop.json" />
@@ -58,12 +55,6 @@
         </Otherwise>
       </Choose>
     </When>
-    <Otherwise>
-      <!-- For the BulkLoader, override target framework to .NET 6 -->
-      <PropertyGroup>
-        <TargetFrameworks>net6.0</TargetFrameworks>
-      </PropertyGroup>
-    </Otherwise>
   </Choose>
 
 </Project>
