@@ -124,7 +124,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
         }
         {
           name: 'Project'
-          value: 'src/FhirLoader.BulkFunction'
+          value: 'src/FhirLoader.BulkFunction/FhirLoader.BulkFunction.csproj'
         }
       ]
     }

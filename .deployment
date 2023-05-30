@@ -1,0 +1,2 @@
+[config]
+project = src/FhirLoader.BulkImport/FhirLoader.BulkImport.csproj
