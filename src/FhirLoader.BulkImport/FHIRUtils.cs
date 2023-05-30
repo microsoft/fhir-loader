@@ -33,8 +33,8 @@ namespace FHIRBulkImport
         private static bool isMsi = Utils.GetBoolEnvironmentVariable("FS-ISMSI", false);
         private static string resource = Utils.GetEnvironmentVariable("FS-RESOURCE");
         private static string tenant = Utils.GetEnvironmentVariable("FS-TENANT-NAME");
-        private static string clientid = Utils.GetEnvironmentVariable("FS-CLIENT-ID");
-        private static string secret = Utils.GetEnvironmentVariable("FS-SECRET");
+        private static string clientid = Utils.GetEnvironmentVariable("FS-CLIENT-ID", string.Empty);
+        private static string secret = Utils.GetEnvironmentVariable("FS-SECRET", string.Empty);
         private static string authority = Utils.GetEnvironmentVariable("FS-AUTHORITY", "https://login.microsoftonline.com");
         private static string fsurl = Utils.GetEnvironmentVariable("FS-URL");
         private static ConcurrentDictionary<string,string> _tokens = new ConcurrentDictionary<string, string>();

@@ -1,5 +1,5 @@
 @description('Prefix for all resources')
-param prefix string
+param prefix string = 'bulk'
 
 @description('Location for all resources.')
 param location string = resourceGroup().location
@@ -22,11 +22,9 @@ var appTags = {
     AppID: 'fhir-loader-function'
 }
 
-@description('Name of the Log Analytics workspace. Leave blank to create a new one. (Needed for App Insights)')
-param logAnalyticsName string
-
-var prefixNameClean = replace(prefix, '-', '')
-var prefixNameCleanShort = length(prefixNameClean) > 16 ? substring(prefixNameClean, 0, 16) : prefixNameClean
+var uniqueResourceIdentifier = substring(uniqueString(resourceGroup().id), 0, 4)
+var prefixNameClean = '${replace(prefix, '-', '')}${uniqueResourceIdentifier}'
+var prefixNameCleanShort = length(prefixNameClean) > 16 ? substring(prefixNameClean, 0, 8) : prefixNameClean
 
 @description('Name of the NDJSON import function. Used for setting up the Storage to Event Grid subscription')
 var importNDJsonFunctionName='ImportNDJSON'
@@ -34,11 +32,14 @@ var importNDJsonFunctionName='ImportNDJSON'
 @description('Name of the bundle import function. Used for setting up the Storage to Event Grid subscription')
 var importBundleFunctionName='ImportBundleEventGrid'
 
+// @description('URL to the FHIR Loader package to deploy')
+// var packageUrl = 'https://github.com/microsoft/fhir-loader/releases/latest/download/FhirLoader.BulkFunction.zip'
+
 @description('URL to the FHIR Loader repo for git integration')
 var loaderRepoUrl = 'https://github.com/microsoft/fhir-loader'
 
 @description('Branch of the FHIR Loader repo for git integration')
-param loaderRepoBranch string = 'main'
+param loaderRepoBranch string = 'fhir-loader-cli'
 
 @description('Transform transaction bundles to batch budles.')
 param transformTransactionBundles bool = false
@@ -133,6 +134,44 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
   tags: appTags
 }
 
+@description('Placeholder function used to setup the Storage to Event Grid subscription until source control deployment executes.')
+resource importNDJsonFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
+  name: importNDJsonFunctionName
+  parent: functionApp
+  properties: {
+    config: {
+      disabled: false
+      bindings: [
+        {
+          type: 'eventGridTrigger'
+          direction: 'in'
+          name: 'blobCreatedEvent'
+        }
+      ]
+    }
+    language: 'CSharp'
+  }
+}
+
+@description('Placeholder function used to setup the Storage to Event Grid subscription until source control deployment executes.')
+resource importBundleFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
+  name: importBundleFunctionName
+  parent: functionApp
+  properties: {
+    config: {
+      disabled: false
+      bindings: [
+        {
+          type: 'eventGridTrigger'
+          direction: 'in'
+          name: 'blobCreatedEvent'
+        }
+      ]
+    }
+    language: 'CSharp'
+  }
+}
+
 var storageAccountConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
 
 resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
@@ -142,11 +181,11 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
     AzureWebJobsStorage: storageAccountConnectionString
     FUNCTIONS_EXTENSION_VERSION: '~4'
     FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-    Project: 'src/FhirLoader.BulkFunction'
     APPINSIGHTS_INSTRUMENTATIONKEY: appInsights.properties.InstrumentationKey
     APPLICATIONINSIGHTS_CONNECTION_STRING: appInsights.properties.ConnectionString
     SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
     'AzureWebJobs.ImportBundleBlobTrigger.Disabled': '1'
+    AzureFunctionsJobHost__functionTimeout: '23:00:00'
     
     // Storage account to setup import from
     'FBI-STORAGEACCT': storageAccountConnectionString
@@ -186,11 +225,9 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
     'FBI-MAXEXPORTS': '-1'
     // How long to leave exports on the storage account
     'FBI-EXPORTPURGEAFTERDAYS': '30'
+    // Period to run the poision queue function.
+    'FBI-POISONQUEUE-TIMER-CRON': '0 */2 * * * *'
   }
-
-  dependsOn: [
-    sourcecontrol
-  ]
 }
 
 @description('Git integration for the function app code')
@@ -203,6 +240,17 @@ resource sourcecontrol 'Microsoft.Web/sites/sourcecontrols@2022-03-01' = {
     isManualIntegration: true
   }
 }
+
+/*
+@description('Deploy function app code from package')
+resource functionAppDeployment 'Microsoft.Web/sites/extensions@2020-12-01' = {
+  name: 'MSDeploy'
+  parent: functionApp
+  properties: {
+    packageUri: packageUrl
+  }
+}
+*/
 
 @description('Subscription to ndjson container')
 resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
@@ -229,7 +277,7 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     eventDeliverySchema: 'EventGridSchema'
   }
 
-  dependsOn: [ sourcecontrol ]
+  dependsOn: [ importNDJsonFunction ]
 }
 
 @description('Subscription to bundle container')
@@ -259,23 +307,8 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     
   }
 
-  dependsOn: [ sourcecontrol ]
+  dependsOn: [ importBundleFunction ]
 }
-
-@description('Logging workspace for FHIR Loader - use new if specified')
-resource logAnalyticsWorkspaceNew 'Microsoft.OperationalInsights/workspaces@2020-03-01-preview' = if (length(logAnalyticsName) == 0) {
-  name: '${prefixNameCleanShort}-la'
-  location: location
-  properties: {
-    retentionInDays: 30
-    sku: {
-      name: 'PerGB2018'
-    }
-  }
-  tags: appTags
-}
-
-var logAnalyticsWorkspaceId = resourceId('Microsoft.OperationalInsights/workspaces', (length(logAnalyticsName) == 0) ? '${prefixNameCleanShort}-la' : logAnalyticsName)
 
 @description('Monitoring for Function App')
 resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
@@ -284,16 +317,12 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
   kind: 'web'
   properties: {
     Application_Type: 'web'
-    WorkspaceResourceId: logAnalyticsWorkspaceId
   }
   tags: appTags
-
-  dependsOn: [logAnalyticsWorkspaceNew]
 }
 
 var fhirUrlClean = replace(split(fhirUrl, '.')[0], 'https://', '')
 var fhirUrlCleanSplit = split(fhirUrlClean, '-')
-
 
 resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (setManagedIdentityForFhir == 'FhirService') {
   #disable-next-line prefer-interpolation
@@ -317,7 +346,7 @@ module functionFhirServiceRoleAssignment './roleAssignment.bicep'= if (setManage
 
 @description('Setup access between FHIR and the deployment script managed identity')
 module functionApiForFhirRoleAssignment './roleAssignment.bicep'= if (setManagedIdentityForFhir == 'APIforFhir') {
-  name: 'functionApiForFhirRoleAssignment'
+  name: 'bulk-import-function-fhir-managed-id-role-assignment'
   params: {
     resourceId: apiForFhir.id
     // FHIR Contributor
@@ -325,15 +354,3 @@ module functionApiForFhirRoleAssignment './roleAssignment.bicep'= if (setManaged
     principalId: functionApp.identity.principalId
   }
 }
-
-// Connection string
-/*@description('Setup access between FHIR and the deployment script managed identity')
-module functionStorageRoleAssignment './roleAssignment.bicep'= {
-  name: 'fhirServiceRoleAssignment'
-  params: {
-    resourceId: storageAccount.id
-    // Storage blob data contributor
-    roleId: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-    principalId: functionApp.identity.principalId
-  }
-}*/
