@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.16.2.56959",
-      "templateHash": "1574681637608136953"
+      "templateHash": "3640604870040201126"
     }
   },
   "parameters": {
@@ -26,14 +26,14 @@
     "fhirUrl": {
       "type": "string",
       "metadata": {
-        "description": "The full URL of the FHIR Service to import data"
+        "description": "The full URL of the FHIR Service to load resources."
       }
     },
-    "fhirResource": {
+    "fhirAudience": {
       "type": "string",
       "defaultValue": "",
       "metadata": {
-        "description": "Resource for connection to the FHIR Server. Leave blank to use the FHIR url."
+        "description": "Audience used for FHIR Server tokens. Leave blank to use the FHIR url which will work for default FHIR deployments."
       }
     },
     "appServiceSize": {
@@ -82,6 +82,20 @@
         "APIforFhir",
         "none"
       ]
+    },
+    "serviceAccountClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "If not using MSI, client ID of the service account used to connect to the FHIR Server"
+      }
+    },
+    "serviceAccountSecret": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "If not using MSI, client secret of the service account used to connect to the FHIR Server"
+      }
     }
   },
   "variables": {
@@ -89,7 +103,7 @@
     "appTags": {
       "AppID": "fhir-loader-function"
     },
-    "uniqueResourceIdentifier": "[substring(uniqueString(resourceGroup().id), 0, 4)]",
+    "uniqueResourceIdentifier": "[substring(uniqueString(resourceGroup().id, parameters('prefix')), 0, 4)]",
     "prefixNameClean": "[format('{0}{1}', replace(parameters('prefix'), '-', ''), variables('uniqueResourceIdentifier'))]",
     "prefixNameCleanShort": "[if(greater(length(variables('prefixNameClean')), 16), substring(variables('prefixNameClean'), 0, 8), variables('prefixNameClean'))]",
     "importNDJsonFunctionName": "ImportNDJSON",
@@ -273,8 +287,11 @@
         "AzureFunctionsJobHost__functionTimeout": "23:00:00",
         "FBI-STORAGEACCT": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', format('{0}stor', variables('prefixNameCleanShort')), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort'))), '2021-08-01').keys[0].value)]",
         "FS-URL": "[parameters('fhirUrl')]",
-        "FS-RESOURCE": "[parameters('fhirResource')]",
+        "FS-RESOURCE": "[parameters('fhirAudience')]",
         "FS-TENANT-NAME": "[variables('tenantId')]",
+        "FS-ISMSI": "[if(equals(parameters('setManagedIdentityForFhir'), 'none'), 'false', 'true')]",
+        "FS-CLIENT-ID": "[if(equals(parameters('setManagedIdentityForFhir'), 'none'), parameters('serviceAccountClientId'), '')]",
+        "FS-SECRET": "[if(equals(parameters('setManagedIdentityForFhir'), 'none'), parameters('serviceAccountSecret'), '')]",
         "TRANSFORMBUNDLES": "[format('{0}', parameters('transformTransactionBundles'))]",
         "FBI-MAXBUNDLESIZE": "500",
         "FBI-MAXRESOURCESPERBUNDLE": "500",
