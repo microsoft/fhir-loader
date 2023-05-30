@@ -26,8 +26,12 @@ namespace FhirLoader.CommandLineTool.CLI
         [Option("blob", Required = false, HelpText = "Url to public blob storage container with FHIR data to load. ")]
         public string? BlobPath { get; set; }
 
+        internal Uri BlobPathInternal => new(BlobPath!);
+
         [Option("package", Required = false, HelpText = "Package path to FHIR data to load.")]
         public string? PackagePath { get; set; }
+
+        internal InputType InputType => GetInputType();
 
         [Option("skip-errors", Required = false, Default = false, HelpText = "Continue sending resources on HTTP error.")]
         public bool SkipErrors { get; set; }
@@ -37,6 +41,8 @@ namespace FhirLoader.CommandLineTool.CLI
 
         [Option("fhir", Required = true, HelpText = "Base URL of your FHIR server.")]
         public string? FhirUrl { get; set; }
+
+        internal Uri FhirUriInternal => new(FhirUrl!);
 
         [Option("audience", Required = false, HelpText = "Alternate audience for your FHIR Service instead of FHIR URL.")]
         public string? Audience { get; set; }
@@ -103,6 +109,32 @@ namespace FhirLoader.CommandLineTool.CLI
                 throw new ArgumentException($"Path {PackagePath} could not be found or is not a directory.");
             }
 
+            // Ensure the blob path is a valid Uri.
+            try
+            {
+                if (BlobPath is not null)
+                {
+                    var uri = new Uri(BlobPath!);
+                }
+            }
+            catch (UriFormatException)
+            {
+                throw new ArgumentException($"BlobPath {BlobPath} is not a valid Uri.");
+            }
+
+            // Ensure the FhirUrl is a valid Uri.
+            try
+            {
+                if (FhirUrl is not null)
+                {
+                    var uri = new Uri(FhirUrl!);
+                }
+            }
+            catch (UriFormatException)
+            {
+                throw new ArgumentException($"FhirUrl {FhirUrl} is not a valid Uri.");
+            }
+
             if (BatchSize < Convert.ToInt32(BundleSizeMin, NumberFormatInfo.InvariantInfo) || BatchSize > Convert.ToInt32(BundleSizeMax, NumberFormatInfo.InvariantInfo))
             {
                 throw new ArgumentValidationException($"Batch {BatchSize} must be an integer between {BundleSizeMin} and {BundleSizeMax}");
@@ -111,6 +143,26 @@ namespace FhirLoader.CommandLineTool.CLI
             if (Concurrency < Convert.ToInt32(ConcurrencyMin, NumberFormatInfo.InvariantInfo) || Concurrency > Convert.ToInt32(ConcurrencyMax, NumberFormatInfo.InvariantInfo))
             {
                 throw new ArgumentValidationException($"Concurrency {Concurrency} must be an integer between {ConcurrencyMin} and {ConcurrencyMax}");
+            }
+        }
+
+        private InputType GetInputType()
+        {
+            if (!string.IsNullOrEmpty(FolderPath))
+            {
+                return InputType.LocalFolder;
+            }
+            else if (!string.IsNullOrEmpty(BlobPath))
+            {
+                return InputType.Blob;
+            }
+            else if (!string.IsNullOrEmpty(PackagePath))
+            {
+                return InputType.LocalPackage;
+            }
+            else
+            {
+                throw new ArgumentValidationException("No input type specified.");
             }
         }
     }

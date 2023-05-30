@@ -17,8 +17,8 @@ namespace FhirLoader.CommandLineTool
 {
     public class Program
     {
-        private static ILogger<Program> _logger = ApplicationLogging.Instance.CreateLogger<Program>();
-        private static CancellationTokenSource _cancelTokenSource = new CancellationTokenSource();
+        private static ILogger<Program> s_logger = ApplicationLogging.Instance.CreateLogger<Program>();
+        private static readonly CancellationTokenSource s_cancelTokenSource = new();
 
         internal static async Task<int> Main(string[] args)
         {
@@ -32,7 +32,7 @@ namespace FhirLoader.CommandLineTool
                     {
                         if (opt.Debug)
                         {
-                            _logger = ApplicationLogging.Instance.Configure(LogLevel.Trace).CreateLogger<Program>();
+                            s_logger = ApplicationLogging.Instance.Configure(LogLevel.Trace).CreateLogger<Program>();
                         }
 
                         opt.Validate();
@@ -49,11 +49,17 @@ namespace FhirLoader.CommandLineTool
 
         public static async Task<int> Run(CommandOptions opt)
         {
-            _logger.LogInformation("Setting up Microsoft FHIR Loader Tool, please wait...  ");
+            if (opt is null)
+            {
+                throw new ArgumentNullException(nameof(opt));
+            }
+
+            s_logger.LogInformation("Setting up Microsoft FHIR Loader Tool, please wait...  ");
+
             try
             {
                 // Create client and setup access token
-                var client = new FhirResourceClient(opt.FhirUrl!, opt.ConcurrencyInternal, opt.SkipErrors, _logger, opt.TenantId, opt.Audience, _cancelTokenSource.Token);
+                var client = new FhirResourceClient(opt.FhirUriInternal, opt.ConcurrencyInternal, opt.SkipErrors, s_logger, opt.TenantId, opt.Audience, s_cancelTokenSource.Token);
 
                 // Get file streams from the specified source
                 BaseFileSource fileSource = ParseFileSource(opt);
@@ -66,29 +72,29 @@ namespace FhirLoader.CommandLineTool
                 {
                     var actionBlock = new ActionBlock<BaseProcessedResource>(
                         async bundleWrapper =>
-                    {
-                        await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, _cancelTokenSource.Token);
-                    },
+                        {
+                            await client.Send(bundleWrapper, Metrics.Instance.RecordBundlesSent, s_cancelTokenSource.Token);
+                        },
                         new ExecutionDataflowBlockOptions
-                       {
-                           MaxDegreeOfParallelism = opt.Concurrency!.Value,
-                           BoundedCapacity = opt.Concurrency!.Value * 2,
-                           CancellationToken = _cancelTokenSource.Token,
-                       });
+                        {
+                            MaxDegreeOfParallelism = opt.Concurrency!.Value,
+                            BoundedCapacity = opt.Concurrency!.Value * 2,
+                            CancellationToken = s_cancelTokenSource.Token,
+                        });
 
                     // For each file, send segmented bundles
                     bool blockAcceptingNewMessages = true;
 
-                    foreach (var file in fileSource.Files)
+                    foreach ((string fileName, Stream fileStream) in fileSource.Files)
                     {
                         if (!blockAcceptingNewMessages)
                         {
                             break;
                         }
 
-                        var processedResourceList = BaseProcessedResource.ProcessedResourceFromFileStream(file.Data, file.Name, opt.BatchSizeInternal, _logger);
+                        IEnumerable<BaseProcessedResource> processedResourceList = BaseProcessedResource.ProcessedResourceFromFileStream(fileStream, fileName, opt.BatchSizeInternal, s_logger);
 
-                        foreach (var resource in processedResourceList)
+                        foreach (BaseProcessedResource resource in processedResourceList)
                         {
                             if (opt.StripText)
                             {
@@ -97,29 +103,29 @@ namespace FhirLoader.CommandLineTool
                                 resource.ResourceText = resourceObj.ToString();
                             }
 
-                            if (!await actionBlock.SendAsync(resource, _cancelTokenSource.Token))
+                            if (!await actionBlock.SendAsync(resource, s_cancelTokenSource.Token))
                             {
                                 blockAcceptingNewMessages = false;
-                                _logger.LogError("Cannot send all bundles due to an internal error. Finishing and exiting.");
+                                s_logger.LogError("Cannot send all bundles due to an internal error. Finishing and exiting.");
                                 break;
                             }
                         }
                     }
 
                     actionBlock.Complete();
-                    await actionBlock.Completion.WaitAsync(_cancelTokenSource.Token);
+                    await actionBlock.Completion.WaitAsync(s_cancelTokenSource.Token);
                 }
                 catch (Exception ex) when (ex is TaskCanceledException || ex is OperationCanceledException)
                 {
-                    _logger.LogWarning("Exiting...");
+                    s_logger.LogWarning("Exiting...");
                 }
                 catch (FatalFhirResourceClientException ex)
                 {
                     if (ex.InnerException is not TaskCanceledException)
                     {
-                        _cancelTokenSource.Cancel();
+                        s_cancelTokenSource.Cancel();
                         var message = string.IsNullOrEmpty(ex.Message) ? ex.InnerException?.Message : ex.Message;
-                        _logger.LogCritical("Failed to send all bundles because: ", ex.Message);
+                        s_logger.LogCritical("Failed to send all bundles because: ", ex.Message);
                     }
                 }
                 catch (AggregateException ae)
@@ -136,27 +142,24 @@ namespace FhirLoader.CommandLineTool
                 Console.WriteLine($"Done! Sent {Metrics.Instance.TotalResourcesSent} resources in {(int)(Metrics.Instance.TotalTimeInMilliseconds / 1000)} seconds.");
                 if (opt.PackagePath is not null)
                 {
-                    await client.ReIndex(opt.FhirUrl!);
+                    await client.ReIndex();
                 }
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex.Message);
+                s_logger.LogError(ex.Message);
                 Console.WriteLine(ex.Message);
             }
             catch (DirectoryNotFoundException)
             {
-                _logger.LogError($"Could not find path {opt.FolderPath}");
+                s_logger.LogError($"Could not find path {opt.FolderPath}");
             }
             catch (CredentialUnavailableException)
             {
-                _logger.LogError($"Could not obtain Azure credential. Please use `az login` or another method specified here: https://docs.microsoft.com/dotnet/api/azure.identity.defaultazurecredential?view=azure-dotnet");
+                s_logger.LogError($"Could not obtain Azure credential. Please use `az login` or another method specified here: https://docs.microsoft.com/dotnet/api/azure.identity.defaultazurecredential?view=azure-dotnet");
             }
 
-            if (ApplicationLogging.Instance.LogFactory is not null)
-            {
-                ApplicationLogging.Instance.LogFactory.Dispose();
-            }
+            ApplicationLogging.Instance.LogFactory?.Dispose();
 
             Metrics.Instance.Stop();
             return 0;
@@ -164,28 +167,19 @@ namespace FhirLoader.CommandLineTool
 
         internal static BaseFileSource ParseFileSource(CommandOptions opt)
         {
-            if (opt.FolderPath is not null)
+            return opt.InputType switch
             {
-                return new LocalFolderSource(opt.FolderPath, _logger);
-            }
-            else if (opt.BlobPath is not null)
-            {
-                return new AzureBlobSource(opt.BlobPath, _logger);
-            }
-            else if (opt.PackagePath is not null)
-            {
-                // # TODO - fix metadata parameter issues.
-                // JObject? metadata = await client.Get("/metadata");
-                return new FhirPackageSource(opt.PackagePath, _logger);
-            }
-
-            throw new ArgumentException("Unknown input type.");
+                InputType.LocalFolder => new LocalFolderSource(opt.FolderPath!, s_logger),
+                InputType.Blob => new AzureBlobSource(opt.BlobPathInternal, s_logger),
+                InputType.LocalPackage => new FhirPackageSource(opt.PackagePath!, s_logger),
+                _ => throw new ArgumentException("Unknown input type."),
+            };
         }
 
         internal static void OnConsoleCancel(object? sender, ConsoleCancelEventArgs e)
         {
-            _logger.LogWarning("Gracefully shutting down...");
-            _cancelTokenSource.Cancel();
+            s_logger.LogWarning("Gracefully shutting down...");
+            s_cancelTokenSource.Cancel();
             e.Cancel = true;
         }
     }

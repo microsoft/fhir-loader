@@ -11,11 +11,11 @@ namespace FhirLoader.CommandLineTool.CLI
 {
     internal class Metrics : IDisposable
     {
-        private Meter _meter;
-        private Counter<int>? _resourcesProcessed;
+        private readonly Meter _meter;
+        private readonly Counter<int>? _resourcesProcessed;
 
-        private MeterListener _meterListener = new MeterListener();
-        private ILogger _logger = ApplicationLogging.Instance.CreateLogger("Metrics");
+        private readonly MeterListener _meterListener = new();
+        private readonly ILogger _logger = ApplicationLogging.Instance.CreateLogger("Metrics");
 
         // Used to print resource rates
         private const int OutputRefresh = 5000;
@@ -31,13 +31,15 @@ namespace FhirLoader.CommandLineTool.CLI
             _resourcesProcessed = _meter.CreateCounter<int>(name: "resources-processed", unit: "Resources", description: "The number of FHIR resources processed by the server");
             _resourceCount = new ConcurrentBag<int>();
 
-            _meterListener = new MeterListener();
-            _meterListener.InstrumentPublished = (instrument, listener) =>
+            _meterListener = new MeterListener
             {
-                if (instrument.Meter.Name == _meter.Name)
+                InstrumentPublished = (instrument, listener) =>
                 {
-                    listener.EnableMeasurementEvents(instrument);
-                }
+                    if (instrument.Meter.Name == _meter.Name)
+                    {
+                        listener.EnableMeasurementEvents(instrument);
+                    }
+                },
             };
             _meterListener.SetMeasurementEventCallback<int>(OnMeasurementRecorded);
         }
@@ -62,6 +64,7 @@ namespace FhirLoader.CommandLineTool.CLI
             _meterListener.Dispose();
         }
 
+        // Don't remove the unused time parameter - it's needed as this function is a parameter for sending metrics.
         public void RecordBundlesSent(int resourceCount, long time)
         {
             _resourcesProcessed!.Add(resourceCount);

@@ -13,15 +13,28 @@ namespace FhirLoader.CommandLineTool.CLI
     /// </summary>
     public class ApplicationLogging
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ApplicationLogging"/> class. Creates the Log Factory.
+        /// </summary>
         public ApplicationLogging()
         {
             LogFactory = GetLogFactory()!;
         }
 
+        /// <summary>
+        /// Gets the singleton instance of the <see cref="ApplicationLogging"/> class.
+        /// </summary>
         public static ApplicationLogging Instance { get; } = new ApplicationLogging();
 
+        /// <summary>
+        /// Gets or sets the Log Factory.
+        /// </summary>
         public ILoggerFactory? LogFactory { get; set;  }
 
+        /// <summary>
+        /// Configures the Log Factory with the specified log level.
+        /// </summary>
+        /// <param name="level">LogLevel to output.</param>
         public ApplicationLogging Configure(LogLevel level)
         {
             LogFactory = GetLogFactory(level);
@@ -45,22 +58,24 @@ namespace FhirLoader.CommandLineTool.CLI
             });
         }
 
+        /// <summary>
+        /// Creates a logger for the specified type.
+        /// </summary>
+        /// <typeparam name="T">Object type for the logger.</typeparam>
         public ILogger<T> CreateLogger<T>()
         {
-            if (LogFactory is null)
-            {
-                LogFactory = GetLogFactory();
-            }
+            LogFactory ??= GetLogFactory();
 
             return LogFactory.CreateLogger<T>();
         }
 
+        /// <summary>
+        /// Creates a named logger.
+        /// </summary>
+        /// <param name="name">Name for the logger.</param>
         public ILogger CreateLogger(string name)
         {
-            if (LogFactory is null)
-            {
-                LogFactory = GetLogFactory();
-            }
+            LogFactory ??= GetLogFactory();
 
             return LogFactory.CreateLogger(name);
         }

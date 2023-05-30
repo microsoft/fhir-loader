@@ -3,40 +3,36 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repo root for license information.
 // -------------------------------------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using FhirLoader.CommandLineTool.FileTypeHandlers;
 using Microsoft.Extensions.Logging;
 
 namespace FhirLoader.CommandLineTool.FileSource
 {
     public class AzureBlobSource : BaseFileSource
     {
-        public AzureBlobSource(string blobPath, ILogger logger)
-            : base(blobPath, logger)
+        private readonly Uri _blobPath;
+
+        public AzureBlobSource(Uri blobPath, ILogger logger)
+            : base(blobPath.ToString(), logger)
         {
+            _blobPath = blobPath;
         }
 
         internal override IEnumerable<(string Name, Stream Data)> GetFiles()
         {
-            var blobPathUri = new Uri(Path);
-            var blobUriParsed = new BlobUriBuilder(blobPathUri);
-            var accountUrl = new Uri($"https://{blobUriParsed.Host}");
+            BlobUriBuilder blobUriParsed = new(_blobPath);
+            Uri accountUrl = new($"https://{blobUriParsed.Host}");
 
-            var blobServiceClient = new BlobServiceClient(serviceUri: accountUrl);
-            var containerClient = blobServiceClient.GetBlobContainerClient(blobUriParsed.BlobContainerName);
+            BlobServiceClient blobServiceClient = new(serviceUri: accountUrl);
+            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(blobUriParsed.BlobContainerName);
 
             // Get list of bulk files and bundler
             // Using the orig Uri as BlobUriBuilder drops the last slash
             string blobPrefix = string.Empty;
-            if (blobPathUri.Segments.Length >= 2)
+            if (_blobPath.Segments.Length >= 2)
             {
-                blobPrefix = string.Join('/', blobPathUri.Segments.Skip(2));
+                blobPrefix = string.Join('/', _blobPath.Segments.Skip(2));
             }
 
             // TODO - change to async.
@@ -48,9 +44,9 @@ namespace FhirLoader.CommandLineTool.FileSource
             // _logger.LogInformation($"Found {inputBundles.Count} FHIR bundles and {inputBulkfiles.Count} FHIR bulk data files.");
             foreach (var blob in inputBundles.Concat(inputBulkfiles).OrderBy(_ => _.Name))
             {
-                var blobClient = containerClient.GetBlobClient(blob.Name);
-                var blobStream = blobClient.DownloadStreaming().Value.Content;
-                var safeBlobStream = Stream.Synchronized(blobStream);
+                BlobClient blobClient = containerClient.GetBlobClient(blob.Name);
+                Stream blobStream = blobClient.DownloadStreaming().Value.Content;
+                Stream safeBlobStream = Stream.Synchronized(blobStream);
 
                 yield return (blob.Name, safeBlobStream);
             }

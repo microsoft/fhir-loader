@@ -52,12 +52,8 @@
     <Rule Id="CA1308" Action="None" />
   </Rules>
   <Rules AnalyzerId="StyleCop.Analyzers" RuleNamespace="StyleCop.Analyzers">
-    <!-- Distable check for missing XML comment for publicly visible type or member. -->
-    <Rule Id="CS1591" Action="None" />
     <!-- XML comment analysis is disabled. -->
     <Rule Id="SA0001" Action="None" />
-    <!-- Disable check for closing brace within a C# element is not spaced correctly. -->
-    <Rule Id="SA1013" Action="None" />
     <!-- Disable rule forcing this for local class or base class elements. -->
     <Rule Id="SA1101" Action="None" />
     <!-- Disable rule not allowing comments inside an if statement vs outside. -->
@@ -66,10 +62,12 @@
     <Rule Id="SA1124" Action="None" />
     <!-- Disable rule forcing using directives inside namespaces -->
     <Rule Id="SA1200" Action="None" />
+    <!-- Allow prefixes of s_ or m_ -->
+    <Rule Id="SA1308" Action="None" />
     <!-- Disable rule not allowing field names to begin with an underscore. -->
     <Rule Id="SA1309" Action="None" />
-    <!-- Disable rule for tuple casing. -->
-    <Rule Id="SA1316" Action="None" />
+    <!-- Disable rule suggesting static fields to start with capital. -->
+    <Rule Id="SA1311" Action="None" />
     <!-- Disable rule checking for comments on all elments. -->
     <Rule Id="SA1600" Action="None" />
     <!-- Disable rule checking return element comment. -->
@@ -78,8 +76,6 @@
     <Rule Id="SA1623" Action="None" />
     <!-- Disable rule enforcing periods at the end of comments. -->
     <Rule Id="SA1629" Action="None" />
-    <!-- Disable rule enforcing comments at the top of every file. -->
-    <Rule Id="SA1633" Action="None" />
     <!-- Disable rule enforcing constructor comments. -->
     <Rule Id="SA1642" Action="None" />
     <!-- Disable rule enforcing XML comment output. -->

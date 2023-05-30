@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Polly;
 using Polly.CircuitBreaker;
+using Polly.Retry;
 using Polly.Timeout;
 using Polly.Wrap;
 
@@ -29,28 +30,28 @@ namespace FhirLoader.CommandLineTool.Client
         private readonly ILogger _logger;
         private readonly string? _tenantId;
         private readonly string? _audience;
-        private AsyncPolicyWrap<HttpResponseMessage> _resiliencyStrategy;
+        private readonly AsyncPolicyWrap<HttpResponseMessage> _resiliencyStrategy;
 
         // Used to get/refresh access token across threads
-        private static SemaphoreSlim _tokenSemaphore = new SemaphoreSlim(1, 1);
+        private static readonly SemaphoreSlim s_tokenSemaphore = new(1, 1);
         private DateTime _tokenGeneratedDateTime = DateTime.MinValue;
-        private const string MetadataSuffix = "/metadata";
         private const string ReindexSuffix = "/$reindex";
 
-        public FhirResourceClient(string baseUrl, int expectedParallelRequests, bool skipErrors, ILogger logger, string? tenantId = null, string? audience = null, CancellationToken cancel = default)
+        public FhirResourceClient(Uri baseUrl, int expectedParallelRequests, bool skipErrors, ILogger logger, string? tenantId = null, string? audience = null, CancellationToken cancel = default)
         {
+            if (baseUrl is null)
+            {
+                throw new ArgumentNullException(nameof(baseUrl));
+            }
+
             _logger = logger;
             _skipErrors = skipErrors;
             _client = new HttpClient();
             _tenantId = tenantId;
             _audience = audience;
 
-            if (baseUrl.EndsWith(MetadataSuffix, StringComparison.Ordinal))
-            {
-                baseUrl = baseUrl.Substring(0, baseUrl.Length - MetadataSuffix.Length);
-            }
-
-            _client.BaseAddress = new Uri(baseUrl);
+            // Ensure that the base URL is only the scheme and authority - not metadata if the user copied the URL from the Azure Portal.
+            _client.BaseAddress = new Uri(baseUrl.GetLeftPart(UriPartial.Authority));
             _client.DefaultRequestHeaders.Clear();
             _client.DefaultRequestHeaders.Accept.Clear();
 
@@ -61,6 +62,11 @@ namespace FhirLoader.CommandLineTool.Client
 
         public async Task Send(BaseProcessedResource processedResource, Action<int, long>? metricsCallback = null, CancellationToken cancel = default)
         {
+            if (processedResource is null)
+            {
+                throw new ArgumentNullException(nameof(processedResource));
+            }
+
             var content = new StringContent(processedResource.ResourceText!, Encoding.UTF8, "application/json");
             HttpResponseMessage response = new();
 
@@ -178,7 +184,7 @@ namespace FhirLoader.CommandLineTool.Client
             _logger.LogTrace("Successfully sent bundle.");
         }
 
-        public async Task<JObject?> Get(string requestUri)
+        public async Task<JObject?> Get(Uri requestUri)
         {
             HttpResponseMessage response = new();
 
@@ -231,7 +237,7 @@ namespace FhirLoader.CommandLineTool.Client
             }
         }
 
-        public async Task ReIndex(string baseURL, CancellationToken? cancel = null)
+        public async Task ReIndex(CancellationToken? cancel = null)
         {
             HttpResponseMessage response;
             try
@@ -257,10 +263,10 @@ namespace FhirLoader.CommandLineTool.Client
                     if (jObject != null && jObject.Count > 0)
                     {
                         _logger.LogError(JObject.Parse(responseString).ToString(Formatting.Indented));
-                        _logger.LogInformation("Use this command to check the status of the reindex job. : az rest --resource " + baseURL + " --url " + baseURL + "_operations/reindex/" + jObject["id"]?.ToString());
+                        _logger.LogInformation("Use this command to check the status of the reindex job. : az rest --resource " + _client.BaseAddress + " --url " + _client.BaseAddress + "_operations/reindex/" + jObject["id"]?.ToString());
                     }
                 }
-                catch (Exception ex)
+                catch (JsonReaderException ex)
                 {
                     _logger.LogError($"Error while parsing reindex response : {ex.Message}", ex);
                 }
@@ -282,7 +288,7 @@ namespace FhirLoader.CommandLineTool.Client
 
             _logger.LogInformation($"Attempting to get access token for {_client.BaseAddress} with scopes {string.Join(", ", scopes)}...");
 
-            var token = await credential.GetTokenAsync(tokenRequestContext, cancel);
+            AccessToken token = await credential.GetTokenAsync(tokenRequestContext, cancel);
 
             _client.DefaultRequestHeaders.Remove("Authorization");
             _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token.Token}");
@@ -311,7 +317,7 @@ namespace FhirLoader.CommandLineTool.Client
             };
 
             // Define our waitAndRetry policy: retry n times with an exponential backoff in case the FHIR API throttles us for too many requests.
-            var waitAndRetryPolicy = Policy
+            AsyncRetryPolicy<HttpResponseMessage> waitAndRetryPolicy = Policy
                 .HandleResult<HttpResponseMessage>(e => e.StatusCode == HttpStatusCode.ServiceUnavailable || e.StatusCode == (HttpStatusCode)429 || e.StatusCode == HttpStatusCode.TooManyRequests)
                 .WaitAndRetryAsync(
                     expectedParallelRequests * 3,
@@ -324,7 +330,7 @@ namespace FhirLoader.CommandLineTool.Client
             // Define our first CircuitBreaker policy: Break if the action fails 5 times in a row.
             // This is designed to handle Exceptions from the FHIR API, as well as
             // a number of recoverable status messages, such as 500, 502, and 504.
-            var circuitBreakerPolicyForRecoverable = Policy
+            AsyncCircuitBreakerPolicy<HttpResponseMessage> circuitBreakerPolicyForRecoverable = Policy
                 .Handle<HttpRequestException>()
                 .Or<TimeoutRejectedException>()
                 .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
@@ -339,18 +345,18 @@ namespace FhirLoader.CommandLineTool.Client
                     onHalfOpen: () => _logger.LogWarning("Polly Circuit Breaker logging: Half-open: Next call is a trial"));
 
             // Timeout before HttpClient timeout of 100ms
-            var timeoutPolicy = Policy.TimeoutAsync<HttpResponseMessage>(
+            AsyncTimeoutPolicy<HttpResponseMessage> timeoutPolicy = Policy.TimeoutAsync<HttpResponseMessage>(
                 TimeSpan.FromSeconds(95),
                 TimeoutStrategy.Optimistic);
 
-            var circuitBreakerWrappingTimeout = circuitBreakerPolicyForRecoverable.
+            AsyncPolicyWrap<HttpResponseMessage> circuitBreakerWrappingTimeout = circuitBreakerPolicyForRecoverable.
                 WrapAsync(timeoutPolicy);
 
-            var tokenRefreshPolicy = Policy
+            AsyncRetryPolicy<HttpResponseMessage> tokenRefreshPolicy = Policy
                 .HandleResult<HttpResponseMessage>(message => message.StatusCode == HttpStatusCode.Unauthorized)
                 .RetryAsync(1 * expectedParallelRequests, async (result, retryCount, context) =>
                 {
-                    await _tokenSemaphore.WaitAsync();
+                    await s_tokenSemaphore.WaitAsync();
                     try
                     {
                         if (DateTime.UtcNow > _tokenGeneratedDateTime.AddSeconds(100))
@@ -361,7 +367,7 @@ namespace FhirLoader.CommandLineTool.Client
                     }
                     finally
                     {
-                        _tokenSemaphore.Release();
+                        s_tokenSemaphore.Release();
                     }
                 });
 
