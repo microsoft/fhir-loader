@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.16.2.56959",
-      "templateHash": "3640604870040201126"
+      "templateHash": "16811285126355856733"
     }
   },
   "parameters": {
@@ -287,7 +287,7 @@
         "AzureFunctionsJobHost__functionTimeout": "23:00:00",
         "FBI-STORAGEACCT": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', format('{0}stor', variables('prefixNameCleanShort')), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort'))), '2021-08-01').keys[0].value)]",
         "FS-URL": "[parameters('fhirUrl')]",
-        "FS-RESOURCE": "[parameters('fhirAudience')]",
+        "FS-RESOURCE": "[if(empty(parameters('fhirAudience')), parameters('fhirUrl'), parameters('fhirAudience'))]",
         "FS-TENANT-NAME": "[variables('tenantId')]",
         "FS-ISMSI": "[if(equals(parameters('setManagedIdentityForFhir'), 'none'), 'false', 'true')]",
         "FS-CLIENT-ID": "[if(equals(parameters('setManagedIdentityForFhir'), 'none'), parameters('serviceAccountClientId'), '')]",

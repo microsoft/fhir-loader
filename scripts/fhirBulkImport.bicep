@@ -201,7 +201,7 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
     'FS-URL': fhirUrl
 
     // Resource for the FHIR endpoint.
-    'FS-RESOURCE': fhirAudience
+    'FS-RESOURCE': empty(fhirAudience) ? fhirUrl : fhirAudience
 
     // Tenant of FHIR Server
     'FS-TENANT-NAME': tenantId
