@@ -298,8 +298,15 @@
                     {
                         "name": "advancedAudienceConfigurationSection",
                         "type": "Microsoft.Common.Section",
-                        "label": "Audience (optional)",
+                        "label": "FHIR Audience (optional)",
                         "elements": [
+                            {
+                                "name": "fhirAudienceTextBox",
+                                "type": "Microsoft.Common.TextBox",
+                                "label": "FHIR Custom Audience",
+                                "toolTip": "Not needed unless you changed the audience of your FHIR server and it's different than the FHIR URL.",
+                                "visible": true
+                            },
                             {
                                 "name": "audienceWarningBox",
                                 "type": "Microsoft.Common.InfoBox",
@@ -308,13 +315,6 @@
                                     "icon": "Warning",
                                     "text": "Only fill out the custom audience setting if you have configured a custom audience for your FHIR endpoint."
                                 }
-                            },
-                            {
-                                "name": "fhirAudienceTextBox",
-                                "type": "Microsoft.Common.TextBox",
-                                "label": "FHIR Custom Audience",
-                                "toolTip": "Not needed unless you changed the audience of your FHIR server and it's different than the FHIR URL.",
-                                "visible": true
                             }
                         ],
                         "visible": true
@@ -322,7 +322,7 @@
                     {
                         "name": "advancedRoleAssignmentConfigurationSection",
                         "type": "Microsoft.Common.Section",
-                        "label": "Role Assignment (optional)",
+                        "label": "FHIR Role Assignment (optional)",
                         "elements": [
                             {
                                 "name": "roleAssignmentSelector",
