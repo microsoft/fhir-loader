@@ -20,11 +20,11 @@ To quickly deploy the FHIR Bulk Loader, you can use the Azure deployment below. 
 
 For a more configurable deployment, you can use the script deployment. Check out the [deployment guide here](/docs/BulkImport/deployment.md). 
 
-For more information, checkout the [README document here](/src/FhirLoader.BulkImport/README.md).
+For more information, check out the [README document here](/src/FhirLoader.BulkImport/README.md).
 
 ### FHIR Loader Command Line Tool
 
-Check ouf the [README document here](/src/FhirLoader.CommandLineTool/README.md).
+Check out the [README document here](/src/FhirLoader.CommandLineTool/README.md).
 
 ## Features
 
