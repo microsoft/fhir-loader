@@ -34,6 +34,8 @@ stages:
         vmImage: $(WindowsVmImage)
       steps:
       - template: ./jobs/checkCode.yml
+        parameters:
+          DotNetVersion: '6.0.x'
 
     - job: BuildTestPublish
       pool:
@@ -41,18 +43,18 @@ stages:
       steps:
       - template: ./jobs/update-semver.yml
         parameters:
-          isMain: ${{ variables.isMain }}
+          DotNetVersion: '6.0.x'
+          SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
       - template: ./jobs/build.yml
         parameters:
-          targetBuildFramework: ${{ parameters.targetBuildFramework }}
-          unitTest: false
-          srcProjectsString: '**/FhirLoader.BulkImport.csproj'
+          DotNetVersion: '6.0.x'
+          UnitTest: false
+          SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
       - template: ./jobs/publish.yml
         parameters:
           DotNetVersion: '6.0.x'
           SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
           PackageArtifactName: 'FhirLoader.BulkImport'
-          Version: '1.0.0'
 
 #  - stage: 
 #    condition: and(succeeded(), eq(variables.isMain, true))

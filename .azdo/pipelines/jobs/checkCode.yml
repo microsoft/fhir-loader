@@ -1,11 +1,11 @@
 parameters:
-  - name: dotnetVersion
+  - name: DotNetVersion
 
 steps:
   - task: UseDotNet@2
     displayName: 'Use .NET SDK'
     inputs:
-      useGlobalJson: true
+      version: ${{ parameters.DotNetVersion }}
 
   - task: RoslynAnalyzers@3
     inputs:

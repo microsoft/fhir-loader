@@ -2,11 +2,10 @@ parameters:
 - name: DotNetVersion
 - name: SourceProjectsString
 - name: PackageArtifactName
-- name: Version
 
 
 variables:
-  publishOutput: ${{ format('$(Build.ArtifactStagingDirectory)/{0}/{1}', parameters.PackageArtifactName, parameters.Version) }}
+  publishOutput: ${{ format('$(Build.ArtifactStagingDirectory)/{0}/{1}', parameters.PackageArtifactName, $(majorMinorPatch)) }}
 
 steps:
   - task: UseDotNet@2

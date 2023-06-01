@@ -1,8 +1,8 @@
 parameters:
   - name: dotnetVersion
-  - name: srcProjectsString
-  - name: testProjectsString
-  - name: unitTest
+  - name: SourceProjectsString
+  - name: TestProjectsString = ''
+  - name: UnitTest
     defaultValue: true
   - name: componentGovernance
     defaultValue: false
@@ -12,13 +12,13 @@ steps:
   - task: UseDotNet@2
     displayName: 'Use .NET SDK'
     inputs:
-      version: ${{ parameters.dotnetVersion }}
+      version: ${{ parameters.DotNetVersion }}
 
   - task: DotNetCoreCLI@2
     inputs:
       command: 'build'
       arguments: '--configuration Release --no-incremental -p:ContinuousIntegrationBuild=true -p:AssemblyVersion="$(assemblySemVer)" -p:FileVersion="$(assemblySemFileVer)" -p:InformationalVersion="$(informationalVersion)" -p:Version="$(majorMinorPatch)" -warnaserror'
-      projects: ${{ parameters.srcProjectsString }}}
+      projects: ${{ parameters.SourceProjectsString }}}
     displayName: 'Build toolkit projects'
 
   - ${{ if eq(parameters.componentGovernance, 'true') }}:
@@ -35,5 +35,5 @@ steps:
         command: 'test'
         arguments: '--no-build --configuration Release'
         publishTestResults: true
-        projects: ${{ parameters.testProjectsString }}}
+        projects: ${{ parameters.TestProjectsString }}}
       displayName: 'Run all tests'
