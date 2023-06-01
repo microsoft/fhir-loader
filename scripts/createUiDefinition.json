@@ -244,6 +244,15 @@
                                     "required": true
                                 },
                                 "visible": true
+                            },
+                            {
+                                "name": "authenticationTypeInfoBox",
+                                "type": "Microsoft.Common.InfoBox",
+                                "visible": "[not(equals('managedIdentity', steps('appSettings').fhirAuthenticationSection.authenticationType))]",
+                                "options": {
+                                    "icon": "Warning",
+                                    "text": "Managed Identity is highly recommended for improved security and so you don't have to manage secret rotation. Only use a service principal if your organization requires it."
+                                }
                             }
                         ],
                         "visible": true
@@ -296,7 +305,7 @@
                                 "type": "Microsoft.Common.InfoBox",
                                 "visible": true,
                                 "options": {
-                                    "icon": "None",
+                                    "icon": "Warning",
                                     "text": "Only fill out the custom audience setting if you have configured a custom audience for your FHIR endpoint."
                                 }
                             },
