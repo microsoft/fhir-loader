@@ -27,20 +27,28 @@
         },
         "basics": [
             {
-                "name": "resourcePrefix",
-                "type": "Microsoft.Common.TextBox",
-                "label": "Prefix for FHIR Bulk Import resources.",
-                "defaultValue": "bulk",
-                "multiLine": false,
-                "constraints": {
-                    "required": true,
-                    "validations": [
-                        {
-                            "regex": "^[a-z0-9A-Z]{1,6}$",
-                            "message": "Only alphanumeric characters are allowed, and the value must be 1-6 characters long."
-                        }
-                    ]
-                },
+                "name": "basicsConfigurationSection",
+                "type": "Microsoft.Common.Section",
+                "label": "Resource Configuration",
+                "elements": [
+                    {
+                        "name": "resourcePrefix",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Prefix for FHIR Bulk Import resources.",
+                        "defaultValue": "bulk",
+                        "multiLine": false,
+                        "constraints": {
+                            "required": true,
+                            "validations": [
+                                {
+                                    "regex": "^[a-z0-9A-Z]{1,6}$",
+                                    "message": "Only alphanumeric characters are allowed, and the value must be 1-6 characters long."
+                                }
+                            ]
+                        },
+                        "visible": true
+                    }
+                ],
                 "visible": true
             }
         ],
@@ -51,9 +59,93 @@
                 "label": "Application Settings",
                 "elements": [
                     {
+                        "name": "functionAppConfigurationSection",
+                        "type": "Microsoft.Common.Section",
+                        "label": "Function App Configuration",
+                        "elements": [
+                            {
+                                "name": "appServiceSize",
+                                "type": "Microsoft.Common.DropDown",
+                                "label": "What App Service Plan size do you want to use?",
+                                "defaultValue": "B1",
+                                "multiselect": false,
+                                "selectAll": false,
+                                "defaultDescription": "May not be available in your subscription.",
+                                "multiLine": true,
+                                "constraints": {
+                                    "allowedValues": [
+                                        {
+                                            "label": "B1",
+                                            "value": "B1",
+                                            "description": "Basic: best for testing"
+                                        },
+                                        {
+                                            "label": "B2",
+                                            "value": "B2",
+                                            "description": "Basic: best for testing"
+                                        },
+                                        {
+                                            "label": "B3",
+                                            "value": "B3",
+                                            "description": "Basic: best for testing"
+                                        },
+                                        {
+                                            "label": "S1",
+                                            "value": "S1",
+                                            "description": "Standard: best for small workloads"
+                                        },
+                                        {
+                                            "label": "S2",
+                                            "value": "S2",
+                                            "description": "Standard: best for small workloads"
+                                        },
+                                        {
+                                            "label": "S3",
+                                            "value": "S3",
+                                            "description": "Standard: best for small workloads"
+                                        },
+                                        {
+                                            "label": "P1v2",
+                                            "value": "P1v2",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P2v2",
+                                            "value": "P2v2",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P3v2",
+                                            "value": "P3v2",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P1v3",
+                                            "value": "P1v3",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P2v3",
+                                            "value": "P2v3",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P3v3",
+                                            "value": "P3v3",
+                                            "description": "Premium: best for large workloads"
+                                        }
+                                    ],
+                                    "required": false
+                                },
+                                "visible": true
+                            }
+                        ],
+                        "visible": true
+                    },
+                    {
                         "name": "fhirSection",
                         "type": "Microsoft.Common.Section",
-                        "label": "FHIR Server Selection",
+                        "label": "FHIR Connection",
                         "elements": [
                             {
                                 "name": "fhirType",
@@ -126,42 +218,42 @@
                         ],
                         "visible": true
                     },
-					{
-						"name": "fhirAuthenticationSection",
-						"type": "Microsoft.Common.Section",
-						"label": "FHIR Authentication",
-						"elements": [
-							{
-								"name": "authenticationType",
-								"type": "Microsoft.Common.DropDown",
-								"label": "How do you want to authenticate to the FHIR server?",
-								"defaultValue": "Managed Identity",
-								"multiselect": false,
-								"selectAll": false,
-								"constraints": {
-									"allowedValues": [
-										{
-											"label": "Managed Identity",
-											"value": "managedIdentity"
-										},
-										{
-											"label": "Service Principal",
-											"value": "servicePrincipal"
-										}
-									],
-									"required": true
-								},
-								"visible": true
-							}
-						],
-						"visible": true
-					},
                     {
-						"name": "fhirServicePrincipalSection",
-						"type": "Microsoft.Common.Section",
-						"label": "Service Principal",
-						"elements": [
-							{
+                        "name": "fhirAuthenticationSection",
+                        "type": "Microsoft.Common.Section",
+                        "label": "FHIR Authentication",
+                        "elements": [
+                            {
+                                "name": "authenticationType",
+                                "type": "Microsoft.Common.DropDown",
+                                "label": "How do you want to authenticate to the FHIR server?",
+                                "defaultValue": "Managed Identity",
+                                "multiselect": false,
+                                "selectAll": false,
+                                "constraints": {
+                                    "allowedValues": [
+                                        {
+                                            "label": "Managed Identity",
+                                            "value": "managedIdentity"
+                                        },
+                                        {
+                                            "label": "Service Principal",
+                                            "value": "servicePrincipal"
+                                        }
+                                    ],
+                                    "required": true
+                                },
+                                "visible": true
+                            }
+                        ],
+                        "visible": true
+                    },
+                    {
+                        "name": "fhirServicePrincipalSection",
+                        "type": "Microsoft.Common.Section",
+                        "label": "Service Principal",
+                        "elements": [
+                            {
                                 "name": "servicePrincipalSelector",
                                 "type": "Microsoft.Common.ServicePrincipalSelector",
                                 "label": {
@@ -184,93 +276,9 @@
                                 },
                                 "visible": true
                             }
-						],
-						"visible": "[equals('servicePrincipal', steps('appSettings').fhirAuthenticationSection.authenticationType)]"
-					},
-                    {
-						"name": "functionAppConfigurationSection",
-						"type": "Microsoft.Common.Section",
-						"label": "Function App Configuration",
-						"elements": [
-							{
-								"name": "appServiceSize",
-								"type": "Microsoft.Common.DropDown",
-								"label": "How do you want to authenticate to the FHIR server?",
-								"defaultValue": "B1",
-								"multiselect": false,
-								"selectAll": false,
-                                "defaultDescription": "May not be available in your subscription.",
-                                "multiLine": true,
-								"constraints": {
-									"allowedValues": [
-                                        {
-                                            "label": "B1",
-                                            "value": "B1",
-                                            "description": "Basic: best for testing"
-                                        },
-                                        {
-                                            "label": "B2",
-                                            "value": "B2",
-                                            "description": "Basic: best for testing"
-                                        },
-                                        {
-                                            "label": "B3",
-                                            "value": "B3",
-                                            "description": "Basic: best for testing"
-                                        },
-                                        {
-                                            "label": "S1",
-                                            "value": "S1",
-                                            "description": "Standard: best for small workloads"
-                                        },
-                                        {
-                                            "label": "S2",
-                                            "value": "S2",
-                                            "description": "Standard: best for small workloads"
-                                        },
-                                        {
-                                            "label": "S3",
-                                            "value": "S3",
-                                            "description": "Standard: best for small workloads"
-                                        },
-                                        {
-                                            "label": "P1v2",
-                                            "value": "P1v2",
-                                            "description": "Premium: best for large workloads"
-                                        },
-                                        {
-                                            "label": "P2v2",
-                                            "value": "P2v2",
-                                            "description": "Premium: best for large workloads"
-                                        },
-                                        {
-                                            "label": "P3v2",
-                                            "value": "P3v2",
-                                            "description": "Premium: best for large workloads"
-                                        },
-                                        {
-                                            "label": "P1v3",
-                                            "value": "P1v3",
-                                            "description": "Premium: best for large workloads"
-                                        },
-                                        {
-                                            "label": "P2v3",
-                                            "value": "P2v3",
-                                            "description": "Premium: best for large workloads"
-                                        },
-                                        {
-                                            "label": "P3v3",
-                                            "value": "P3v3",
-                                            "description": "Premium: best for large workloads"
-                                        }
-                                    ],
-									"required": false
-								},
-								"visible": true
-							}
-						],
-						"visible": true
-					}
+                        ],
+                        "visible": "[equals('servicePrincipal', steps('appSettings').fhirAuthenticationSection.authenticationType)]"
+                    }
                 ]
             },
             {
@@ -279,17 +287,34 @@
                 "label": "Advanced Settings",
                 "elements": [
                     {
-                        "name": "fhirAudienceTextBox",
-                        "type": "Microsoft.Common.TextBox",
-                        "label": "FHIR Custom Audience",
-                        "toolTip": "Not needed unless you changed the audience of your FHIR server and it's different than the FHIR URL.",
+                        "name": "advancedConfigurationSection",
+                        "type": "Microsoft.Common.Section",
+                        "label": "Advanced (optional)",
+                        "elements": [
+                            {
+                                "name": "audienceInfoBox",
+                                "type": "Microsoft.Common.InfoBox",
+                                "visible": true,
+                                "options": {
+                                    "icon": "None",
+                                    "text": "Only fill out the custom audience setting if you have configured a custom audience for your FHIR endpoint."
+                                }
+                            },
+                            {
+                                "name": "fhirAudienceTextBox",
+                                "type": "Microsoft.Common.TextBox",
+                                "label": "FHIR Custom Audience",
+                                "toolTip": "Not needed unless you changed the audience of your FHIR server and it's different than the FHIR URL.",
+                                "visible": true
+                            }
+                        ],
                         "visible": true
                     }
                 ]
             }
         ],
         "outputs": {
-            "prefix": "[basics('resourcePrefix')]",
+            "prefix": "[basics('basicsConfigurationSection').resourcePrefix]",
             "location": "[location()]",
             "fhirType": "[steps('appSettings').fhirSection.fhirType]",
             "fhirServiceName": "[steps('appSettings').fhirSection.fhirServiceSelector]",
