@@ -324,7 +324,7 @@
             "appServiceSize": "[steps('appSettings').functionAppConfigurationSection.appServiceSize]",
             "serviceAccountClientId": "[steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.objectId]",
             "serviceAccountSecret": "[steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.password]",
-            "fhirAudience": "[steps('advanced').fhirAudienceTextBox]"
+            "fhirAudience": "[steps('advanced').advancedConfigurationSection.fhirAudienceTextBox]"
         }
     }
 }
