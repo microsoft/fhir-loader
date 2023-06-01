@@ -57,6 +57,10 @@
                 "name": "appSettings",
                 "bladeTitle": "Settings",
                 "label": "Application Settings",
+                "subLabel": {
+                    "preValidation": "Configure your application settings",
+                    "postValidation": "Done"
+                },
                 "elements": [
                     {
                         "name": "functionAppConfigurationSection",
