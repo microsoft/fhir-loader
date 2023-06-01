@@ -1,0 +1,31 @@
+# DESCRIPTION: 	
+# Builds and tests projects in the repository
+
+name: $(SourceBranchName)-$(Date:yyyyMMdd)$(Rev:-r)
+trigger: none
+
+parameters:
+  - name: targetBuildFramework
+    type: string
+    default: 'net7.0'
+
+stages:
+  - stage: Build
+
+    jobs:
+    - job: CodeChecks
+      pool:
+        vmImage: $(WindowsVmImage)
+      steps:
+      - template: ./steps/checkCode.yml
+
+    - job: BuildTest
+      pool:
+        vmImage: $(VmImage)
+      steps:
+      - template: ./steps/build.yml
+        parameters:
+          targetBuildFramework: ${{ parameters.targetBuildFramework }}
+          unitTest: true
+          srcProjectsString: '**/FhirLoader.CommandLineTool.csproj'
+          testProjectsString: '**/FhirLoader.CommandLineTool.Tests.*.csproj'
