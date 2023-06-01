@@ -135,7 +135,7 @@
                                             "description": "Premium: best for large workloads"
                                         }
                                     ],
-                                    "required": false
+                                    "required": true
                                 },
                                 "visible": true
                             }
@@ -351,7 +351,7 @@
                             {
                                 "name": "roleAssignmentInfoBox",
                                 "type": "Microsoft.Common.InfoBox",
-                                "visible": true,
+                                "visible": "[equals('false', steps('appSettings').advancedRoleAssignmentConfigurationSection.roleAssignmentSelector)]')",
                                 "options": {
                                     "icon": "Warning",
                                     "text": "You must create the role assignment manually before loading data with FHIR Loader Bulk Import."
