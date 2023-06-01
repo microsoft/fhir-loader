@@ -296,12 +296,12 @@
                 "label": "Advanced Settings",
                 "elements": [
                     {
-                        "name": "advancedConfigurationSection",
+                        "name": "advancedAudienceConfigurationSection",
                         "type": "Microsoft.Common.Section",
-                        "label": "Advanced (optional)",
+                        "label": "Audience (optional)",
                         "elements": [
                             {
-                                "name": "audienceInfoBox",
+                                "name": "audienceWarningBox",
                                 "type": "Microsoft.Common.InfoBox",
                                 "visible": true,
                                 "options": {
@@ -315,6 +315,47 @@
                                 "label": "FHIR Custom Audience",
                                 "toolTip": "Not needed unless you changed the audience of your FHIR server and it's different than the FHIR URL.",
                                 "visible": true
+                            }
+                        ],
+                        "visible": true
+                    },
+                    {
+                        "name": "advancedRoleAssignmentConfigurationSection",
+                        "type": "Microsoft.Common.Section",
+                        "label": "Role Assignment (optional)",
+                        "elements": [
+                            {
+                                "name": "roleAssignmentSelector",
+                                "type": "Microsoft.Common.DropDown",
+                                "label": "Create the role assignment for the function app to access the FHIR instance?",
+                                "defaultValue": "Yes",
+                                "multiselect": false,
+                                "selectAll": false,
+                                "defaultDescription": "Selecting 'No' will require you to manually create the role assignment.",
+                                "multiLine": true,
+                                "constraints": {
+                                    "allowedValues": [
+                                        {
+                                            "label": "Yes",
+                                            "value": "true"
+                                        },
+                                        {
+                                            "label": "No",
+                                            "value": "false"
+                                        }
+                                    ],
+                                    "required": true
+                                },
+                                "visible": "[not(equals('FhirServer', steps('appSettings').fhirSection.fhirType))]"
+                            },
+                            {
+                                "name": "roleAssignmentInfoBox",
+                                "type": "Microsoft.Common.InfoBox",
+                                "visible": true,
+                                "options": {
+                                    "icon": "Warning",
+                                    "text": "You must create the role assignment manually before loading data with FHIR Loader Bulk Import."
+                                }
                             }
                         ],
                         "visible": true
@@ -333,7 +374,8 @@
             "appServiceSize": "[steps('appSettings').functionAppConfigurationSection.appServiceSize]",
             "serviceAccountClientId": "[steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.objectId]",
             "serviceAccountSecret": "[steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.password]",
-            "fhirAudience": "[steps('advanced').advancedConfigurationSection.fhirAudienceTextBox]"
+            "fhirAudience": "[steps('advanced').advancedAudienceConfigurationSection.fhirAudienceTextBox]",
+            "createRoleAssignment": "[steps('advanced').advancedRoleAssignmentConfigurationSection.roleAssignmentSelector]"
         }
     }
 }

@@ -4,7 +4,7 @@ param prefix string = 'bulk'
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
-@allowed(['FhirService', 'APIforFhir', 'FhirServer'])
+@allowed([ 'FhirService', 'APIforFhir', 'FhirServer' ])
 @description('Type of FHIR instance to integrate the loader with.')
 param fhirType string = 'FhirService'
 
@@ -17,11 +17,11 @@ param apiForFhirName string = ''
 @description('The full URL of the OSS FHIR Server to load resources.')
 param fhirServerUrl string = ''
 
-@allowed(['managedIdentity', 'servicePrincipal'])
+@allowed([ 'managedIdentity', 'servicePrincipal' ])
 @description('Type of FHIR instance to integrate the loader with.')
 param authenticationType string = 'managedIdentity'
 
-@allowed(['B1', 'B2', 'B3', 'S1', 'S2', 'S3', 'P1v2', 'P2v2', 'P3v2', 'P1v3', 'P2v3', 'P3v3'])
+@allowed([ 'B1', 'B2', 'B3', 'S1', 'S2', 'S3', 'P1v2', 'P2v2', 'P3v2', 'P1v3', 'P2v3', 'P3v3' ])
 @description('Size of the app service to run loader function')
 param appServiceSize string = 'B1'
 
@@ -35,23 +35,23 @@ param serviceAccountSecret string = ''
 @description('Audience used for FHIR Server tokens. Leave blank to use the FHIR url which will work for default FHIR deployments.')
 param fhirAudience string = ''
 
-@description('URL to the FHIR Loader repo for git integration')
-var loaderRepoUrl = 'https://github.com/microsoft/fhir-loader'
-
-@description('Branch of the FHIR Loader repo for git integration')
-param loaderRepoBranch string = 'fhir-loader-cli'
+@description('Automatically create a role assignment for the function app to access the FHIR service.')
+param createRoleAssignment bool = true
 
 @description('Transform transaction bundles to batch budles.')
 param transformTransactionBundles bool = false
 
+@description('FHIR Bulk Import package to laod into the function app.')
+var packageUrl = 'https://github.com/microsoft/fhir-loader/releases/latest/download/FhirLoader.BulkFunction.zip'
+
 var fhirUrl = fhirType == 'FhirService' ? 'https://${replace(fhirServiceName, '/', '-')}.fhir.azurehealthcareapis.com' : fhirType == 'APIforFhir' ? 'https://${apiForFhirName}.azurehealthcareapis.com' : fhirServerUrl
 
 @description('Tenant ID where resources are deployed')
-var tenantId  = subscription().tenantId
+var tenantId = subscription().tenantId
 
 @description('Tags for all Azure resources in the solution')
 var appTags = {
-    AppID: 'fhir-loader-function'
+  AppID: 'fhir-loader-function'
 }
 
 var uniqueResourceIdentifier = substring(uniqueString(resourceGroup().id, prefix), 0, 4)
@@ -59,13 +59,10 @@ var prefixNameClean = '${replace(prefix, '-', '')}${uniqueResourceIdentifier}'
 var prefixNameCleanShort = length(prefixNameClean) > 16 ? substring(prefixNameClean, 0, 8) : prefixNameClean
 
 @description('Name of the NDJSON import function. Used for setting up the Storage to Event Grid subscription')
-var importNDJsonFunctionName='ImportNDJSON'
+var importNDJsonFunctionName = 'ImportNDJSON'
 
 @description('Name of the bundle import function. Used for setting up the Storage to Event Grid subscription')
-var importBundleFunctionName='ImportBundleEventGrid'
-
-// @description('URL to the FHIR Loader package to deploy')
-// var packageUrl = 'https://github.com/microsoft/fhir-loader/releases/latest/download/FhirLoader.BulkFunction.zip'
+var importBundleFunctionName = 'ImportBundleEventGrid'
 
 @description('Storage account used for loading files')
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
@@ -147,43 +144,25 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
   ]
 
   tags: appTags
-}
 
-@description('Placeholder function used to setup the Storage to Event Grid subscription until source control deployment executes.')
-resource importNDJsonFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
-  name: importNDJsonFunctionName
-  parent: functionApp
-  properties: {
-    config: {
-      disabled: false
-      bindings: [
-        {
-          type: 'eventGridTrigger'
-          direction: 'in'
-          name: 'blobCreatedEvent'
-        }
-      ]
+  resource ftpPublishingPolicy 'basicPublishingCredentialsPolicies' = {
+    name: 'ftp'
+    // Location is needed regardless of the warning.
+    #disable-next-line BCP187
+    location: location
+    properties: {
+      allow: false
     }
-    language: 'CSharp'
   }
-}
 
-@description('Placeholder function used to setup the Storage to Event Grid subscription until source control deployment executes.')
-resource importBundleFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
-  name: importBundleFunctionName
-  parent: functionApp
-  properties: {
-    config: {
-      disabled: false
-      bindings: [
-        {
-          type: 'eventGridTrigger'
-          direction: 'in'
-          name: 'blobCreatedEvent'
-        }
-      ]
+  resource scmPublishingPolicy 'basicPublishingCredentialsPolicies' = {
+    name: 'scm'
+    // Location is needed regardless of the warning.
+    #disable-next-line BCP187
+    location: location
+    properties: {
+      allow: false
     }
-    language: 'CSharp'
   }
 }
 
@@ -201,7 +180,7 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
     SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
     'AzureWebJobs.ImportBundleBlobTrigger.Disabled': '1'
     AzureFunctionsJobHost__functionTimeout: '23:00:00'
-    
+
     // Storage account to setup import from
     'FBI-STORAGEACCT': storageAccountConnectionString
 
@@ -251,18 +230,6 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
   }
 }
 
-@description('Git integration for the function app code')
-resource sourcecontrol 'Microsoft.Web/sites/sourcecontrols@2022-03-01' = {
-  parent: functionApp
-  name: 'web'
-  properties: {
-    repoUrl: loaderRepoUrl
-    branch: loaderRepoBranch
-    isManualIntegration: true
-  }
-}
-
-/*
 @description('Deploy function app code from package')
 resource functionAppDeployment 'Microsoft.Web/sites/extensions@2020-12-01' = {
   name: 'MSDeploy'
@@ -271,7 +238,6 @@ resource functionAppDeployment 'Microsoft.Web/sites/extensions@2020-12-01' = {
     packageUri: packageUrl
   }
 }
-*/
 
 @description('Subscription to ndjson container')
 resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
@@ -289,7 +255,7 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
         {
           key: 'data.api'
           operatorType: 'StringIn'
-          values: ['CopyBlob', 'PutBlob', 'PutBlockList', 'FlushWithClose']
+          values: [ 'CopyBlob', 'PutBlob', 'PutBlockList', 'FlushWithClose' ]
         }
       ]
       subjectBeginsWith: '/blobServices/default/containers/ndjson'
@@ -298,7 +264,7 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     eventDeliverySchema: 'EventGridSchema'
   }
 
-  dependsOn: [ importNDJsonFunction ]
+  dependsOn: [ functionAppDeployment ]
 }
 
 @description('Subscription to bundle container')
@@ -318,17 +284,17 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
         {
           key: 'data.api'
           operatorType: 'StringIn'
-          values: ['CopyBlob', 'PutBlob', 'PutBlockList', 'FlushWithClose']
+          values: [ 'CopyBlob', 'PutBlob', 'PutBlockList', 'FlushWithClose' ]
         }
       ]
       subjectBeginsWith: '/blobServices/default/containers/bundles'
       subjectEndsWith: '.json'
     }
     eventDeliverySchema: 'EventGridSchema'
-    
+
   }
 
-  dependsOn: [ importBundleFunction ]
+  dependsOn: [ functionAppDeployment ]
 }
 
 @description('Monitoring for Function App')
@@ -345,17 +311,17 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
 var fhirUrlClean = replace(split(fhirUrl, '.')[0], 'https://', '')
 var fhirUrlCleanSplit = split(fhirUrlClean, '-')
 
-resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (fhirType == 'FhirService') {
+resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (fhirType == 'FhirService' && createRoleAssignment == true) {
   #disable-next-line prefer-interpolation
   name: concat(fhirUrlCleanSplit[0], '/', join(skip(fhirUrlCleanSplit, 1), '-'))
 }
 
-resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if (fhirType == 'APIforFhir') {
+resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
   name: fhirUrlClean
 }
 
 @description('Setup access between FHIR and the deployment script managed identity')
-module functionFhirServiceRoleAssignment './roleAssignment.bicep'= if (fhirType == 'FhirService') {
+module functionFhirServiceRoleAssignment './roleAssignment.bicep' = if (fhirType == 'FhirService' && createRoleAssignment == true) {
   name: 'functionFhirServiceRoleAssignment'
   params: {
     resourceId: fhirService.id
@@ -366,7 +332,7 @@ module functionFhirServiceRoleAssignment './roleAssignment.bicep'= if (fhirType 
 }
 
 @description('Setup access between FHIR and the deployment script managed identity')
-module functionApiForFhirRoleAssignment './roleAssignment.bicep'= if (fhirType == 'APIforFhir') {
+module functionApiForFhirRoleAssignment './roleAssignment.bicep' = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
   name: 'bulk-import-function-fhir-managed-id-role-assignment'
   params: {
     resourceId: apiForFhir.id
