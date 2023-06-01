@@ -32,7 +32,8 @@ Check out the [README document here](/src/FhirLoader.CommandLineTool/README.md).
 
 - Automatically sends FHIR bundles and NDJSON files (compressed or uncompressed) uploaded to an Azure Storage account to the target FHIR server.
     - Compatible with Azure Health Data Services, Azure API for FHIR, or a open-source Microsoft FHIR Server.
-- Best for continual
+    - Alternate to the recommended $import in Azure Health Data Services for applications that cannot compose NDJSON files.
+- Best for persistent or continual importing of FHIR data from an application or automated process.
 - Optimized high-speed, parallel, and performant logic built on Azure Event Grid from an Azure Storage account or custom Event Grid source.
 - Full auditing, error logging, and retry logic to respond to throttled requests.
 - High-speed parallel orchestrated patient-centric export for Azure API for FHIR
