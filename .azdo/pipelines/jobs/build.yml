@@ -1,0 +1,39 @@
+parameters:
+  - name: dotnetVersion
+  - name: srcProjectsString
+  - name: testProjectsString
+  - name: unitTest
+    defaultValue: true
+  - name: componentGovernance
+    defaultValue: false
+  
+steps:
+
+  - task: UseDotNet@2
+    displayName: 'Use .NET SDK'
+    inputs:
+      version: ${{ parameters.dotnetVersion }}
+
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'build'
+      arguments: '--configuration Release --no-incremental -p:ContinuousIntegrationBuild=true -p:AssemblyVersion="$(assemblySemVer)" -p:FileVersion="$(assemblySemFileVer)" -p:InformationalVersion="$(informationalVersion)" -p:Version="$(majorMinorPatch)" -warnaserror'
+      projects: ${{ parameters.srcProjectsString }}}
+    displayName: 'Build toolkit projects'
+
+  - ${{ if eq(parameters.componentGovernance, 'true') }}:
+    - task: ComponentGovernanceComponentDetection@0
+      inputs:
+        scanType: 'Register'
+        verbosity: 'Verbose'
+        alertWarningLevel: 'High'
+        failOnAlert: true
+
+  - ${{ if eq(parameters.unitTest, 'true') }}:
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'test'
+        arguments: '--no-build --configuration Release'
+        publishTestResults: true
+        projects: ${{ parameters.testProjectsString }}}
+      displayName: 'Run all tests'

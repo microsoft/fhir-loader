@@ -1,0 +1,22 @@
+mode: Mainline
+# assembly-version: If this number changes, other assemblies have to update references to the assembly
+assembly-versioning-scheme: Major
+assembly-file-versioning-scheme: MajorMinorPatch
+tag-prefix: release\/
+ignore:
+  sha: []
+
+branches:
+  main:
+    is-release-branch: true
+    tag: ''
+  pull-request:
+    regex: ^(pull|pull\-requests|pr)[/-]
+    tag: pr
+    tag-number-pattern: '[/-](?<number>\d+)[-/]'
+  hotfix:
+    regex: ^hotfix(es)?[/-]
+    tag: useBranchName
+  feature:
+    regex: ^(personal|dev|feature|auto\-nuget\-update|dependabot)[/-]
+    tag: useBranchName

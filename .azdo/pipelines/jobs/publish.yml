@@ -1,0 +1,31 @@
+parameters:
+- name: DotNetVersion
+- name: SourceProjectsString
+- name: PackageArtifactName
+- name: Version
+
+
+variables:
+  publishOutput: ${{ format('$(Build.ArtifactStagingDirectory)/{0}/{1}', parameters.PackageArtifactName, parameters.Version) }}
+
+steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET SDK'
+    inputs:
+      version: ${{ parameters.DotNetVersion }}
+
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: publish
+      arguments: '--configuration Release --output ${{ parameters.publishOutput }} --no-build --version-suffix $(build.buildNumber)'
+      projects: ${{ parameters.SourceProjectsString }}
+      publishWebProjects: false
+      modifyOutputPath: false
+      zipAfterPublish: false
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish Package Artifact
+    inputs:
+      targetPath: ${{ parameters.publishOutput }}
+      artifactName: ${{ parameters.PackageArtifactName }}
+      artifactType: 'pipeline'

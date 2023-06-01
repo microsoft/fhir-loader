@@ -1,0 +1,20 @@
+parameters:
+  - name: dotnetVersion
+
+steps:
+  - task: UseDotNet@2
+    displayName: 'Use .NET SDK'
+    inputs:
+      useGlobalJson: true
+
+  - task: RoslynAnalyzers@3
+    inputs:
+      userProvideBuildInfo: 'msBuildInfo'
+      msBuildArchitecture: 'DotNetCore'
+      msBuildCommandline: 'C:\hostedtoolcache\windows\dotnet\dotnet.exe build $(Build.SourcesDirectory)\FhirLoader.sln'
+
+  - task: CredScan@3
+    inputs:
+      outputFormat: 'csv'
+      toolVersion: Latest
+      verboseOutput: true

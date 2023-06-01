@@ -2,12 +2,28 @@
 # Builds and tests projects in the repository
 
 name: $(SourceBranchName)-$(Date:yyyyMMdd)$(Rev:-r)
-trigger: none
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - src/FhirLoader.BulkImport
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - src/FhirLoader.BulkImport
 
 parameters:
   - name: targetBuildFramework
     type: string
-    default: 'net7.0'
+    default: 'net6.0'
+
+variables:
+  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
 
 stages:
   - stage: Build
@@ -17,14 +33,28 @@ stages:
       pool:
         vmImage: $(WindowsVmImage)
       steps:
-      - template: ./steps/checkCode.yml
+      - template: ./jobs/checkCode.yml
 
-    - job: BuildTest
+    - job: BuildTestPublish
       pool:
         vmImage: $(VmImage)
       steps:
-      - template: ./steps/build.yml
+      - template: ./jobs/update-semver.yml
+        parameters:
+          isMain: ${{ variables.isMain }}
+      - template: ./jobs/build.yml
         parameters:
           targetBuildFramework: ${{ parameters.targetBuildFramework }}
           unitTest: false
           srcProjectsString: '**/FhirLoader.BulkImport.csproj'
+      - template: ./jobs/publish.yml
+        parameters:
+          DotNetVersion: '6.0.x'
+          SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
+          PackageArtifactName: 'FhirLoader.BulkImport'
+          Version: '1.0.0'
+
+#  - stage: 
+#    condition: and(succeeded(), eq(variables.isMain, true))
+#    jobs:
+#      - job: B1

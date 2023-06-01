@@ -17,13 +17,13 @@ stages:
       pool:
         vmImage: $(WindowsVmImage)
       steps:
-      - template: ./steps/checkCode.yml
+      - template: ./jobs/checkCode.yml
 
     - job: BuildTest
       pool:
         vmImage: $(VmImage)
       steps:
-      - template: ./steps/build.yml
+      - template: ./jobs/build.yml
         parameters:
           targetBuildFramework: ${{ parameters.targetBuildFramework }}
           unitTest: true
