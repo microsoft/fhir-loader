@@ -4,15 +4,47 @@ param prefix string = 'bulk'
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
-@description('The full URL of the FHIR Service to load resources.')
-param fhirUrl string
+@allowed(['FhirService', 'APIforFhir', 'FhirServer'])
+@description('Type of FHIR instance to integrate the loader with.')
+param fhirType string = 'FhirService'
 
-@description('Audience used for FHIR Server tokens. Leave blank to use the FHIR url which will work for default FHIR deployments.')
-param fhirAudience string = ''
+@description('Name of the FHIR Service to load resources into. Format is "workspace/fhirService".')
+param fhirServiceName string = ''
+
+@description('Name of the API for FHIR to load resources into.')
+param apiForFhirName string = ''
+
+@description('The full URL of the OSS FHIR Server to load resources.')
+param fhirServerUrl string = ''
+
+@allowed(['managedIdentity', 'servicePrincipal'])
+@description('Type of FHIR instance to integrate the loader with.')
+param authenticationType string = 'managedIdentity'
 
 @allowed(['B1', 'B2', 'B3', 'S1', 'S2', 'S3', 'P1v2', 'P2v2', 'P3v2', 'P1v3', 'P2v3', 'P3v3'])
 @description('Size of the app service to run loader function')
 param appServiceSize string = 'B1'
+
+@description('If not using MSI, client ID of the service account used to connect to the FHIR Server')
+param serviceAccountClientId string = ''
+
+@description('If not using MSI, client secret of the service account used to connect to the FHIR Server')
+@secure()
+param serviceAccountSecret string = ''
+
+@description('Audience used for FHIR Server tokens. Leave blank to use the FHIR url which will work for default FHIR deployments.')
+param fhirAudience string = ''
+
+@description('URL to the FHIR Loader repo for git integration')
+var loaderRepoUrl = 'https://github.com/microsoft/fhir-loader'
+
+@description('Branch of the FHIR Loader repo for git integration')
+param loaderRepoBranch string = 'fhir-loader-cli'
+
+@description('Transform transaction bundles to batch budles.')
+param transformTransactionBundles bool = false
+
+var fhirUrl = fhirType == 'FhirService' ? 'https://${replace(fhirServiceName, '/', '-')}.fhir.azurehealthcareapis.com' : fhirType == 'APIforFhir' ? 'https://${apiForFhirName}.azurehealthcareapis.com' : fhirServerUrl
 
 @description('Tenant ID where resources are deployed')
 var tenantId  = subscription().tenantId
@@ -34,30 +66,6 @@ var importBundleFunctionName='ImportBundleEventGrid'
 
 // @description('URL to the FHIR Loader package to deploy')
 // var packageUrl = 'https://github.com/microsoft/fhir-loader/releases/latest/download/FhirLoader.BulkFunction.zip'
-
-@description('URL to the FHIR Loader repo for git integration')
-var loaderRepoUrl = 'https://github.com/microsoft/fhir-loader'
-
-@description('Branch of the FHIR Loader repo for git integration')
-param loaderRepoBranch string = 'fhir-loader-cli'
-
-@description('Transform transaction bundles to batch budles.')
-param transformTransactionBundles bool = false
-
-@allowed([
-  'FhirService'
-  'APIforFhir'
-  'none'
-])
-@description('What type of FHIR Server to setup a managed identity connection for.')
-param setManagedIdentityForFhir string = 'FhirService'
-
-@description('If not using MSI, client ID of the service account used to connect to the FHIR Server')
-param serviceAccountClientId string = ''
-
-@description('If not using MSI, client secret of the service account used to connect to the FHIR Server')
-@secure()
-param serviceAccountSecret string = ''
 
 @description('Storage account used for loading files')
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
@@ -206,11 +214,11 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
     // Tenant of FHIR Server
     'FS-TENANT-NAME': tenantId
 
-    'FS-ISMSI': setManagedIdentityForFhir == 'none' ? 'false' : 'true'
+    'FS-ISMSI': authenticationType == 'managedIdentity' ? 'true' : 'false'
 
-    'FS-CLIENT-ID': setManagedIdentityForFhir == 'none' ? serviceAccountClientId : ''
+    'FS-CLIENT-ID': authenticationType == 'servicePrincipal' ? serviceAccountClientId : ''
 
-    'FS-SECRET': setManagedIdentityForFhir == 'none' ? serviceAccountSecret : ''
+    'FS-SECRET': authenticationType == 'servicePrincipal' ? serviceAccountSecret : ''
 
     // When loading bundles, convert transaction to batch bundles. Transform UUIDs and resolve ifNoneExist
     TRANSFORMBUNDLES: '${transformTransactionBundles}'
@@ -337,17 +345,17 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
 var fhirUrlClean = replace(split(fhirUrl, '.')[0], 'https://', '')
 var fhirUrlCleanSplit = split(fhirUrlClean, '-')
 
-resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (setManagedIdentityForFhir == 'FhirService') {
+resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (fhirType == 'FhirService') {
   #disable-next-line prefer-interpolation
   name: concat(fhirUrlCleanSplit[0], '/', join(skip(fhirUrlCleanSplit, 1), '-'))
 }
 
-resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if (setManagedIdentityForFhir == 'APIforFhir') {
+resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if (fhirType == 'APIforFhir') {
   name: fhirUrlClean
 }
 
 @description('Setup access between FHIR and the deployment script managed identity')
-module functionFhirServiceRoleAssignment './roleAssignment.bicep'= if (setManagedIdentityForFhir == 'FhirService') {
+module functionFhirServiceRoleAssignment './roleAssignment.bicep'= if (fhirType == 'FhirService') {
   name: 'functionFhirServiceRoleAssignment'
   params: {
     resourceId: fhirService.id
@@ -358,7 +366,7 @@ module functionFhirServiceRoleAssignment './roleAssignment.bicep'= if (setManage
 }
 
 @description('Setup access between FHIR and the deployment script managed identity')
-module functionApiForFhirRoleAssignment './roleAssignment.bicep'= if (setManagedIdentityForFhir == 'APIforFhir') {
+module functionApiForFhirRoleAssignment './roleAssignment.bicep'= if (fhirType == 'APIforFhir') {
   name: 'bulk-import-function-fhir-managed-id-role-assignment'
   params: {
     resourceId: apiForFhir.id

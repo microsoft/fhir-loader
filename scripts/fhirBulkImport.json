@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.16.2.56959",
-      "templateHash": "16811285126355856733"
+      "templateHash": "10152056999520828466"
     }
   },
   "parameters": {
@@ -23,18 +23,49 @@
         "description": "Location for all resources."
       }
     },
-    "fhirUrl": {
+    "fhirType": {
       "type": "string",
+      "defaultValue": "FhirService",
       "metadata": {
-        "description": "The full URL of the FHIR Service to load resources."
-      }
+        "description": "Type of FHIR instance to integrate the loader with."
+      },
+      "allowedValues": [
+        "FhirService",
+        "APIforFhir",
+        "FhirServer"
+      ]
     },
-    "fhirAudience": {
+    "fhirServiceName": {
       "type": "string",
       "defaultValue": "",
       "metadata": {
-        "description": "Audience used for FHIR Server tokens. Leave blank to use the FHIR url which will work for default FHIR deployments."
+        "description": "Name of the FHIR Service to load resources into. Format is \"workspace/fhirService\"."
       }
+    },
+    "apiForFhirName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Name of the API for FHIR to load resources into."
+      }
+    },
+    "fhirServerUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The full URL of the OSS FHIR Server to load resources."
+      }
+    },
+    "authenticationType": {
+      "type": "string",
+      "defaultValue": "managedIdentity",
+      "metadata": {
+        "description": "Type of FHIR instance to integrate the loader with."
+      },
+      "allowedValues": [
+        "managedIdentity",
+        "servicePrincipal"
+      ]
     },
     "appServiceSize": {
       "type": "string",
@@ -57,32 +88,6 @@
         "P3v3"
       ]
     },
-    "loaderRepoBranch": {
-      "type": "string",
-      "defaultValue": "fhir-loader-cli",
-      "metadata": {
-        "description": "Branch of the FHIR Loader repo for git integration"
-      }
-    },
-    "transformTransactionBundles": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Transform transaction bundles to batch budles."
-      }
-    },
-    "setManagedIdentityForFhir": {
-      "type": "string",
-      "defaultValue": "FhirService",
-      "metadata": {
-        "description": "What type of FHIR Server to setup a managed identity connection for."
-      },
-      "allowedValues": [
-        "FhirService",
-        "APIforFhir",
-        "none"
-      ]
-    },
     "serviceAccountClientId": {
       "type": "string",
       "defaultValue": "",
@@ -96,9 +101,32 @@
       "metadata": {
         "description": "If not using MSI, client secret of the service account used to connect to the FHIR Server"
       }
+    },
+    "fhirAudience": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Audience used for FHIR Server tokens. Leave blank to use the FHIR url which will work for default FHIR deployments."
+      }
+    },
+    "loaderRepoBranch": {
+      "type": "string",
+      "defaultValue": "fhir-loader-cli",
+      "metadata": {
+        "description": "Branch of the FHIR Loader repo for git integration"
+      }
+    },
+    "transformTransactionBundles": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Transform transaction bundles to batch budles."
+      }
     }
   },
   "variables": {
+    "loaderRepoUrl": "https://github.com/microsoft/fhir-loader",
+    "fhirUrl": "[if(equals(parameters('fhirType'), 'FhirService'), format('https://{0}.fhir.azurehealthcareapis.com', replace(parameters('fhirServiceName'), '/', '-')), if(equals(parameters('fhirType'), 'APIforFhir'), format('https://{0}.azurehealthcareapis.com', parameters('apiForFhirName')), parameters('fhirServerUrl')))]",
     "tenantId": "[subscription().tenantId]",
     "appTags": {
       "AppID": "fhir-loader-function"
@@ -108,8 +136,7 @@
     "prefixNameCleanShort": "[if(greater(length(variables('prefixNameClean')), 16), substring(variables('prefixNameClean'), 0, 8), variables('prefixNameClean'))]",
     "importNDJsonFunctionName": "ImportNDJSON",
     "importBundleFunctionName": "ImportBundleEventGrid",
-    "loaderRepoUrl": "https://github.com/microsoft/fhir-loader",
-    "fhirUrlClean": "[replace(split(parameters('fhirUrl'), '.')[0], 'https://', '')]",
+    "fhirUrlClean": "[replace(split(variables('fhirUrl'), '.')[0], 'https://', '')]",
     "fhirUrlCleanSplit": "[split(variables('fhirUrlClean'), '-')]"
   },
   "resources": [
@@ -286,12 +313,12 @@
         "AzureWebJobs.ImportBundleBlobTrigger.Disabled": "1",
         "AzureFunctionsJobHost__functionTimeout": "23:00:00",
         "FBI-STORAGEACCT": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', format('{0}stor', variables('prefixNameCleanShort')), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort'))), '2021-08-01').keys[0].value)]",
-        "FS-URL": "[parameters('fhirUrl')]",
-        "FS-RESOURCE": "[if(empty(parameters('fhirAudience')), parameters('fhirUrl'), parameters('fhirAudience'))]",
+        "FS-URL": "[variables('fhirUrl')]",
+        "FS-RESOURCE": "[if(empty(parameters('fhirAudience')), variables('fhirUrl'), parameters('fhirAudience'))]",
         "FS-TENANT-NAME": "[variables('tenantId')]",
-        "FS-ISMSI": "[if(equals(parameters('setManagedIdentityForFhir'), 'none'), 'false', 'true')]",
-        "FS-CLIENT-ID": "[if(equals(parameters('setManagedIdentityForFhir'), 'none'), parameters('serviceAccountClientId'), '')]",
-        "FS-SECRET": "[if(equals(parameters('setManagedIdentityForFhir'), 'none'), parameters('serviceAccountSecret'), '')]",
+        "FS-ISMSI": "[if(equals(parameters('authenticationType'), 'managedIdentity'), 'true', 'false')]",
+        "FS-CLIENT-ID": "[if(equals(parameters('authenticationType'), 'servicePrincipal'), parameters('serviceAccountClientId'), '')]",
+        "FS-SECRET": "[if(equals(parameters('authenticationType'), 'servicePrincipal'), parameters('serviceAccountSecret'), '')]",
         "TRANSFORMBUNDLES": "[format('{0}', parameters('transformTransactionBundles'))]",
         "FBI-MAXBUNDLESIZE": "500",
         "FBI-MAXRESOURCESPERBUNDLE": "500",
@@ -422,7 +449,7 @@
       }
     },
     {
-      "condition": "[equals(parameters('setManagedIdentityForFhir'), 'FhirService')]",
+      "condition": "[equals(parameters('fhirType'), 'FhirService')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "functionFhirServiceRoleAssignment",
@@ -489,7 +516,7 @@
       }
     },
     {
-      "condition": "[equals(parameters('setManagedIdentityForFhir'), 'APIforFhir')]",
+      "condition": "[equals(parameters('fhirType'), 'APIforFhir')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "bulk-import-function-fhir-managed-id-role-assignment",

@@ -1,0 +1,308 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+    "handler": "Microsoft.Azure.CreateUIDef",
+    "version": "0.1.2-preview",
+    "resourceTypes": [
+        "Microsoft.Storage/storageAccounts",
+        "Microsoft.Web/serverfarms",
+        "Microsoft.Web/sites",
+        "Microsoft.EventGrid/eventSubscriptions",
+        "Microsoft.Insights/components"
+    ],
+    "parameters": {
+        "resourceTypes": [],
+        "config": {
+            "isWizard": true,
+            "basics": {
+                "description": "**FHIR Loader Bulk Import**\n\nAzure Function based tool that imports FHIR bundles and NDJSON files in a performant, resilient, and reliable way through the FHIR API from an Azure Storage account.\n\nDeploys an Azure Function, Azure Storage Account, Application Insights, and Event Grid Subscription.",
+                "subscription": {
+                    "resourceProviders": [
+                        "Microsoft.EventGrid",
+                        "Microsoft.Insights",
+                        "Microsoft.ManagedIdentity",
+                        "Microsoft.Storage",
+                        "Microsoft.Web"
+                    ]
+                }
+            }
+        },
+        "basics": [
+            {
+                "name": "resourcePrefix",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Prefix for FHIR Bulk Import resources.",
+                "defaultValue": "bulk",
+                "multiLine": false,
+                "constraints": {
+                    "required": true,
+                    "validations": [
+                        {
+                            "regex": "^[a-z0-9A-Z]{1,6}$",
+                            "message": "Only alphanumeric characters are allowed, and the value must be 1-6 characters long."
+                        }
+                    ]
+                },
+                "visible": true
+            }
+        ],
+        "steps": [
+            {
+                "name": "appSettings",
+                "bladeTitle": "Settings",
+                "label": "Application Settings",
+                "elements": [
+                    {
+                        "name": "fhirSection",
+                        "type": "Microsoft.Common.Section",
+                        "label": "FHIR Server Selection",
+                        "elements": [
+                            {
+                                "name": "fhirType",
+                                "type": "Microsoft.Common.DropDown",
+                                "label": "Which type of FHIR server do you want to connect to?",
+                                "defaultValue": "Azure Health Data Services",
+                                "multiselect": false,
+                                "selectAll": false,
+                                "constraints": {
+                                    "allowedValues": [
+                                        {
+                                            "label": "Azure Health Data Services",
+                                            "value": "FhirService"
+                                        },
+                                        {
+                                            "label": "Azure API for FHIR",
+                                            "value": "APIforFhir"
+                                        },
+                                        {
+                                            "label": "FHIR Server (OSS)",
+                                            "value": "FhirServer"
+                                        }
+                                    ],
+                                    "required": true
+                                },
+                                "visible": true
+                            },
+                            {
+                                "name": "fhirServiceSelector",
+                                "label": "Select a FHIR Services inside an Azure Health Data Services workspace",
+                                "type": "Microsoft.Solutions.ResourceSelector",
+                                "resourceType": "Microsoft.HealthcareApis/workspaces/fhirservices",
+                                "options": {
+                                    "filter": {
+                                        "subscription": "onBasics",
+                                        "location": "onBasics"
+                                    }
+                                },
+                                "constraints": {
+                                    "required": "[equals('FhirService', steps('appSettings').fhirSection.fhirType)]"
+                                },
+                                "visible": "[equals('FhirService', steps('appSettings').fhirSection.fhirType)]"
+                            },
+                            {
+                                "name": "apiForFhirSelector",
+                                "label": "Selct an API for FHIR resource",
+                                "type": "Microsoft.Solutions.ResourceSelector",
+                                "resourceType": "Microsoft.HealthcareApis/services",
+                                "options": {
+                                    "filter": {
+                                        "subscription": "onBasics",
+                                        "location": "onBasics"
+                                    }
+                                },
+                                "constraints": {
+                                    "required": "[equals('APIforFhir', steps('appSettings').fhirSection.fhirType)]"
+                                },
+                                "visible": "[equals('APIforFhir', steps('appSettings').fhirSection.fhirType)]"
+                            },
+                            {
+                                "name": "fhirServerUrl",
+                                "type": "Microsoft.Common.TextBox",
+                                "label": "FHIR Server (OSS) URL",
+                                "toolTip": "Example: https://example-fhir-oss.azurewebsites.net",
+                                "constraints": {
+                                    "required": "[equals('FhirServer', steps('appSettings').fhirSection.fhirType)]"
+                                },
+                                "visible": "[equals('FhirServer', steps('appSettings').fhirSection.fhirType)]"
+                            }
+                        ],
+                        "visible": true
+                    },
+					{
+						"name": "fhirAuthenticationSection",
+						"type": "Microsoft.Common.Section",
+						"label": "FHIR Authentication",
+						"elements": [
+							{
+								"name": "authenticationType",
+								"type": "Microsoft.Common.DropDown",
+								"label": "How do you want to authenticate to the FHIR server?",
+								"defaultValue": "Managed Identity",
+								"multiselect": false,
+								"selectAll": false,
+								"constraints": {
+									"allowedValues": [
+										{
+											"label": "Managed Identity",
+											"value": "managedIdentity"
+										},
+										{
+											"label": "Service Principal",
+											"value": "servicePrincipal"
+										}
+									],
+									"required": true
+								},
+								"visible": true
+							}
+						],
+						"visible": true
+					},
+                    {
+						"name": "fhirServicePrincipalSection",
+						"type": "Microsoft.Common.Section",
+						"label": "Service Principal",
+						"elements": [
+							{
+                                "name": "servicePrincipalSelector",
+                                "type": "Microsoft.Common.ServicePrincipalSelector",
+                                "label": {
+                                    "password": "Create a new secret for the service principal"
+                                },
+                                "toolTip": {
+                                    "password": "Must be at least 8 characters long."
+                                },
+                                "defaultValue": {
+                                    "principalId": "<default guid>",
+                                    "name": "(New) default App Id"
+                                },
+                                "constraints": {
+                                    "required": "[equals('servicePrincipal', steps('appSettings').fhirAuthenticationSection.authenticationType)]",
+                                    "regex": "^.{8,}$",
+                                    "validationMessage": "Service Principal secret must be at least 8 characters long."
+                                },
+                                "options": {
+                                    "hideCertificate": true
+                                },
+                                "visible": true
+                            }
+						],
+						"visible": "[equals('servicePrincipal', steps('appSettings').fhirAuthenticationSection.authenticationType)]"
+					},
+                    {
+						"name": "functionAppConfigurationSection",
+						"type": "Microsoft.Common.Section",
+						"label": "Function App Configuration",
+						"elements": [
+							{
+								"name": "appServiceSize",
+								"type": "Microsoft.Common.DropDown",
+								"label": "How do you want to authenticate to the FHIR server?",
+								"defaultValue": "B1",
+								"multiselect": false,
+								"selectAll": false,
+                                "defaultDescription": "May not be available in your subscription.",
+                                "multiLine": true,
+								"constraints": {
+									"allowedValues": [
+                                        {
+                                            "label": "B1",
+                                            "value": "B1",
+                                            "description": "Basic: best for testing"
+                                        },
+                                        {
+                                            "label": "B2",
+                                            "value": "B2",
+                                            "description": "Basic: best for testing"
+                                        },
+                                        {
+                                            "label": "B3",
+                                            "value": "B3",
+                                            "description": "Basic: best for testing"
+                                        },
+                                        {
+                                            "label": "S1",
+                                            "value": "S1",
+                                            "description": "Standard: best for small workloads"
+                                        },
+                                        {
+                                            "label": "S2",
+                                            "value": "S2",
+                                            "description": "Standard: best for small workloads"
+                                        },
+                                        {
+                                            "label": "S3",
+                                            "value": "S3",
+                                            "description": "Standard: best for small workloads"
+                                        },
+                                        {
+                                            "label": "P1v2",
+                                            "value": "P1v2",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P2v2",
+                                            "value": "P2v2",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P3v2",
+                                            "value": "P3v2",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P1v3",
+                                            "value": "P1v3",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P2v3",
+                                            "value": "P2v3",
+                                            "description": "Premium: best for large workloads"
+                                        },
+                                        {
+                                            "label": "P3v3",
+                                            "value": "P3v3",
+                                            "description": "Premium: best for large workloads"
+                                        }
+                                    ],
+									"required": false
+								},
+								"visible": true
+							}
+						],
+						"visible": true
+					}
+                ]
+            },
+            {
+                "name": "advanced",
+                "bladeTitle": "Advanced",
+                "label": "Advanced Settings",
+                "elements": [
+                    {
+                        "name": "fhirAudienceTextBox",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "FHIR Custom Audience",
+                        "toolTip": "Not needed unless you changed the audience of your FHIR server and it's different than the FHIR URL.",
+                        "visible": true
+                    }
+                ]
+            }
+        ],
+        "outputs": {
+            "prefix": "",
+            "location": "[location()]",
+            "fhirType": "[steps('appSettings').fhirSection.fhirType]",
+            "fhirUrl": "[if(equals(steps('appSettings').fhirSection.fhirType, 'FhirService'), concat('https://', replace(steps('appSettings').fhirSection.fhirServiceSelector, '/', '-'), '.fhir.azurehealthcareapis.com'), 'none')]",
+        
+            "fhirAudience": "[steps('advanced').fhirAudienceTextBox]",
+            "appServiceSize": "[steps('advanced').functionAppConfigurationSection.appServiceSize]",
+            
+            "authenticationType": "[steps('appSettings').fhirAuthenticationSection.authenticationType]",
+            "servicePrincipalAppId": "[steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.appId]",
+            "servicePrincipalObjectId": "[steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.objectId]",
+            "servicePrincipalPassword": "[steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.password]"
+
+        }
+    }
+}
