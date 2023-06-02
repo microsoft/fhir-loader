@@ -1,40 +1,40 @@
 parameters:
-  - name: UnitTest
-    default: true
-  - name: componentGovernance
-    default: false
+  - name: DotNetVersion
+  - name: SourceProjectsString
+  - name: TestProjectsString
+  - name: RunUnitTest
+  - name: RunComponentGovernance
   - name: AssemblyVersion
   - name: FileVersion
   - name: InformationalVersion
   - name: Version
 
 steps:
-
   - task: UseDotNet@2
-    displayName: 'Use .NET SDK'
+    displayName: "Use .NET SDK"
     inputs:
-      version: ${{ variables.DotNetVersion }}
+      version: ${{ parameters.DotNetVersion }}
 
   - task: DotNetCoreCLI@2
     inputs:
-      command: 'build'
+      command: "build"
       arguments: '--configuration Release --no-incremental -p:ContinuousIntegrationBuild=true -p:AssemblyVersion="${{ parameters.AssemblyVersion }}" -p:FileVersion="${{ parameters.FileVersion }}" -p:InformationalVersion="${{ parameters.InformationalVersion }}" -p:Version="${{ parameters.Version }}" -warnaserror'
-      projects: 
-    displayName: 'Build toolkit projects'
+      projects: ${{ parameters.SourceProjectsString }}
+    displayName: "Build toolkit projects"
 
-  - ${{ if eq(parameters.componentGovernance, 'true') }}:
-    - task: ComponentGovernanceComponentDetection@0
-      inputs:
-        scanType: 'Register'
-        verbosity: 'Verbose'
-        alertWarningLevel: 'High'
-        failOnAlert: true
+  - ${{ if eq(parameters.RunComponentGovernance, 'true') }}:
+      - task: RunComponentGovernanceComponentDetection@0
+        inputs:
+          scanType: "Register"
+          verbosity: "Verbose"
+          alertWarningLevel: "High"
+          failOnAlert: true
 
-  - ${{ if eq(parameters.unitTest, 'true') }}:
-    - task: DotNetCoreCLI@2
-      inputs:
-        command: 'test'
-        arguments: '--no-build --configuration Release'
-        publishTestResults: true
-        projects: ${{ variables.TestProjectsString }}
-      displayName: 'Run all tests'
+  - ${{ if eq(parameters.RunUnitTest, 'true') }}:
+      - task: DotNetCoreCLI@2
+        inputs:
+          command: "test"
+          arguments: "--no-build --configuration Release"
+          publishTestResults: true
+          projects: ${{ parameters.TestProjectsString }}
+        displayName: "Run all tests"
