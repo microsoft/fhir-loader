@@ -1,6 +1,6 @@
 parameters:
-- DotNetVersion
-- ProjectName
+- name: DotNetVersion
+- name: ProjectName
 
 steps:
   - task: UseDotNet@2
