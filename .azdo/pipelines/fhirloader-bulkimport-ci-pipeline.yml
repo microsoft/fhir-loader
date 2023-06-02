@@ -29,7 +29,7 @@ variables:
     value: 'windows-latest'
   - name: DotNetVersion
     value: '7.0.x'
-  - name: ProjectName
+  - name: SolutionName
     value: 'FhirLoader.slh'
   - name: SourceProjectsString
     value: '**/FhirLoader.BulkImport.csproj'
@@ -49,7 +49,7 @@ stages:
       - template: ./jobs/checkCode.yml
         parameters:
           DotNetVersion: '7.0.x'
-          ProjectName: 'FhirLoader.BulkImport'
+          SolutionName: ${{ variables.SolutionName }}
 
     - job: BuildTestPublish
       pool:
