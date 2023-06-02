@@ -6,7 +6,6 @@ parameters:
 
 steps:
   - task: UseDotNet@2
-    displayName: "Use .NET SDK"
     inputs:
       version: $(DotNetVersion)
 
@@ -15,7 +14,7 @@ steps:
       command: "build"
       arguments: '--configuration $(BuildConfiguration) --no-incremental -p:ContinuousIntegrationBuild=true -p:AssemblyVersion="$(SetVariablesFromGitVersion.AssemblySemVer)" -p:FileVersion="$(SetVariablesFromGitVersion.AssemblySemFileVer)" -p:InformationalVersion="$(SetVariablesFromGitVersion.InformationalVersion)" -p:Version="$(SetVariablesFromGitVersion.MajorMinorPatch)" -warnaserror'
       projects: $(SourceProjectsString)
-    displayName: "Build toolkit projects"
+    displayName: "Build Source Projects"
 
   - ${{ if eq(parameters.RunComponentGovernance, 'true') }}:
       - task: RunComponentGovernanceComponentDetection@0
@@ -24,6 +23,7 @@ steps:
           verbosity: "Verbose"
           alertWarningLevel: "High"
           failOnAlert: true
+        displayName: "Run component governance"
 
   - ${{ if eq(parameters.RunUnitTest, 'true') }}:
       - task: DotNetCoreCLI@2

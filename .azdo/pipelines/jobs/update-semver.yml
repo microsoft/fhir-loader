@@ -1,4 +1,7 @@
 steps:
+  - checkout: self
+    fetchDepth: 0
+
   - task: UseDotNet@2
     inputs:
       version: $(DotNetVersion)
@@ -24,6 +27,7 @@ steps:
       Write-Host "##vso[task.setvariable variable=AssemblySemFileVer;isOutput=true]$($gitVersionJson.AssemblySemFileVer)"
       Write-Host "##vso[Build.UpdateBuildNumber]$($gitVersionJson.SemVer)"
     name: SetVariablesFromGitVersion
+    displayName: "Set Variables from GitVersion"
 
   - powershell: |
       Write-Host '----------Variables to use for build----------'
@@ -33,3 +37,4 @@ steps:
       Write-Host 'assemblySemFileVer: $(SetVariablesFromGitVersion.AssemblySemFileVer)'
       Write-Host 'informationalVersion: $(SetVariablesFromGitVersion.InformationalVersion)'
     name: PrintVariablesFromGitVersion
+    displayName: "Print Variables from GitVersion"

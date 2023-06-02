@@ -6,16 +6,12 @@ name: $(SourceBranchName)-$(Date:yyyyMMdd)$(Rev:-r)
 # Trigger is overridden in azdo pipeline configuration.
 trigger: none
 
-parameters:
-  - name: targetBuildFramework
-    type: string
-    default: 'net6.0'
-
 variables:
   - template: ./variables/FhirLoader-BulkImport-Variables.yml
 
 stages:
-  - stage: Build
+  # Run for PRs and check-ins to the main branch. Run automatically.
+  - stage: BuildTestPublish
 
     jobs:
     - job: CodeChecks
@@ -38,7 +34,16 @@ stages:
           RunComponentGovernance: false
       - template: ./jobs/publish.yml
 
-#  - stage: 
-#    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-#    jobs:
-#      - job: B1
+  - stage: 
+      # Only run for commits to the main branch. Run automatically.
+      #condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+      condition: succeeded()
+      dependsOn: BuildTestPublish
+      variables:
+        Version: $[ dependencies.BuildTestPublish.outputs['SetVariablesFromGitVersion.SemVer'] ]  
+      jobs:
+        - job: Create GitHub release
+          pool:
+            vmImage: ${{ variables.VmImage }}
+          steps:
+          - template: ./jobs/githubRelease.yml

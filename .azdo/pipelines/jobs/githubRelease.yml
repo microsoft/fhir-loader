@@ -1,0 +1,25 @@
+steps:
+  - download: current
+    artifact: $(PackageArtifactName)
+    displayName: "Get published output"
+
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: '$(Pipeline.Workspace)/$(PackageArtifactName)/'
+      includeRootFolder: false
+      archiveType: 'zip' # 'zip' | '7z' | 'tar' | 'wim'. Required. Archive type. Default: zip.
+      archiveFile: '$(Build.ArtifactStagingDirectory)/$(PackageArtifactName).zip' # string. Required. Archive file to create. Default: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip.
+
+  - task: GithubRelease@1 
+    displayName: 'Create GitHub Release'
+    inputs:
+      gitHubConnection: 'Github ($(RepositoryName))'
+      repositoryName: $(RepositoryName)
+      action: 'create'
+      tagSource: userSpecifiedTag
+      
+      tag: '$(ReleasePrefix)-v$(Version)'
+      title: '$(ReleasePrefix) $(Version)'
+      isPreRelease: false
+      assets: |
+        '$(Pipeline.Workspace)/$(PackageArtifactName).zip'

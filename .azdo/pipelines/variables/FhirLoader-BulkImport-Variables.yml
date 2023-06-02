@@ -11,3 +11,5 @@ variables:
   SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
   TestProjectsString: ''
   PackageArtifactName: 'FhirLoader.BulkImport'
+  RepositoryName: 'microsoft/fhir-loader'
+  ReleasePrefix: 'BulkImport'

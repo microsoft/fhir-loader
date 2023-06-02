@@ -1,6 +1,5 @@
 steps:
   - task: UseDotNet@2
-    displayName: 'Use .NET SDK'
     inputs:
       version: $(DotNetVersion)
 
@@ -12,9 +11,10 @@ steps:
       publishWebProjects: false
       modifyOutputPath: false
       zipAfterPublish: false
+    displayName: "Run dotnet publish"
 
   - task: PublishPipelineArtifact@1
-    displayName: Publish Package Artifact
+    displayName: "Publish pipeline artifact: publish output"
     inputs:
       targetPath: "$(Build.ArtifactStagingDirectory)/$(PackageArtifactName)/$(SetVariablesFromGitVersion.MajorMinorPatch)"
       artifactName: $(PackageArtifactName)
