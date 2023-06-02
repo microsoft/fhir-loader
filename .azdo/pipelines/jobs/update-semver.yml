@@ -13,6 +13,9 @@ steps:
 
       $gitVersionJson = $gitVersionString | ConvertFrom-Json
 
+      Write-Host '----------GitVersion Converted JSON ----------'
+      Write-Host $gitVersionJson
+
       Write-Host "##vso[task.setvariable variable=semVer]$($gitVersionJson.semVer)"
       Write-Host "##vso[task.setvariable variable=informationalVersion;isOutput=true]$($gitVersionJson.informationalVersion)"
       Write-Host "##vso[task.setvariable variable=majorMinorPatch;isOutput=true]$($gitVersionJson.majorMinorPatch)"
@@ -25,4 +28,8 @@ steps:
   - powershell: |
       Write-Host '----------Variables to use for build----------'
       Write-Host 'semVer: $(semVer)'
+      Write-Host 'majorMinorPatch: $(majorMinorPatch)'
+      Write-Host 'assemblySemVer: $(assemblySemVer)'
+      Write-Host 'assemblySemFileVer: $(assemblySemFileVer)'
+      Write-Host 'informationalVersion: $(informationalVersion)'
     name: PrintVariablesFromGitVersion
