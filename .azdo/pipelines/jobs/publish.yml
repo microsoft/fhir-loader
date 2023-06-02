@@ -2,10 +2,11 @@ parameters:
 - name: DotNetVersion
 - name: SourceProjectsString
 - name: PackageArtifactName
-
+- name: Version
+- name: VersionSuffix
 
 variables:
-  publishOutput: ${{ format('$(Build.ArtifactStagingDirectory)/{0}/{1}', parameters.PackageArtifactName, $(majorMinorPatch)) }}
+  publishOutput: ${{ format('$(Build.ArtifactStagingDirectory)/{0}/{1}', parameters.PackageArtifactName, parameters.Version) }}
 
 steps:
   - task: UseDotNet@2
@@ -16,7 +17,7 @@ steps:
   - task: DotNetCoreCLI@2
     inputs:
       command: publish
-      arguments: '--configuration Release --output ${{ parameters.publishOutput }} --no-build --version-suffix $(build.buildNumber)'
+      arguments: '--configuration Release --output ${{ parameters.publishOutput }} --no-build --version-suffix ${{ parameters.VersionSuffix }}'
       projects: ${{ parameters.SourceProjectsString }}
       publishWebProjects: false
       modifyOutputPath: false

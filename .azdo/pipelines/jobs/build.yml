@@ -1,12 +1,14 @@
 parameters:
-  - name: dotnetVersion
+  - name: DotNetVersion
   - name: SourceProjectsString
+  - name: UnitTest = true
+  - name: componentGovernance = false
   - name: TestProjectsString = ''
-  - name: UnitTest
-    defaultValue: true
-  - name: componentGovernance
-    defaultValue: false
-  
+  - name: AssemblyVersion
+  - name: FileVersion
+  - name: InformationalVersion
+  - name: Version
+
 steps:
 
   - task: UseDotNet@2
@@ -17,7 +19,7 @@ steps:
   - task: DotNetCoreCLI@2
     inputs:
       command: 'build'
-      arguments: '--configuration Release --no-incremental -p:ContinuousIntegrationBuild=true -p:AssemblyVersion="$(assemblySemVer)" -p:FileVersion="$(assemblySemFileVer)" -p:InformationalVersion="$(informationalVersion)" -p:Version="$(majorMinorPatch)" -warnaserror'
+      arguments: '--configuration Release --no-incremental -p:ContinuousIntegrationBuild=true -p:AssemblyVersion="${{ parameters.AssemblyVersion }}" -p:FileVersion="${{ parameters.FileVersion }}" -p:InformationalVersion="${{ parameters.InformationalVersion }}" -p:Version="${{ parameters.Version }}" -warnaserror'
       projects: ${{ parameters.SourceProjectsString }}}
     displayName: 'Build toolkit projects'
 

@@ -47,13 +47,19 @@ stages:
       - template: ./jobs/build.yml
         parameters:
           DotNetVersion: '6.0.x'
-          UnitTest: false
           SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
+          UnitTest: false
+          AssemblyVersion: $(assemblySemVer)
+          FileVersion: $(assemblySemFileVer)
+          InformationalVersion: $(informationalVersion)
+          Version: $(majorMinorPatch)
       - template: ./jobs/publish.yml
         parameters:
           DotNetVersion: '6.0.x'
           SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
           PackageArtifactName: 'FhirLoader.BulkImport'
+          Version: $(majorMinorPatch)
+          VersionSuffix: $(build.buildNumber)
 
 #  - stage: 
 #    condition: and(succeeded(), eq(variables.isMain, true))
