@@ -27,6 +27,16 @@ variables:
     value: 'ubuntu-latest'
   - name: WindowsVmImage
     value: 'windows-latest'
+  - name: DotNetVersion
+    value: '7.0.x'
+  - name: ProjectName
+    value: 'FhirLoader.slh'
+  - name: SourceProjectsString
+    value: '**/FhirLoader.BulkImport.csproj'
+  - name: TestProjectsString
+    value: ''
+  - name: PackageArtifactName
+    value: 'FhirLoader.BulkImport'
 
 stages:
   - stage: Build
@@ -34,23 +44,19 @@ stages:
     jobs:
     - job: CodeChecks
       pool:
-        vmImage: $(WindowsVmImage)
+        vmImage: ${{ variables.WindowsVmImage }}
       steps:
       - template: ./jobs/checkCode.yml
-        parameters:
-          DotNetVersion: '6.0.x'
 
     - job: BuildTestPublish
       pool:
-        vmImage: $(WindowsVmImage)
+        vmImage: ${{ variables.WindowsVmImage }}
       steps:
       - template: ./jobs/update-semver.yml
         parameters:
-          DotNetVersion: '6.0.x'
+          DotNetVersion: '7.0.x'
       - template: ./jobs/build.yml
         parameters:
-          DotNetVersion: '6.0.x'
-          SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
           UnitTest: false
           AssemblyVersion: $(assemblySemVer)
           FileVersion: $(assemblySemFileVer)
@@ -58,9 +64,6 @@ stages:
           Version: $(majorMinorPatch)
       - template: ./jobs/publish.yml
         parameters:
-          DotNetVersion: '6.0.x'
-          SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
-          PackageArtifactName: 'FhirLoader.BulkImport'
           Version: $(majorMinorPatch)
           VersionSuffix: $(build.buildNumber)
 

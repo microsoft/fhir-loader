@@ -1,17 +1,8 @@
-parameters:
-  - name: DotNetVersion
-
 steps:
 
 - task: UseDotNet@2
-  displayName: 'Use .NET Core sdk (for GitVersion)'
   inputs:
-    packageType: sdk
-    version: 3.1.x
-  
-- task: UseDotNet@2
-  inputs:
-      version: ${{ parameters.DotNetVersion }}
+      version: ${{ variables.DotNetVersion }}
     
 - powershell: |
     dotnet tool install --global GitVersion.Tool

@@ -1,12 +1,8 @@
 parameters:
-  - name: DotNetVersion
-  - name: SourceProjectsString
   - name: UnitTest
     default: true
   - name: componentGovernance
     default: false
-  - name: TestProjectsString
-    default: ''
   - name: AssemblyVersion
   - name: FileVersion
   - name: InformationalVersion
@@ -17,13 +13,13 @@ steps:
   - task: UseDotNet@2
     displayName: 'Use .NET SDK'
     inputs:
-      version: ${{ parameters.DotNetVersion }}
+      version: ${{ variables.DotNetVersion }}
 
   - task: DotNetCoreCLI@2
     inputs:
       command: 'build'
       arguments: '--configuration Release --no-incremental -p:ContinuousIntegrationBuild=true -p:AssemblyVersion="${{ parameters.AssemblyVersion }}" -p:FileVersion="${{ parameters.FileVersion }}" -p:InformationalVersion="${{ parameters.InformationalVersion }}" -p:Version="${{ parameters.Version }}" -warnaserror'
-      projects: ${{ parameters.SourceProjectsString }}}
+      projects: 
     displayName: 'Build toolkit projects'
 
   - ${{ if eq(parameters.componentGovernance, 'true') }}:
@@ -40,5 +36,5 @@ steps:
         command: 'test'
         arguments: '--no-build --configuration Release'
         publishTestResults: true
-        projects: ${{ parameters.TestProjectsString }}}
+        projects: ${{ variables.TestProjectsString }}
       displayName: 'Run all tests'
