@@ -44,7 +44,6 @@ stages:
       - template: ./jobs/update-semver.yml
         parameters:
           DotNetVersion: '6.0.x'
-          SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
       - template: ./jobs/build.yml
         parameters:
           DotNetVersion: '6.0.x'
