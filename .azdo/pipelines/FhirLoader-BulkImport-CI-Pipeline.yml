@@ -35,15 +35,14 @@ stages:
       - template: ./jobs/publish.yml
 
   - stage: 
-      # Only run for commits to the main branch. Run automatically.
-      #condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-      condition: succeeded()
-      dependsOn: BuildTestPublish
-      variables:
-        Version: $[ dependencies.BuildTestPublish.outputs['SetVariablesFromGitVersion.SemVer'] ]  
-      jobs:
-        - job: Create GitHub release
-          pool:
-            vmImage: ${{ variables.VmImage }}
-          steps:
-          - template: ./jobs/githubRelease.yml
+    # Only run for commits to the main branch. Run automatically.
+    #condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    dependsOn: BuildTestPublish
+    variables:
+      Version: $[ dependencies.BuildTestPublish.outputs['SetVariablesFromGitVersion.SemVer'] ]  
+    jobs:
+      - job: Create GitHub release
+        pool:
+          vmImage: ${{ variables.VmImage }}
+        steps:
+        - template: ./jobs/githubRelease.yml
