@@ -1,0 +1,12 @@
+mode: Mainline
+# assembly-version: If this number changes, other assemblies have to update references to the assembly
+assembly-versioning-scheme: Major
+assembly-file-versioning-scheme: MajorMinorPatch
+tag-prefix: 'BulkImport-v'
+ignore:
+  sha: []
+
+major-version-bump-message: '(\+BulkImport-semver:\s?(breaking|major)|\[x\] BulkImport breaking change)'
+minor-version-bump-message: '(\+BulkImport-semver:\s?(feature|minor)|\[x\] BulkImport feature)'
+patch-version-bump-message: '\+BulkImport-semver:\s?(fix|patch)|\[x\] BulkImport fix)'
+no-bump-message: '\+semver:\s?(none|skip)'

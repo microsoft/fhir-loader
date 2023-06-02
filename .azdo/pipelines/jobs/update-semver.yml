@@ -1,15 +1,12 @@
-parameters:
-  - name: DotNetVersion
-
 steps:
   - task: UseDotNet@2
     inputs:
-      version: ${{ parameters.DotNetVersion }}
+      version: $(DotNetVersion)
 
   - powershell: |
       dotnet tool install --global GitVersion.Tool
 
-      $gitVersionJson = & 'dotnet-gitversion'  | ConvertFrom-Json
+      $gitVersionJson = & 'dotnet-gitversion /config $(GitVersionFilePath)'  | ConvertFrom-Json
 
       Write-Host "##vso[task.setvariable variable=semVer]$($gitVersionJson.semVer)"
       Write-Host "##vso[task.setvariable variable=informationalVersion;isOutput=true]$($gitVersionJson.informationalVersion)"

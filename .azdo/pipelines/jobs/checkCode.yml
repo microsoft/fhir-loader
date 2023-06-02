@@ -1,18 +1,14 @@
-parameters:
-  - name: DotNetVersion
-  - name: SolutionName
-
 steps:
   - task: UseDotNet@2
     displayName: "Use .NET SDK"
     inputs:
-      version: ${{ parameters.DotNetVersion }}
+      version: $(DotNetVersion)
 
   - task: RoslynAnalyzers@3
     inputs:
       userProvideBuildInfo: "msBuildInfo"
       msBuildArchitecture: "DotNetCore"
-      msBuildCommandline: 'C:\hostedtoolcache\windows\dotnet\dotnet.exe build $(Build.SourcesDirectory)\${{ parameters.SolutionName }}'
+      msBuildCommandline: 'C:\hostedtoolcache\windows\dotnet\dotnet.exe build $(Build.SourcesDirectory)\$(SolutionName)'
 
   - task: CredScan@3
     inputs:

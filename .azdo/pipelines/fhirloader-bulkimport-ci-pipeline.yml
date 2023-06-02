@@ -23,20 +23,7 @@ parameters:
     default: 'net6.0'
 
 variables:
-  - name: VmImage
-    value: 'ubuntu-latest'
-  - name: WindowsVmImage
-    value: 'windows-latest'
-  - name: DotNetVersion
-    value: '7.0.x'
-  - name: SolutionName
-    value: 'FhirLoader.slh'
-  - name: SourceProjectsString
-    value: '**/FhirLoader.BulkImport.csproj'
-  - name: TestProjectsString
-    value: ''
-  - name: PackageArtifactName
-    value: 'FhirLoader.BulkImport'
+  - template: ./variables/FhirLoader-BulkImport-Variables.yml
 
 stages:
   - stage: Build
@@ -56,26 +43,11 @@ stages:
         vmImage: ${{ variables.WindowsVmImage }}
       steps:
       - template: ./jobs/update-semver.yml
-        parameters:
-          DotNetVersion: ${{ variables.DotNetVersion }}
       - template: ./jobs/build.yml
         parameters:
-          DotNetVersion: ${{ variables.DotNetVersion }}
-          SourceProjectsString: ${{ variables.SourceProjectsString }}
-          TestProjectsString: ${{ variables.TestProjectsString }}
           RunUnitTest: false
           RunComponentGovernance: false
-          AssemblyVersion: $(assemblySemVer)
-          FileVersion: $(assemblySemFileVer)
-          InformationalVersion: $(informationalVersion)
-          Version: $(majorMinorPatch)
       - template: ./jobs/publish.yml
-        parameters:
-          DotNetVersion: ${{ variables.DotNetVersion }}
-          SourceProjectsString: ${{ variables.SourceProjectsString }}
-          PackageArtifactName: ${{ variables.PackageArtifactName }}
-          Version: $(majorMinorPatch)
-          VersionSuffix: $(build.buildNumber)
 
 #  - stage: 
 #    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
