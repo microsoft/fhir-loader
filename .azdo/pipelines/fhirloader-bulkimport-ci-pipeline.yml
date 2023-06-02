@@ -22,9 +22,6 @@ parameters:
     type: string
     default: 'net6.0'
 
-variables:
-  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
-
 stages:
   - stage: Build
 
@@ -62,6 +59,6 @@ stages:
           VersionSuffix: $(build.buildNumber)
 
 #  - stage: 
-#    condition: and(succeeded(), eq(variables.isMain, true))
+#    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
 #    jobs:
 #      - job: B1
