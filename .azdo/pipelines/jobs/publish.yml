@@ -1,9 +1,9 @@
 parameters:
-- DotNetVersion
-- SourceProjectsString
-- PackageArtifactName
-- Version
-- VersionSuffix
+- name: DotNetVersion
+- name: SourceProjectsString
+- name: PackageArtifactName
+- name: Version
+- name: VersionSuffix
 
 variables:
   publishOutput: ${{ format('$(Build.ArtifactStagingDirectory)/{0}/{1}', parameters.PackageArtifactName, parameters.Version) }}
