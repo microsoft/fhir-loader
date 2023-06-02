@@ -22,6 +22,12 @@ parameters:
     type: string
     default: 'net6.0'
 
+variables:
+  - name: VmImage
+    value: 'ubuntu-latest'
+  - name: WindowsVmImage
+    value: 'windows-latest'
+
 stages:
   - stage: Build
 
@@ -36,7 +42,7 @@ stages:
 
     - job: BuildTestPublish
       pool:
-        vmImage: $(VmImage)
+        vmImage: $(WindowsVmImage)
       steps:
       - template: ./jobs/update-semver.yml
         parameters:
