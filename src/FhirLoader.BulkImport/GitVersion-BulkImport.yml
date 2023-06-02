@@ -3,10 +3,10 @@ mode: Mainline
 assembly-versioning-scheme: Major
 assembly-file-versioning-scheme: MajorMinorPatch
 tag-prefix: 'BulkImport-v'
+increment: None
 ignore:
   sha: []
 
 major-version-bump-message: '(\+BulkImport-semver:\s?(breaking|major)|\[x\] BulkImport breaking change)'
 minor-version-bump-message: '(\+BulkImport-semver:\s?(feature|minor)|\[x\] BulkImport feature)'
-patch-version-bump-message: '\+BulkImport-semver:\s?(fix|patch)|\[x\] BulkImport fix)'
-no-bump-message: '\+semver:\s?(none|skip)'
+patch-version-bump-message: '(\+BulkImport-semver:\s?(fix|patch)|\[x\] BulkImport fix)'
