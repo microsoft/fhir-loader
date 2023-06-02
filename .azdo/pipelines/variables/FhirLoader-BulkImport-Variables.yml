@@ -7,7 +7,7 @@ variables:
   WindowsVmImage: 'windows-latest'
   DotNetVersion: '7.0.x'
   GitVersionFilePath: './src/FhirLoader.BulkImport/GitVersion.BulkImport.yml'
-  SolutionName: 'FhirLoader.slh'
+  SolutionName: 'FhirLoader.sln'
   SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
   TestProjectsString: ''
   PackageArtifactName: 'FhirLoader.BulkImport'
