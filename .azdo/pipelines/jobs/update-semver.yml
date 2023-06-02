@@ -24,7 +24,6 @@ steps:
     Write-Host "##vso[task.setvariable variable=nuGetVersion;isOutput=true]$($gitVersionJson.semVer)"
     Write-Host "##vso[task.setvariable variable=assemblySemVer;isOutput=true]$($gitVersionJson.assemblySemVer)"
     Write-Host "##vso[task.setvariable variable=assemblySemFileVer;isOutput=true]$($gitVersionJson.assemblySemFileVer)"
-
     Write-Host "##vso[build.updatebuildnumber]$($gitVersionJson.semVer)"
   name: SetVariablesFromGitVersion
 

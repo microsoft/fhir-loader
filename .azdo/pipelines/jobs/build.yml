@@ -1,13 +1,13 @@
 parameters:
-  - name: DotNetVersion
-  - name: SourceProjectsString
-  - name: UnitTest = true
-  - name: componentGovernance = false
-  - name: TestProjectsString = ''
-  - name: AssemblyVersion
-  - name: FileVersion
-  - name: InformationalVersion
-  - name: Version
+  - DotNetVersion
+  - SourceProjectsString
+  - UnitTest: true
+  - componentGovernance: false
+  - TestProjectsString: ''
+  - AssemblyVersion
+  - FileVersion
+  - InformationalVersion
+  - Version
 
 steps:
 
