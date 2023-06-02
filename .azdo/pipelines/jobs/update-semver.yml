@@ -16,7 +16,7 @@ steps:
       Write-Host '----------GitVersion Converted JSON ----------'
       Write-Host $gitVersionJson
 
-      Write-Host "##vso[task.setvariable variable=semVer]$($gitVersionJson.SemVer;isOutput=true)"
+      Write-Host "##vso[task.setvariable variable=SemVer;isOutput=true]$($gitVersionJson.SemVer)"
       Write-Host "##vso[task.setvariable variable=InformationalVersion;isOutput=true]$($gitVersionJson.InformationalVersion)"
       Write-Host "##vso[task.setvariable variable=MajorMinorPatch;isOutput=true]$($gitVersionJson.MajorMinorPatch)"
       Write-Host "##vso[task.setvariable variable=NuGetVersion;isOutput=true]$($gitVersionJson.SemVer)"
