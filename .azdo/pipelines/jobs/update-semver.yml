@@ -11,7 +11,7 @@ steps:
       Write-Host '----------Output from GitVersion----------'
       Write-Host $gitVersionString
 
-      $gitVersionJson = $gitVersionString | ConvertFrom-Json -Depth 1
+      $gitVersionJson = $gitVersionString | ConvertFrom-Json
 
       Write-Host "##vso[task.setvariable variable=semVer]$($gitVersionJson.semVer)"
       Write-Host "##vso[task.setvariable variable=informationalVersion;isOutput=true]$($gitVersionJson.informationalVersion)"
