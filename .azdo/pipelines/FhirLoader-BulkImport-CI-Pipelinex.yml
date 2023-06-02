@@ -2,20 +2,9 @@
 # Builds and tests projects in the repository
 
 name: $(SourceBranchName)-$(Date:yyyyMMdd)$(Rev:-r)
-trigger:
-  branches:
-    include:
-      - main
-  paths:
-    include:
-      - src/FhirLoader.BulkImport
-pr:
-  branches:
-    include:
-      - main
-  paths:
-    include:
-      - src/FhirLoader.BulkImport
+
+# Trigger is overridden in azdo pipeline configuration.
+trigger: none
 
 parameters:
   - name: targetBuildFramework
