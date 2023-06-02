@@ -16,20 +16,20 @@ steps:
       Write-Host '----------GitVersion Converted JSON ----------'
       Write-Host $gitVersionJson
 
-      Write-Host "##vso[task.setvariable variable=semVer]$($gitVersionJson.semVer)"
-      Write-Host "##vso[task.setvariable variable=informationalVersion;isOutput=true]$($gitVersionJson.informationalVersion)"
-      Write-Host "##vso[task.setvariable variable=majorMinorPatch;isOutput=true]$($gitVersionJson.majorMinorPatch)"
-      Write-Host "##vso[task.setvariable variable=nuGetVersion;isOutput=true]$($gitVersionJson.semVer)"
-      Write-Host "##vso[task.setvariable variable=assemblySemVer;isOutput=true]$($gitVersionJson.assemblySemVer)"
-      Write-Host "##vso[task.setvariable variable=assemblySemFileVer;isOutput=true]$($gitVersionJson.assemblySemFileVer)"
-      Write-Host "##vso[build.updatebuildnumber]$($gitVersionJson.semVer)"
+      Write-Host "##vso[task.setvariable variable=semVer]$($gitVersionJson.SemVer;isOutput=true)"
+      Write-Host "##vso[task.setvariable variable=InformationalVersion;isOutput=true]$($gitVersionJson.InformationalVersion)"
+      Write-Host "##vso[task.setvariable variable=MajorMinorPatch;isOutput=true]$($gitVersionJson.MajorMinorPatch)"
+      Write-Host "##vso[task.setvariable variable=NuGetVersion;isOutput=true]$($gitVersionJson.SemVer)"
+      Write-Host "##vso[task.setvariable variable=AssemblySemVer;isOutput=true]$($gitVersionJson.AssemblySemVer)"
+      Write-Host "##vso[task.setvariable variable=AssemblySemFileVer;isOutput=true]$($gitVersionJson.AssemblySemFileVer)"
+      Write-Host "##vso[Build.UpdateBuildNumber]$($gitVersionJson.SemVer)"
     name: SetVariablesFromGitVersion
 
   - powershell: |
       Write-Host '----------Variables to use for build----------'
-      Write-Host 'semVer: $(semVer)'
-      Write-Host 'majorMinorPatch: $(majorMinorPatch)'
-      Write-Host 'assemblySemVer: $(assemblySemVer)'
-      Write-Host 'assemblySemFileVer: $(assemblySemFileVer)'
-      Write-Host 'informationalVersion: $(informationalVersion)'
+      Write-Host 'semVer: $(SetVariablesFromGitVersion.SemVer)'
+      Write-Host 'majorMinorPatch: $(SetVariablesFromGitVersion.MajorMinorPatch)'
+      Write-Host 'assemblySemVer: $(SetVariablesFromGitVersion.AssemblySemVer)'
+      Write-Host 'assemblySemFileVer: $(SetVariablesFromGitVersion.AssemblySemFileVer)'
+      Write-Host 'informationalVersion: $(SetVariablesFromGitVersion.InformationalVersion)'
     name: PrintVariablesFromGitVersion

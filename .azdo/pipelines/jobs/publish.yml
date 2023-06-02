@@ -7,7 +7,7 @@ steps:
   - task: DotNetCoreCLI@2
     inputs:
       command: publish
-      arguments: '--configuration Release --output "$(Build.ArtifactStagingDirectory)/$(PackageArtifactName)/$(majorMinorPatch)" --no-build --version-suffix $(build.buildNumber)'
+      arguments: '--configuration Release --output "$(Build.ArtifactStagingDirectory)/$(PackageArtifactName)/$(SetVariablesFromGitVersion.MajorMinorPatch)" --no-build --version-suffix $(Build.BuildNumber)'
       projects: $(SourceProjectsString)
       publishWebProjects: false
       modifyOutputPath: false
@@ -16,6 +16,6 @@ steps:
   - task: PublishPipelineArtifact@1
     displayName: Publish Package Artifact
     inputs:
-      targetPath: "$(Build.ArtifactStagingDirectory)/$(PackageArtifactName)/${{ parameters.Version }}"
+      targetPath: "$(Build.ArtifactStagingDirectory)/$(PackageArtifactName)/$(SetVariablesFromGitVersion.MajorMinorPatch)"
       artifactName: $(PackageArtifactName)
       artifactType: 'pipeline'
