@@ -4,9 +4,8 @@ parameters:
 - name: PackageArtifactName
 - name: Version
 - name: VersionSuffix
-
-variables:
-  publishOutput: ${{ format('$(Build.ArtifactStagingDirectory)/{0}/{1}', parameters.PackageArtifactName, parameters.Version) }}
+- name: publishOutput
+  default: ${{ format('$(Build.ArtifactStagingDirectory)/{0}/{1}', parameters.PackageArtifactName, parameters.Version) }}
 
 steps:
   - task: UseDotNet@2
