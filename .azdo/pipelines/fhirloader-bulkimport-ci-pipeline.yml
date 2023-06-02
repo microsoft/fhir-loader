@@ -47,6 +47,9 @@ stages:
         vmImage: ${{ variables.WindowsVmImage }}
       steps:
       - template: ./jobs/checkCode.yml
+        parameters:
+          - DotNetVersion: '7.0.x'
+            ProjectName: 'FhirLoader.BulkImport'
 
     - job: BuildTestPublish
       pool:
