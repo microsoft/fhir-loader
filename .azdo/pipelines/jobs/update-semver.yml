@@ -6,7 +6,12 @@ steps:
   - powershell: |
       dotnet tool install --global GitVersion.Tool
 
-      $gitVersionJson = Invoke-Expression 'dotnet-gitversion /config $(GitVersionFilePath)'  | ConvertFrom-Json
+      $gitVersionString = Invoke-Expression 'dotnet-gitversion /output json /config $(GitVersionFilePath)'
+
+      Write-Host '----------Output from GitVersion----------'
+      Write-Host $gitVersionString
+
+      $gitVersionJson = $gitVersionString | ConvertFrom-Json -Depth 1
 
       Write-Host "##vso[task.setvariable variable=semVer]$($gitVersionJson.semVer)"
       Write-Host "##vso[task.setvariable variable=informationalVersion;isOutput=true]$($gitVersionJson.informationalVersion)"
