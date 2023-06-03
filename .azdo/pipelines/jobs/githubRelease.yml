@@ -22,4 +22,4 @@ steps:
       title: '$(ReleasePrefix) $(Version)'
       isPreRelease: false
       assets: |
-        '$(Pipeline.Workspace)/$(PackageArtifactName).zip'
+        '$(Build.ArtifactStagingDirectory)/$(PackageArtifactName).zip'

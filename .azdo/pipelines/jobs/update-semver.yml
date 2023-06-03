@@ -31,10 +31,10 @@ steps:
 
   - powershell: |
       Write-Host '----------Variables to use for build----------'
-      Write-Host 'semVer: $(SetVariablesFromGitVersion.SemVer)'
-      Write-Host 'majorMinorPatch: $(SetVariablesFromGitVersion.MajorMinorPatch)'
-      Write-Host 'assemblySemVer: $(SetVariablesFromGitVersion.AssemblySemVer)'
-      Write-Host 'assemblySemFileVer: $(SetVariablesFromGitVersion.AssemblySemFileVer)'
-      Write-Host 'informationalVersion: $(SetVariablesFromGitVersion.InformationalVersion)'
+      Write-Host 'SetVariablesFromGitVersion.SemVer: $(SetVariablesFromGitVersion.SemVer)'
+      Write-Host 'SetVariablesFromGitVersion.MajorMinorPatch: $(SetVariablesFromGitVersion.MajorMinorPatch)'
+      Write-Host 'SetVariablesFromGitVersion.AssemblySemVer: $(SetVariablesFromGitVersion.AssemblySemVer)'
+      Write-Host 'SetVariablesFromGitVersion.AssemblySemFileVer: $(SetVariablesFromGitVersion.AssemblySemFileVer)'
+      Write-Host 'SetVariablesFromGitVersion.InformationalVersion: $(SetVariablesFromGitVersion.InformationalVersion)'
     name: PrintVariablesFromGitVersion
     displayName: "Print Variables from GitVersion"
