@@ -33,7 +33,7 @@ steps:
       # Delete local latest tag
       git tag -d $(LatestTag)
       # Tag this release as latest
-      git tag $(LatestTag) release/$(ReleasePrefix)-v$(Version)
+      git tag $(LatestTag) $(ReleasePrefix)-v$(Version)
       # Delete remote latest tag
       git push --delete origin $(LatestTag)
       # Push latest tag
