@@ -14,13 +14,18 @@ steps:
       archiveType: 'zip' # 'zip' | '7z' | 'tar' | 'wim'. Required. Archive type. Default: zip.
       archiveFile: '$(Build.ArtifactStagingDirectory)/$(PackageArtifactName).zip' # string. Required. Archive file to create. Default: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip.
 
+  - powershell: |
+      $lowercaseVar = "$(ReleasePrefix)".ToLower()
+      Write-Host "##vso[task.setvariable variable=AzdoPackageName;]$lowercaseVar"
+    displayName: 'Create Azure Devops compatible package name'
+
   - task: UniversalPackages@0
     displayName: Publish to Azure Artifacts
     inputs:
       command: publish
       publishDirectory: '$(Pipeline.Workspace)/$(PackageArtifactName)/'
       vstsFeedPublish: 'AppliedOpenSourceTools/FhirLoader'
-      vstsFeedPackagePublish: '$[lower(variables.ReleasePrefix)]'
+      vstsFeedPackagePublish: '$(AzdoPackageName)'
       versionOption: custom
       versionPublish: '$(Version)'
 
