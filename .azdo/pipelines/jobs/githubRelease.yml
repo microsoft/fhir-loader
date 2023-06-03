@@ -15,9 +15,11 @@ steps:
       archiveFile: '$(Build.ArtifactStagingDirectory)/$(PackageArtifactName).zip' # string. Required. Archive file to create. Default: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip.
 
   - powershell: |
-      $lowercaseVar = "$(ReleasePrefix)".ToLower()
-      Write-Host "##vso[task.setvariable variable=AzdoPackageName;]$lowercaseVar"
-    displayName: 'Create Azure Devops compatible package name'
+      $lowerCaseReleasePrefix = "$(ReleasePrefix)".ToLower()
+      $lowerCaseVersion = "$(Version)".ToLower()
+      Write-Host "##vso[task.setvariable variable=AzdoPackageName;]$lowerCaseReleasePrefix"
+      Write-Host "##vso[task.setvariable variable=AzdoVersion;]$lowerCaseVersion"
+    displayName: 'Create Azure Devops compatible package name and version.'
 
   - task: UniversalPackages@0
     displayName: Publish to Azure Artifacts
@@ -27,7 +29,7 @@ steps:
       vstsFeedPublish: 'AppliedOpenSourceTools/FhirLoader'
       vstsFeedPackagePublish: '$(AzdoPackageName)'
       versionOption: custom
-      versionPublish: '$(Version)'
+      versionPublish: '$(AzdoVersion)'
 
   - task: GithubRelease@1 
     displayName: 'Create GitHub Release'
