@@ -14,6 +14,16 @@ steps:
       archiveType: 'zip' # 'zip' | '7z' | 'tar' | 'wim'. Required. Archive type. Default: zip.
       archiveFile: '$(Build.ArtifactStagingDirectory)/$(PackageArtifactName).zip' # string. Required. Archive file to create. Default: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip.
 
+  - task: UniversalPackages@0
+    displayName: Publish to Azure Artifacts
+    inputs:
+      command: publish
+      publishDirectory: '$(Pipeline.Workspace)/$(PackageArtifactName)/'
+      vstsFeedPublish: 'AppliedOpenSourceTools/FhirLoader'
+      vstsFeedPackagePublish: '$[lower(variables.BulkImportFunction)]'
+      versionOption: custom
+      versionPublish: '$(Version)'
+
   - task: GithubRelease@1 
     displayName: 'Create GitHub Release'
     inputs:
@@ -29,13 +39,3 @@ steps:
         $(Build.ArtifactStagingDirectory)/$(PackageArtifactName).zip
 
   # - script: echo "##vso[task.setvariable variable=PackageReadme]$(cat $(Build.Repository.LocalPath)/deployment/dp)"
-
-  - task: UniversalPackages@0
-    displayName: Publish a Universal Package
-    inputs:
-      command: publish
-      publishDirectory: '$(Pipeline.Workspace)/$(PackageArtifactName)/'
-      vstsFeedPublish: 'AppliedOpenSourceTools/FhirLoader'
-      vstsFeedPackagePublish: '$(PackageArtifactName)'
-      versionOption: custom
-      versionPublish: '$(Version)'
