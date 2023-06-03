@@ -13,3 +13,4 @@ variables:
   PackageArtifactName: 'FhirLoader.BulkImport'
   RepositoryName: 'microsoft/fhir-loader'
   ReleasePrefix: 'BulkImport'
+  LatestTag: 'latest/BulkImport'
