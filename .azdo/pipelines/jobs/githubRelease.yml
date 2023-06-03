@@ -20,7 +20,7 @@ steps:
       command: publish
       publishDirectory: '$(Pipeline.Workspace)/$(PackageArtifactName)/'
       vstsFeedPublish: 'AppliedOpenSourceTools/FhirLoader'
-      vstsFeedPackagePublish: $[ lower(variables['BulkImportFunction']) ]
+      vstsFeedPackagePublish: $[lower(variables['ReleasePrefix'])]
       versionOption: custom
       versionPublish: '$(Version)'
 
