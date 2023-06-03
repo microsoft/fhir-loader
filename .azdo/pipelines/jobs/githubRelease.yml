@@ -28,14 +28,14 @@ steps:
       assets: |
         $(Build.ArtifactStagingDirectory)/$(PackageArtifactName).zip
 
-  - powershell: |
-      git pull
-      # Delete local latest tag
-      git tag -d $(LatestTag)
-      # Tag this release as latest
-      git tag $(LatestTag) $(ReleasePrefix)-v$(Version)
-      # Delete remote latest tag
-      git push --delete origin $(LatestTag)
-      # Push latest tag
-      git push origin $(LatestTag)
-    displayName: "Update latest git tag"
+  # - script: echo "##vso[task.setvariable variable=PackageReadme]$(cat $(Build.Repository.LocalPath)/deployment/dp)"
+
+  - task: UniversalPackages@0
+    displayName: Publish a Universal Package
+    inputs:
+      command: publish
+      publishDirectory: '$(Pipeline.Workspace)/$(PackageArtifactName)/'
+      vstsFeedPublish: 'AppliedOpenSourceTools/FhirLoader'
+      vstsFeedPackagePublish: '$(PackageArtifactName)'
+      versionOption: custom
+      versionPublish: '$(Version)'
