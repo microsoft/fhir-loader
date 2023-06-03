@@ -1,0 +1,18 @@
+steps:
+  - task: UseDotNet@2
+    inputs:
+      version: $(DotNetVersion)
+
+  - task: RoslynAnalyzers@3
+    inputs:
+      userProvideBuildInfo: "msBuildInfo"
+      msBuildArchitecture: "DotNetCore"
+      msBuildCommandline: 'C:\hostedtoolcache\windows\dotnet\dotnet.exe build $(Build.SourcesDirectory)\$(SolutionName)'
+    displayName: "Run code checks"
+
+  - task: CredScan@3
+    inputs:
+      outputFormat: "csv"
+      toolVersion: Latest
+      verboseOutput: true
+    displayName: "Run CredScan"

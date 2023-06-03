@@ -1,0 +1,12 @@
+{
+  "index-version": 1,
+  "files": [    
+    {
+      "filename": "ValueSet-us-core-discharge-disposition.json",
+      "resourceType": "ValueSet",
+      "id": "us-core-discharge-disposition",
+      "url": "http://hl7.org/fhir/us/core/ValueSet/us-core-discharge-disposition",
+      "version": "4.1.0"
+    }
+  ]
+}

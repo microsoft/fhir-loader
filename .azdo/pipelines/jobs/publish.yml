@@ -1,0 +1,21 @@
+steps:
+  - task: UseDotNet@2
+    inputs:
+      version: $(DotNetVersion)
+
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: publish
+      arguments: '--configuration Release --output "$(Build.ArtifactStagingDirectory)/$(PackageArtifactName)/$(SetVariablesFromGitVersion.MajorMinorPatch)" --no-build --version-suffix $(Build.BuildNumber)'
+      projects: $(SourceProjectsString)
+      publishWebProjects: false
+      modifyOutputPath: false
+      zipAfterPublish: false
+    displayName: "Run dotnet publish"
+
+  - task: PublishPipelineArtifact@1
+    displayName: "Publish pipeline artifact: publish output"
+    inputs:
+      targetPath: "$(Build.ArtifactStagingDirectory)/$(PackageArtifactName)/$(SetVariablesFromGitVersion.MajorMinorPatch)"
+      artifactName: $(PackageArtifactName)
+      artifactType: 'pipeline'

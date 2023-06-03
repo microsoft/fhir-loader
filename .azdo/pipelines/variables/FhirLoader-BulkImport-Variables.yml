@@ -1,0 +1,16 @@
+# DESCRIPTION: 
+# Variables used during builds.
+
+variables:
+  BuildConfiguration: 'Release' 
+  VmImage: 'ubuntu-latest'
+  WindowsVmImage: 'windows-latest'
+  DotNetVersion: '7.0.x'
+  GitVersionFilePath: './src/FhirLoader.BulkImport/GitVersion.BulkImport.yml'
+  SolutionName: 'FhirLoader.sln'
+  SourceProjectsString: '**/FhirLoader.BulkImport.csproj'
+  TestProjectsString: ''
+  PackageArtifactName: 'FhirLoader.BulkImportFunction'
+  RepositoryName: 'microsoft/fhir-loader'
+  ReleasePrefix: 'BulkImportFunction'
+  LatestTag: 'latest/BulkImport'

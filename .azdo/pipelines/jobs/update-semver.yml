@@ -1,0 +1,40 @@
+steps:
+  - checkout: self
+    fetchDepth: 0
+
+  - task: UseDotNet@2
+    inputs:
+      version: $(DotNetVersion)
+
+  - powershell: |
+      dotnet tool install --global GitVersion.Tool
+
+      $gitVersionString = Invoke-Expression 'dotnet-gitversion /output json /config $(GitVersionFilePath)'
+
+      Write-Host '----------Output from GitVersion----------'
+      Write-Host $gitVersionString
+
+      $gitVersionJson = $gitVersionString | ConvertFrom-Json
+
+      Write-Host '----------GitVersion Converted JSON ----------'
+      Write-Host $gitVersionJson
+
+      Write-Host "##vso[task.setvariable variable=SemVer;isOutput=true]$($gitVersionJson.SemVer)"
+      Write-Host "##vso[task.setvariable variable=InformationalVersion;isOutput=true]$($gitVersionJson.InformationalVersion)"
+      Write-Host "##vso[task.setvariable variable=MajorMinorPatch;isOutput=true]$($gitVersionJson.MajorMinorPatch)"
+      Write-Host "##vso[task.setvariable variable=NuGetVersion;isOutput=true]$($gitVersionJson.SemVer)"
+      Write-Host "##vso[task.setvariable variable=AssemblySemVer;isOutput=true]$($gitVersionJson.AssemblySemVer)"
+      Write-Host "##vso[task.setvariable variable=AssemblySemFileVer;isOutput=true]$($gitVersionJson.AssemblySemFileVer)"
+      Write-Host "##vso[Build.UpdateBuildNumber]$($gitVersionJson.SemVer)"
+    name: SetVariablesFromGitVersion
+    displayName: "Set Variables from GitVersion"
+
+  - powershell: |
+      Write-Host '----------Variables to use for build----------'
+      Write-Host 'SetVariablesFromGitVersion.SemVer: $(SetVariablesFromGitVersion.SemVer)'
+      Write-Host 'SetVariablesFromGitVersion.MajorMinorPatch: $(SetVariablesFromGitVersion.MajorMinorPatch)'
+      Write-Host 'SetVariablesFromGitVersion.AssemblySemVer: $(SetVariablesFromGitVersion.AssemblySemVer)'
+      Write-Host 'SetVariablesFromGitVersion.AssemblySemFileVer: $(SetVariablesFromGitVersion.AssemblySemFileVer)'
+      Write-Host 'SetVariablesFromGitVersion.InformationalVersion: $(SetVariablesFromGitVersion.InformationalVersion)'
+    name: PrintVariablesFromGitVersion
+    displayName: "Print Variables from GitVersion"

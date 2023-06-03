@@ -1,0 +1,46 @@
+{
+  "index-version": 1,
+  "files": [
+    {
+      "filename": "CapabilityStatement-us-core-client.json",
+      "resourceType": "CapabilityStatement",
+      "id": "us-core-client",
+      "url": "http://hl7.org/fhir/us/core/CapabilityStatement/us-core-client",
+      "version": "4.1.0",
+      "kind": "requirements"
+    },
+    {
+      "filename": "SearchParameter-us-core-allergyintolerance-clinical-status.json",
+      "resourceType": "SearchParameter",
+      "id": "us-core-allergyintolerance-clinical-status",
+      "url": "http://hl7.org/fhir/us/core/SearchParameter/us-core-allergyintolerance-clinical-status",
+      "version": "4.1.0",
+      "type": "token"
+    },
+    {
+      "filename": "SearchParameter-EnrollmentRequest-patient.json",
+      "resourceType": "SearchParameter",
+      "id": "EnrollmentRequest-patient",
+      "url": "http://hl7.org/fhir/SearchParameter/conformance-name",
+      "version": "4.1.0",
+      "type": "token"
+    },
+
+    {
+      "filename": "StructureDefinition-head-occipital-frontal-circumference-percentile.json",
+      "resourceType": "StructureDefinition",
+      "id": "head-occipital-frontal-circumference-percentile",
+      "url": "http://hl7.org/fhir/us/core/StructureDefinition/head-occipital-frontal-circumference-percentile",
+      "version": "4.1.0",
+      "kind": "resource",
+      "type": "Observation"
+    },
+    {
+      "filename": "ValueSet-birthsex.json",
+      "resourceType": "ValueSet",
+      "id": "birthsex",
+      "url": "http://hl7.org/fhir/us/core/ValueSet/birthsex",
+      "version": "4.1.0"
+    }
+  ]
+}
