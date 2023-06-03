@@ -37,7 +37,7 @@ stages:
   - stage: PublishGithubRelease
     # Only run for commits to the main branch. Run automatically.
     #condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-    dependsOn: BuildTestPublish
+    dependsOn: CheckBuildTestPublish
     variables:
       Version: $[stageDependencies.CheckBuildTestPublish.BuildTestPublish.outputs['SetVariablesFromGitVersion.SemVer']]
     jobs:
