@@ -1,0 +1,48 @@
+# DESCRIPTION: 	
+# Builds and tests projects in the repository
+
+name: $(SourceBranchName)-$(Date:yyyyMMdd)$(Rev:-r)
+
+# Trigger is overridden in azdo pipeline configuration.
+trigger: none
+
+variables:
+  - template: ./variables/FhirLoader-BulkImport-Variables.yml
+
+stages:
+  # Run for PRs and check-ins to the main branch. Run automatically.
+  - stage: CheckBuildTestPublish
+
+    jobs:
+    - job: CodeChecks
+      pool:
+        vmImage: ${{ variables.WindowsVmImage }}
+      steps:
+      - template: ./jobs/checkCode.yml
+        parameters:
+          DotNetVersion: ${{ variables.DotNetVersion }}
+          SolutionName: ${{ variables.SolutionName }}
+
+    - job: BuildTestPublish
+      pool:
+        vmImage: ${{ variables.WindowsVmImage }}
+      steps:
+      - template: ./jobs/update-semver.yml
+      - template: ./jobs/build.yml
+        parameters:
+          RunUnitTest: false
+          RunComponentGovernance: false
+      - template: ./jobs/publish.yml
+
+  - stage: PublishGithubRelease
+    # Only run for commits to the main branch. Run automatically.
+    #condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    dependsOn: CheckBuildTestPublish
+    variables:
+      Version: $[stageDependencies.CheckBuildTestPublish.BuildTestPublish.outputs['SetVariablesFromGitVersion.SemVer']]
+    jobs:
+      - job: CreateGitHubRelease
+        pool:
+          vmImage: ${{ variables.VmImage }}
+        steps:
+        - template: ./jobs/githubRelease.yml

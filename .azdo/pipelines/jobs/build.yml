@@ -1,0 +1,35 @@
+parameters:
+  - name: RunUnitTest
+    default: true
+  - name: RunComponentGovernance
+    default: false
+
+steps:
+  - task: UseDotNet@2
+    inputs:
+      version: $(DotNetVersion)
+
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: "build"
+      arguments: '--configuration $(BuildConfiguration) --no-incremental -p:ContinuousIntegrationBuild=true -p:AssemblyVersion="$(SetVariablesFromGitVersion.AssemblySemVer)" -p:FileVersion="$(SetVariablesFromGitVersion.AssemblySemFileVer)" -p:InformationalVersion="$(SetVariablesFromGitVersion.InformationalVersion)" -p:Version="$(SetVariablesFromGitVersion.MajorMinorPatch)" -warnaserror'
+      projects: $(SourceProjectsString)
+    displayName: "Build Source Projects"
+
+  - ${{ if eq(parameters.RunComponentGovernance, 'true') }}:
+      - task: RunComponentGovernanceComponentDetection@0
+        inputs:
+          scanType: "Register"
+          verbosity: "Verbose"
+          alertWarningLevel: "High"
+          failOnAlert: true
+        displayName: "Run component governance"
+
+  - ${{ if eq(parameters.RunUnitTest, 'true') }}:
+      - task: DotNetCoreCLI@2
+        inputs:
+          command: "test"
+          arguments: "--no-build --configuration $(BuildConfiguration)"
+          publishTestResults: true
+          projects: $(TestProjectsString)
+        displayName: "Run all tests"

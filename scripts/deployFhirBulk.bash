@@ -112,7 +112,7 @@ declare deployPrefix=""
 declare stepresult=""
 declare bulkAppName=""
 declare option=""
-declare defOption="proxy"
+declare defOption="fhir"
 declare defsubscriptionId=""
 declare subscriptionId=""
 declare resourceGroupName=""
@@ -151,7 +151,7 @@ function intro {
 	#
 	echo " "
 	echo "FHIR-Loader Bulk Import and Export Application installation script... "
-	echo " - Prerequisite:  Azure API for FHIR or FHIR Server must be installed"
+	echo " - Prerequisite:  Azure Health Data Services FHIR Service, Azure API for FHIR, or FHIR Server must be installed"
 	echo " - Prerequisite:  Client Application connection information for FHIR Service"
 	echo " - Prerequisite:  A Keyvault service"
 	echo " "
@@ -713,7 +713,7 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 
 	# Deploy Function Application code
 	echo "Deploying FHIR Bulk Loader & Export App from source repo to ["$bulkAppName"]...  note - this can take a while"
-	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $bulkAppName --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
+	stepresult=$(retry az functionapp deployment source config --branch fhir-loader-cli --manual-integration --name $bulkAppName --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 
 	sleep 30	
 	#---

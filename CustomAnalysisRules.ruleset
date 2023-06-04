@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Place rules in this file that apply to ONLY the application projects.
+-->
+<RuleSet Name="FHIR Loader Analysis Rules" Description="The code analysis rules used for the FHIR Loader C# source projects." ToolsVersion="16.0">
+  <Include Path="minimumrecommendedrules.ruleset" Action="Default" />
+  <Include Path="securityrules.ruleset" Action="Default" />
+  <Rules AnalyzerId="Microsoft.CodeAnalysis.CSharp.Features" RuleNamespace="Microsoft.CodeAnalysis.CSharp.Features">
+    <!-- Do not allow this prefix for local fields when not needed. -->
+    <Rule Id="IDE0003" Action="Warning" />
+    <!-- Remove unnecessary cast. -->
+    <Rule Id="IDE0004" Action="Warning" />
+    <!-- Remove unnecessary import. -->
+    <Rule Id="IDE0005" Action="Warning" />
+    <!-- Allow lambdas vs local functions. -->
+    <Rule Id="IDE0039" Action="None" />
+    <!-- Prefer to use the conditional coalescing operator (?.) when invoking a lambda expression. -->
+    <Rule Id="IDE1005" Action="Warning" />
+  </Rules>
+  <Rules AnalyzerId="Microsoft.CodeAnalysis.NetAnalyzers" RuleNamespace="Microsoft.CodeAnalysis.NetAnalyzers">
+    <!-- Enums should have zero value. -->
+    <Rule Id="CA1008" Action="Info" />
+    <!-- Mark assemblies with CLSCompliantAttribute. -->
+    <Rule Id="CA1014" Action="Info" />
+    <!-- Define accessors for attribute arguments. -->
+    <Rule Id="CA1019" Action="Info" />
+    <!-- Do not catch general exception types. -->
+    <Rule Id="CA1031" Action="Info" />
+    <!-- Validate arguments of public methods. -->
+    <Rule Id="CA1062" Action="Info" />
+    <!-- Avoid dead conditional code. -->
+    <Rule Id="CA1508" Action="Info" />
+    <!-- Do not initialize unnecessarily. -->
+    <Rule Id="CA1805" Action="Info" />
+  </Rules>
+  <Rules AnalyzerId="Microsoft.CodeQuality.Analyzers" RuleNamespace="Microsoft.CodeQuality.Analyzers">
+    <!-- Uri parameters should not be strings. -->
+    <Rule Id="CA1054" Action="Info" />
+    <!-- Identifiers should not match keywords. -->
+    <Rule Id="CA1716" Action="Info" />
+    <!-- Destable rule enforcing calling ConfigureAwait on the awaited task. -->
+    <Rule Id="CA2007" Action="None" />
+  </Rules>
+  <Rules AnalyzerId="Microsoft.CodeQuality.CSharp.Analyzers" RuleNamespace="Microsoft.CodeQuality.CSharp.Analyzers">
+    <!-- Implement standard exception constructors. -->
+    <Rule Id="CA1032" Action="Info" />
+  </Rules>
+  <Rules AnalyzerId="Microsoft.NetCore.Analyzers" RuleNamespace="Microsoft.NetCore.Analyzers">
+    <!-- Specify StringComparison. -->
+    <Rule Id="CA1305" Action="Info" />
+    <!-- Disable rule normalizing strings to uppercase. -->
+    <Rule Id="CA1308" Action="None" />
+  </Rules>
+  <Rules AnalyzerId="StyleCop.Analyzers" RuleNamespace="StyleCop.Analyzers">
+    <!-- XML comment analysis is disabled. -->
+    <Rule Id="SA0001" Action="None" />
+    <!-- Disable rule forcing this for local class or base class elements. -->
+    <Rule Id="SA1101" Action="None" />
+    <!-- Disable rule not allowing comments inside an if statement vs outside. -->
+    <Rule Id="SA1108" Action="None" />
+    <!-- Disable rule not allowing for C# regions. -->
+    <Rule Id="SA1124" Action="None" />
+    <!-- Disable rule forcing using directives inside namespaces -->
+    <Rule Id="SA1200" Action="None" />
+    <!-- Allow prefixes of s_ or m_ -->
+    <Rule Id="SA1308" Action="None" />
+    <!-- Disable rule not allowing field names to begin with an underscore. -->
+    <Rule Id="SA1309" Action="None" />
+    <!-- Disable rule suggesting static fields to start with capital. -->
+    <Rule Id="SA1311" Action="None" />
+    <!-- Disable rule checking for comments on all elments. -->
+    <Rule Id="SA1600" Action="None" />
+    <!-- Disable rule checking return element comment. -->
+    <Rule Id="SA1615" Action="None" />
+    <!-- Disable rule enforcing comment style on elements like properties. -->
+    <Rule Id="SA1623" Action="None" />
+    <!-- Disable rule enforcing periods at the end of comments. -->
+    <Rule Id="SA1629" Action="None" />
+    <!-- Disable rule enforcing constructor comments. -->
+    <Rule Id="SA1642" Action="None" />
+    <!-- Disable rule enforcing XML comment output. -->
+    <Rule Id="SA1652" Action="None" />
+  </Rules>
+</RuleSet>

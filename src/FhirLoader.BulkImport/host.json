@@ -1,0 +1,26 @@
+{
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": false
+      }
+    }
+  },
+  "extensions": {
+    "http": {
+      "routePrefix": ""
+    },
+    "queues": {
+      "visibilityTimeout": "00:00:10"
+    },
+    "durableTask": {
+      "storageProvider": {
+        "partitionCount": 3
+      },
+      "extendedSessionsEnabled": true,
+      "extendedSessionIdleTimeoutInSeconds": 30
+    }
+
+  }
+}
