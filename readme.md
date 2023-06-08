@@ -31,6 +31,18 @@ _Larger image [here](./docs/images/architecture/install-components.png)_
 ![install-componenents-small](./docs/images/architecture/install-components-small.png)
 
 ## Deployment
+
+### Portal Deployment
+
+To quickly deploy the FHIR Bulk Loader, you can use the Azure deployment below. This deployment method provides simple configuration.
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fadd-deployment-ui%2Fscripts%2FfhirBulkImport.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fadd-deployment-ui%2Fscripts%2FcreateUiDefinition.json)
+
+
+### CLI Deployment
+
+For a more configurable deployment, you can use the script deployment. Follow the steps below or check out the [deployment guide here](/docs/BulkImport/deployment.md) for more information. 
+
 1. [Open Azure Cloud Shell](https://shell.azure.com) - you can also access this from [Azure Portal](https://portal.azure.com)
 2. Select Bash Shell for the environment 
 3. Clone this repo
