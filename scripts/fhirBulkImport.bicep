@@ -38,11 +38,13 @@ param fhirAudience string = ''
 @description('Automatically create a role assignment for the function app to access the FHIR service.')
 param createRoleAssignment bool = true
 
+@description('The Bulk Loader function app needs to access the FHIR service. This is the role assignment ID to use.')
+param fhirContributorRoleAssignmentId string = '5a1fc7df-4bf1-4951-a576-89034ee01acd'
+
 @description('Transform transaction bundles to batch budles.')
 param transformTransactionBundles bool = false
 
-@description('FHIR Bulk Import package to laod into the function app.')
-var packageUrl = 'https://github.com/microsoft/fhir-loader/releases/latest/download/FhirLoader.BulkFunction.zip'
+var repoUrl = 'https://github.com/microsoft/fhir-loader/'
 
 var fhirUrl = fhirType == 'FhirService' ? 'https://${replace(fhirServiceName, '/', '-')}.fhir.azurehealthcareapis.com' : fhirType == 'APIforFhir' ? 'https://${apiForFhirName}.azurehealthcareapis.com' : fhirServerUrl
 
@@ -145,6 +147,14 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
 
   tags: appTags
 
+  resource config 'config' = {
+    name: 'web'
+    properties: {
+      ftpsState: 'Disabled'
+      minTlsVersion: '1.2'
+    }
+  }
+
   resource ftpPublishingPolicy 'basicPublishingCredentialsPolicies' = {
     name: 'ftp'
     // Location is needed regardless of the warning.
@@ -168,7 +178,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
 
 var storageAccountConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
 
-resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
+resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'appsettings'
   parent: functionApp
   properties: {
@@ -230,12 +240,52 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
   }
 }
 
-@description('Deploy function app code from package')
-resource functionAppDeployment 'Microsoft.Web/sites/extensions@2020-12-01' = {
-  name: 'MSDeploy'
+@description('Uses source control deploy if requested')
+resource functionAppDeployment 'Microsoft.Web/sites/sourcecontrols@2021-03-01' = {
+  name: 'web'
   parent: functionApp
   properties: {
-    packageUri: packageUrl
+    repoUrl: repoUrl
+    branch: 'main'
+    isManualIntegration: true
+  }
+}
+
+@description('Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes.')
+resource importNDJsonFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
+  name: importNDJsonFunctionName
+  parent: functionApp
+  properties: {
+    config: {
+      disabled: false
+      bindings: [
+        {
+          type: 'eventGridTrigger'
+          direction: 'in'
+          name: 'blobCreatedEvent'
+        }
+      ]
+    }
+    language: 'CSharp'
+  }
+}
+
+@description('Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes.')
+resource importBundleFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
+  name: importBundleFunctionName
+  parent: functionApp
+  properties: {
+    config: {
+      disabled: false
+      bindings: [
+        {
+          type: 'eventGridTrigger'
+          direction: 'in'
+          name: 'blobCreatedEvent'
+        }
+      ]
+    }
+    language: 'CSharp'
   }
 }
 
@@ -263,8 +313,8 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     }
     eventDeliverySchema: 'EventGridSchema'
   }
-
-  dependsOn: [ functionAppDeployment ]
+o
+  dependsOn: [ functionAppDeployment, importNDJsonFunction ]
 }
 
 @description('Subscription to bundle container')
@@ -294,7 +344,7 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
 
   }
 
-  dependsOn: [ functionAppDeployment ]
+  dependsOn: [ functionAppDeployment, importBundleFunction ]
 }
 
 @description('Monitoring for Function App')
@@ -325,8 +375,7 @@ module functionFhirServiceRoleAssignment './roleAssignment.bicep' = if (fhirType
   name: 'functionFhirServiceRoleAssignment'
   params: {
     resourceId: fhirService.id
-    // FHIR Contributor
-    roleId: '5a1fc7df-4bf1-4951-a576-89034ee01acd'
+    roleId: fhirContributorRoleAssignmentId
     principalId: functionApp.identity.principalId
   }
 }
@@ -336,8 +385,7 @@ module functionApiForFhirRoleAssignment './roleAssignment.bicep' = if (fhirType 
   name: 'bulk-import-function-fhir-managed-id-role-assignment'
   params: {
     resourceId: apiForFhir.id
-    // FHIR Contributor
-    roleId: '5a1fc7df-4bf1-4951-a576-89034ee01acd'
+    roleId: fhirContributorRoleAssignmentId
     principalId: functionApp.identity.principalId
   }
 }
