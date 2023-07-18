@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
+using System.Threading;
 
 namespace FHIRBulkImport
 {
@@ -95,7 +96,24 @@ namespace FHIRBulkImport
                 }
                 CloudBlockBlob sourceBlob = sourceContainer.GetBlockBlobReference(sourceFilePath);
                 CloudBlockBlob destBlob = destContainer.GetBlockBlobReference(destFilePath);
-                await destBlob.StartCopyAsync(sourceBlob);
+                
+                string copyid = await destBlob.StartCopyAsync(sourceBlob);
+                //fetch current attributes
+                await destBlob.FetchAttributesAsync();
+                //waiting for completion
+                int copyretries = 5;
+                while (destBlob.CopyState.Status == CopyStatus.Pending && copyretries > 1)
+                {
+                    await Task.Delay(500);
+                    await destBlob.FetchAttributesAsync();
+                    copyretries--;
+                }
+                if (destBlob.CopyState.Status != CopyStatus.Success)
+                {
+                    log.LogError($"Copy failed file {name} to {destName}!");
+                    await destBlob.AbortCopyAsync(copyid);
+                    return;
+                }
                 await sourceBlob.DeleteAsync();
             }
             catch (Exception e)

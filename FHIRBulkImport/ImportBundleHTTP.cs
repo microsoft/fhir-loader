@@ -22,6 +22,7 @@ namespace FHIRBulkImport
         {
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
         }
+        [Disable("FBI-DISABLE-HTTPEP")]
         [FunctionName("ImportBundleHTTP")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = "importbundle")] HttpRequest req,

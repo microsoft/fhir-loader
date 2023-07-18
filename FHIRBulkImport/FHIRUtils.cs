@@ -11,6 +11,8 @@ using System.Linq;
 using Polly;
 using System.Net;
 using System.Collections.Concurrent;
+using Azure.Core;
+using Google.Protobuf.WellKnownTypes;
 
 namespace FHIRBulkImport
 {
@@ -268,20 +270,18 @@ namespace FHIRBulkImport
                 retVal.Content = await resp.Content.ReadAsStringAsync();
                 retVal.Status = resp.StatusCode;
                 retVal.Success = resp.IsSuccessStatusCode;
+                retVal.ResponseHeaders = resp.Headers.ToDictionary(a => a.Key, a => string.Join(";", a.Value));
                 if (!retVal.Success)
                 {
                     if (string.IsNullOrEmpty(retVal.Content))
                             retVal.Content = resp.ReasonPhrase;
                     if (retVal.Status==System.Net.HttpStatusCode.TooManyRequests)
                     {
-                        IEnumerable<string> values;
-                        resp.Headers.TryGetValues("x-ms-retry-after-ms", out values);
-                        string s_retry = Environment.GetEnvironmentVariable("FBI-DEFAULTRETRY");
-                        if (s_retry == null) s_retry = "500";
-                        var s = values.First();
-                        if (s == null) s = s_retry;
+                        string s_retry = null;
+                        retVal.ResponseHeaders.TryGetValue("x-ms-retry-after-ms", out s_retry);
+                        if (s_retry==null) s_retry = Environment.GetEnvironmentVariable("FBI-DEFAULTRETRY");
                         int i = 0;
-                        if (!int.TryParse(s, out i))
+                        if (!int.TryParse(s_retry, out i))
                         {
                             i = 500;
                         }
@@ -303,5 +303,6 @@ namespace FHIRBulkImport
         public System.Net.HttpStatusCode Status {get;set;}
         public bool Success { get; set; }
         public int RetryAfterMS { get; set; }
+        public Dictionary<string,string> ResponseHeaders { get; set; }
     }
 }

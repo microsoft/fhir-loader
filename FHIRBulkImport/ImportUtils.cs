@@ -176,6 +176,10 @@ namespace FHIRBulkImport
             log.LogInformation($"ImportFHIRBundles:Checking for load errors file {name}");
             JObject retVal = new JObject();
             retVal["id"] = name;
+            string rid = null;
+            response.ResponseHeaders.TryGetValue("X-Request-ID",out rid);
+            if (rid == null) rid = "";
+            retVal["fhirrequestid"] = rid;
             retVal["errors"] = new JArray();
             retVal["throttled"] = new JArray();
             try
