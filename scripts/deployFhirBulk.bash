@@ -69,8 +69,9 @@ declare distribution="distribution/publish.zip"
 declare postmanTemplate="postmantemplate.json"
 
 # FHIR
-declare defAuthType="SP"
+declare defAuthType="MSI"
 declare authType=""
+declare fhirServiceWorkspace=""
 declare fhirServiceUrl=""
 declare fhirServiceClientId=""
 declare fhirServiceClientSecret=""
@@ -90,29 +91,20 @@ declare keyVaultExists=""
 declare useExistingKeyVault=""
 declare createNewKeyVault=""
 declare storeFHIRServiceConfig=""
-declare storeProxyServiceConfig=""
+
 
 # Postman 
-declare proxyAppName=""
 declare fhirServiceUrl=""
 declare fhirServiceClientId=""
 declare fhirServiceClientSecret=""
 declare fhirServiceTenant=""
 declare fhirServiceAudience=""
 
-declare fhirProxySCUrl=""
-declare fhirProxySCResourceId=""
-declare fhirProxySCTenant=""
-declare fhirProxySCClientId=""
-declare fhirProxySCClientSecret=""
-declare fhirProxySCAudience=""
 
 
 declare deployPrefix=""
 declare stepresult=""
 declare bulkAppName=""
-declare option=""
-declare defOption="proxy"
 declare defsubscriptionId=""
 declare subscriptionId=""
 declare resourceGroupName=""
@@ -121,7 +113,6 @@ declare bulkAppName=""
 declare deployPrefix=""
 declare storageConnectionString=""
 declare storesourceid=""
-declare faresourceid=""
 declare stepresult=""
 declare keyVaultName=""
 declare kvexists=""
@@ -134,11 +125,14 @@ declare fsresource=""
 declare fsurl=""
 declare fphost=""
 declare fpclientid=""
-declare useproxy=""
 declare egndjsonresource=""
 declare egbundleresource=""
 declare createkv=""
-
+declare msifhirserverdefault=""
+declare msifhirservername=""
+declare msifhirserverrg=""
+declare msifhirserverrid=""
+declare msirolename="FHIR Data Contributor"
 
 
 
@@ -300,6 +294,12 @@ if [ -z "$subscriptionId" ] || [ -z "$resourceGroupName" ]; then
 	exit 1
 fi
 
+# set the default subscription id
+#
+echo " "
+echo "Setting default subscription id"
+az account set --subscription $subscriptionId
+
 
 # Check if the resource group exists
 #
@@ -353,17 +353,6 @@ if [[ -z "$bulkAppName" ]]; then
 fi
 [[ "${bulkAppName:?}" ]]
 
-# Set the operation mode 
-#
-if [[ -z "$option" ]]; then
-	echo "Do you wish to connect the FHIR Bulk Loader & Export to the FHIR Service (fhir) or FHIR-Proxy (proxy) ["$defOption"]:"
-	read option
-	if [ -z "$option" ] ; then
-		option=$defOption
-	fi
-fi
-[[ "${option:?}" ]]
-
 # Obtain Keyvault Name 
 #
 if [[ -z "$keyVaultName" ]]; then
@@ -384,49 +373,24 @@ if [[ -n "$keyVaultExists" ]]; then
 	echo "  "$keyVaultName" found"
 	echo " "
 	echo "Checking for FHIR Service configuration..."
-	fhirServiceUrl=$(az keyvault secret show --vault-name $keyVaultName --name FS-URL --query "value" --out tsv)
+	fhirServiceUrl=$(az keyvault secret show --vault-name $keyVaultName --name FS-URL --query "value" --out tsv 2>/dev/null)
 	if [ -n "$fhirServiceUrl" ]; then
 		echo "  FHIR Service URL: "$fhirServiceUrl
 
-        fhirResourceId=$(az keyvault secret show --vault-name $keyVaultName --name FS-URL --query "value" --out tsv | awk -F. '{print $1}' | sed -e 's/https\:\/\///g') 
+        fhirResourceId=$(az keyvault secret show --vault-name $keyVaultName --name FS-URL --query "value" --out tsv | awk -F. '{print $1}' | sed -e 's/https\:\/\///g' 2>/dev/null) 
 		echo "  FHIR Service Resource ID: "$fhirResourceId 
 
-		fhirServiceTenant=$(az keyvault secret show --vault-name $keyVaultName --name FS-TENANT-NAME --query "value" --out tsv)
+		fhirServiceTenant=$(az keyvault secret show --vault-name $keyVaultName --name FS-TENANT-NAME --query "value" --out tsv 2>/dev/null)
 		echo "  FHIR Service Tenant ID: "$fhirServiceTenant 
 		
-		fhirServiceClientId=$(az keyvault secret show --vault-name $keyVaultName --name FS-CLIENT-ID --query "value" --out tsv)
+		fhirServiceClientId=$(az keyvault secret show --vault-name $keyVaultName --name FS-CLIENT-ID --query "value" --out tsv 2>/dev/null)
 		echo "  FHIR Service Client ID: "$fhirServiceClientId
 		
-		fhirServiceClientSecret=$(az keyvault secret show --vault-name $keyVaultName --name FS-SECRET --query "value" --out tsv)
+		fhirServiceClientSecret=$(az keyvault secret show --vault-name $keyVaultName --name FS-SECRET --query "value" --out tsv 2>/dev/null)
 		echo "  FHIR Service Client Secret: *****"
 		
-		fhirServiceAudience=$(az keyvault secret show --vault-name $keyVaultName --name FS-RESOURCE --query "value" --out tsv) 
+		fhirServiceAudience=$(az keyvault secret show --vault-name $keyVaultName --name FS-RESOURCE --query "value" --out tsv 2>/dev/null) 
 		echo "  FHIR Service Audience: "$fhirServiceAudience 
-		
-		if [[ "$option" == "proxy" ]] ; then 
-			echo " "
-			echo "Checking for FHIR Proxy configuration..."
-			fhirProxySCUrl=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-URL --query "value" --out tsv)
-			if [ -n "$fhirProxySCUrl" ] ; then 
-				echo "  FHIR Proxy URL: "$fhirProxySCUrl
-				fhirProxySCTenant=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-TENANT-NAME --query "value" --out tsv)
-				echo "  FHIR Proxy Tenant ID: "$fhirProxySCTenant 
-				
-				fhirProxySCClientId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-CLIENT-ID --query "value" --out tsv)
-				echo "  FHIR Proxy Client ID: "$fhirProxySCClientId
-		
-				fhirProxySCClientSecret=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-SECRET --query "value" --out tsv)
-				echo "  FHIR Proxy Client Secret: *****"
-				
-				fhirProxySCResourceId=$(az keyvault secret show --vault-name $keyVaultName --name FP-SC-RESOURCE --query "value" --out tsv) 
-				echo "  FHIR Proxy Resource: "$fhirProxySCResourceId 
-				
-				storeProxyServiceConfig="no" ;
-			else
-				echo "  Unable to read FHIR Proxy Service configuration"
-				storeProxyServiceConfig="yes"
-			fi
-		fi
 		useExistingKeyVault="yes"
 		createNewKeyVault="no"
 		storeFHIRServiceConfig="no"	;
@@ -442,154 +406,130 @@ else
     useExistingKeyVault="no"
     createNewKeyVault="yes"
 fi
-
-
-
-
-# Setup Auth type based on input 
-# 
-if [[ "$createNewKeyVault" == "yes" ]] ; then 
-	if [[ "$option" == "proxy" ]] ; then 
-		if [ -z "$fhirProxySCUrl" ] ; then
-			echo "Creating a new Key Vault requires manual input of FHIR Proxy Service Client Information"
-			echo "  Enter the FHIR Proxy Service URL (aka Endpoint)"
-			read fhirProxySCUrl
-			if [ -z "$fhirProxySCUrl" ] ; then
-				echo "You must provide a FHIR Proxy URL"
-				exit 1;
-			fi
-			[[ "${fhirProxySCUrl:?}" ]]
-		fi
-
-		if [ -z "$fhirProxySCTenant" ] ; then
-			echo "  Enter the FHIR Proxy Service Client - Tenant ID (GUID)"
-			read fhirProxySCTenant
-			if [ -z "$fhirProxySCTenant" ] ; then
-				echo "You must provide a FHIR Proxy Service Client  - Tenant ID (GUID)"
-				exit 1;
-			fi
-			[[ "${fhirProxySCTenant:?}" ]]
-		fi 
-
-		if [ -z "$fhirProxySCClientId" ] ; then 
-			echo "  Enter the FHIR Proxy Service Client ID (GUID)"
-			read fhirProxySCClientId
-			if [ -z "$fhirProxySCClientId" ] ; then
-				echo "You must provide a FHIR Proxy Service Client ID (GUID)"
-				exit 1;
-			fi
-			[[ "${fhirProxySCClientId:?}" ]]
-		fi 
-
-		if [ -z "$fhirProxySCClientSecret" ] ; then 
-			echo "  Enter the FHIR Proxy Service Client Secret"
-			read fhirProxySCClientSecret
-			if [ -z "$fhirProxySCClientSecret" ] ; then
-				echo "You must provide a FHIR Proxy Service Client Secret"
-				exit 1;
-			fi
-			[[ "${fhirProxySCClientSecret:?}" ]]
-		fi 
-
-		if [ -z "$fhirProxySCResourceId" ] ; then 
-			echo "  Enter the FHIR Proxy Service Resource ID (GUID)"
-			read fhirProxySCResourceId
-			if [ -z "$fhirProxySCResourceId" ] ; then
-				echo "You must provide a FHIR Proxy Service Resource ID (GUID)"
-				exit 1;
-			fi
-			[[ "${fhirProxySCResourceId:?}" ]]
-		fi 
-		storeProxyServiceConfig="yes" ;
-	else 	
-		if [ -z "$fhirServiceUrl" ] ; then
-			echo "Creating a new Key Vault requires manual input of FHIR Service Client Information"
-			echo "  Enter the FHIR Service URL (aka Endpoint)"
-			read fhirServiceUrl
-			if [ -z "$fhirServiceUrl" ] ; then
-				echo "You must provide a FHIR Service URL"
-				exit 1;
-			fi
-			[[ "${fhirServiceUrl:?}" ]]
-		fi 
-
-		if [ -z "$fhirServiceTenant" ] ; then
-			echo "  Enter the FHIR Service - Tenant ID (GUID)"
-			read fhirServiceTenant
-			if [ -z "$fhirServiceTenant" ] ; then
-				echo "You must provide a FHIR Service - Tenant ID (GUID)"
-				exit 1;
-			fi
-			[[ "${fhirServiceTenant:?}" ]]
-		fi 
-
-		if [ -z "$fhirServiceClientId" ] ; then 
-			echo "  Enter the FHIR Service - Client ID (GUID)"
-			read fhirServiceClientId
-			if [ -z "$fhirServiceClientId" ] ; then
-				echo "You must provide a FHIR Service - Client ID (GUID)"
-				exit 1;
-			fi
-			[[ "${fhirServiceClientId:?}" ]]
-		fi 
-
-		if [ -z "$fhirServiceClientSecret" ] ; then 
-			echo "  Enter the FHIR Service - Client Secret"
-			read fhirServiceClientSecret
-			if [ -z "$fhirServiceClientSecret" ] ; then
-				echo "You must provide a FHIR Service - Client Secret"
-				exit 1;
-			fi
-			[[ "${fhirServiceClientSecret:?}" ]]
-		fi 
-
-		if [ -z "$fhirServiceAudience" ] ; then 
-			echo "  Enter the FHIR Service - Audience (URL)"
-			read fhirServiceAudience
-			if [ -z "$fhirServiceAudience" ] ; then
-				echo "You must provide a FHIR Service - Audience (URL)"
-				exit 1;
-			fi
-			[[ "${fhirServiceAudience:?}" ]]
-		fi 
-		storeFHIRServiceConfig="yes"
+# Prompt for FHIR Server Parameters if not found in KeyVault
+#
+if [ -z "$fhirServiceUrl" ]; then
+	echo "Enter the destination FHIR Server URL (aka Endpoint):"
+	read fhirServiceUrl
+	if [ -z "$fhirServiceUrl" ] ; then
+		echo "You must provide a destination FHIR Server URL"
+		exit 1 ;
 	fi
 fi
 
+# Setup Auth type based on input 
+# 
+until [[ "$authType" == "MSI" ]] || [[ "$authType" == "SP" ]]; do
+	echo "Which authentication method should be used internally to connect from the fhir-loader to the FHIR Service MSI or SP? ["$defAuthType"]:"
+	read authType
+	if [ -z "$authType" ] ; then
+		authType=$defAuthType
+	fi
+	authType=${authType^^}
+done
+# Setup Auth type based on input 
+# 
+if [[ "$authType" == "SP" ]] ; then 
+	echo "Auth Type is set to Service Principal (SP)"
 
+	if [ -z "$fhirServiceTenant" ] ; then
+		echo "  Enter the FHIR Service - Tenant ID (GUID)"
+		read fhirServiceTenant
+		if [ -z "$fhirServiceTenant" ] ; then
+			echo "You must provide a FHIR Service - Tenant ID (GUID)"
+			exit 1;
+		fi
+	fi 
+	[[ "${fhirServiceTenant:?}" ]]
 
-#------------------------------------------------------------------------------
+	if [ -z "$fhirServiceClientId" ] ; then 
+		echo "  Enter the FHIR Service - SP Client ID (GUID)"
+		read fhirServiceClientId
+		if [ -z "$fhirServiceClientId" ] ; then
+			echo "You must provide a FHIR Service - SP Client ID (GUID)"
+			exit 1;
+		fi
+	fi 
+	[[ "${fhirServiceClientId:?}" ]]
+
+	if [ -z "$fhirServiceClientSecret" ] ; then 
+		echo "  Enter the FHIR Service - SP Client Secret"
+		read fhirServiceClientSecret
+		if [ -z "$fhirServiceClientSecret" ] ; then
+			echo "You must provide a FHIR Service - SP Client Secret"
+			exit 1;
+		fi
+	fi 
+	[[ "${fhirServiceClientSecret:?}" ]]
+
+	if [ -z "$fhirServiceAudience" ] ; then 
+		echo "  Enter the FHIR Service - SP Audience (URL)"
+		read fhirServiceAudience
+		if [ -z "$fhirServiceAudience" ] ; then
+			echo "You must provide a FHIR Service - SP Audience (URL)"
+			exit 1;
+		fi
+	fi 
+	[[ "${fhirServiceAudience:?}" ]]
+else
+		echo "Auth Type is set to Managed Service Identity (MSI)"		
+		echo "Note: API for FHIR or AHDS FHIR Server must be in same tenant as fhir-loader to use MSI..."
+		msifhirserverdefault=${fhirServiceUrl#https://}
+		msifhirserverdefault=${msifhirserverdefault%%.*}
+		if [[ "$fhirServiceUrl" == *".fhir.azurehealthcareapis.com"* ]]; then
+			IFS='-' read -ra Arr <<< "$msifhirserverdefault"
+			fhirServiceWorkspace=${Arr[0]}
+			msifhirservername=""
+			for (( i=1; i<${#Arr[@]}; i++ ));
+			do
+				msifhirservername=$msifhirservername${Arr[$i]}"-"
+			done
+			msifhirservername=${msifhirservername::-1}
+			IFS=$'\n\t'
+			msifhirserverrg=$(az resource list --name $fhirServiceWorkspace/$msifhirservername --resource-type 'Microsoft.HealthcareApis/workspaces/fhirservices' --query "[0].resourceGroup" --output tsv)
+		else 
+			msifhirservername=$msifhirserverdefault
+			msifhirserverrg=$(az resource list --name $msifhirservername --resource-type 'Microsoft.HealthcareApis/services' --query "[0].resourceGroup" --output tsv)
+		fi
+		fhirServiceAudience=${fhirServiceUrl}
+fi
+sptenant=$(az account show --name $subscriptionId --query "tenantId" --out tsv)
+
 # Prompt for final confirmation
 #
 echo "--- "
-echo "Ready to start deployment of FHIR-Bulk Application: ["$bulkAppName"] with the following values:"
-echo "Component Deploy Prefix:............... "$deployPrefix
+echo "Ready to start deployment of FHIR-Bulk Loader Application: ["$bulkAppName"] with the following values:"
 echo "FHIR Service URL:...................... "$fhirServiceUrl
-echo "Connection Method:..................... "$option
+echo "FHIR Service Auth Type:................ "$authType
+if [[ "$authType" == "MSI" ]] ; then
+	echo "  FHIR Server Workspace................ "$fhirServiceWorkspace
+	echo "  FHIR Server Name..................... "$msifhirservername
+	echo "  FHIR Server Resource Group........... "$msifhirserverrg
+fi
 echo "Subscription ID:....................... "$subscriptionId
+echo "Subscription Tenant ID:................ "$sptenant
 echo "Resource Group Name:................... "$resourceGroupName
-echo " Use Existing Resource Group:.......... "$useExistingResourceGroup
-echo " Create New Resource Group:............ "$createNewResourceGroup
+echo "  Use Existing Resource Group:......... "$useExistingResourceGroup
+echo "  Create New Resource Group:........... "$createNewResourceGroup
 echo "Resource Group Location:............... "$resourceGroupLocation 
 echo "KeyVault Name:......................... "$keyVaultName
-echo " Use Existing Key Vault:............... "$useExistingKeyVault
-echo " Create New Key Vault:................. "$createNewKeyVault
+echo "  Use Existing Key Vault:.............. "$useExistingKeyVault
+echo "  Create New Key Vault:................ "$createNewKeyVault
 echo " "
 echo "Please validate the settings above before continuing"
-read -p 'Press Enter to continue, or Ctrl+C to exit'
-
+read -p 'Press Enter to continue, or Ctrl+C to exit...'
 
 #############################################################
 #  Start Setup & Deployment 
 #############################################################
 #
 
-# set the default subscription id
-#
-echo " "
-echo "Setting default subscription id"
-az account set --subscription $subscriptionId
-
+# Set up variables
+if [[ -z "$fhirServiceWorkspace" ]]; then
+	msifhirserverrid="/subscriptions/"$subscriptionId"/resourceGroups/"$msifhirserverrg"/providers/Microsoft.HealthcareApis/services/"$msifhirservername
+else
+	msifhirserverrid="/subscriptions/"$subscriptionId"/resourceGroups/"$msifhirserverrg"/providers/Microsoft.HealthcareApis/workspaces/"$fhirServiceWorkspace"/fhirservices/"$msifhirservername
+fi
 
 echo "Starting Deployments... "
 (
@@ -613,29 +553,24 @@ echo "Starting Deployments... "
         echo "Using Existing Key Vault ["$keyVaultName"]"
     fi
 )
-
-echo "Creating FHIR Bulk Loader & Export Function Application"
+echo "Storing FHIR Service information in KeyVault ["$keyVaultName"]"
 (
-
-	if [[ "$storeFHIRServiceConfig" == "yes" ]] ; then 
-		echo "Storing FHIR Service Values in ["$keyVaultName"]"
-		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-URL" --value $fhirServiceUrl)
+	echo "Storing FHIR Server Information in KeyVault..."
+	stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-URL" --value $fhirServiceUrl)
+	stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-RESOURCE" --value $fhirServiceAudience)
+    if [[ "$authType" == "SP" ]] ; then 
 		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-TENANT-NAME" --value $fhirServiceTenant)
 		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-CLIENT-ID" --value $fhirServiceClientId)
 		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-SECRET" --value $fhirServiceClientSecret)
 		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-CLIENT-SECRET" --value $fhirServiceClientSecret)
-		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-RESOURCE" --value $fhirServiceAudience)
-	fi 
-
-	if [[ "$storeProxyServiceConfig" == "yes" ]] ; then 
-		echo "Storing FHIR Proxy Service Values in ["$keyVaultName"]"
-		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FP-SC-URL" --value $fhirProxySCUrl)
-		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FP-SC-TENANT-NAME" --value $fhirProxySCTenant)
-		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FP-SC-CLIENT-ID" --value $fhirProxySCClientId)
-		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FP-SC-SECRET" --value $fhirProxySCClientSecret)
-		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FP-SC-CLIENT-SECRET" --value $fhirProxySCClientSecret)
-		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FP-SC-RESOURCE" --value $fhirProxySCResourceId)
-	fi 
+		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-ISMSI" --value "false")
+	else
+		stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FS-ISMSI" --value "true")
+	fi
+	
+)
+echo "Creating FHIR Bulk Loader & Export Function Application"
+(
 
 	# Create Storage Account
 	#
@@ -686,23 +621,16 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	# Setup Keyvault Access 
 	echo "Setting KeyVault Policy to allow secret access for FHIR Bulk Loader & Export App..."
 	stepresult=$(az keyvault set-policy -n $keyVaultName --secret-permissions list get set --object-id $msi)
-	
-	# Obtain Function Application Key 
-	echo "Retrieving FHIR Bulk Loader & Export Function App Host Key...  note - ths will retry 5 times before failing"
-	sleep 3
-	faresourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Web/sites/"$bulkAppName
-	fakey=$(retry az rest --method post --uri "https://management.azure.com"$faresourceid"/host/default/listKeys?api-version=2018-02-01" --query "functionKeys.default" --output tsv)
-	
+
+	#If using MSI set fhir-proxy function app role assignment on FHIR Server
+	if [[ "$authType" == "MSI" ]] ; then 
+		echo "Setting "$fahost" app role assignment on FHIR Server..."
+		stepresult=$(retry az role assignment create --assignee "${msi}" --role "${msirolename}" --scope "${msifhirserverrid}" --only-show-errors)
+	fi
 	# Apply App Auth and Connection settings 
 	echo "Applying FHIR Bulk Loader & Export App settings ["$bulkAppName"]..."
-	if [[ "$option" == "proxy" ]]; then
-		echo " Proxy URL will be referenced directly in App Settings for readability"
-		fhirProxySCUrl=$fhirProxySCUrl"/fhir"
-		stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fhirProxySCUrl FS-TENANT-NAME=$(kvuri FP-SC-TENANT-NAME) FS-CLIENT-ID=$(kvuri FP-SC-CLIENT-ID) FS-SECRET=$(kvuri FP-SC-SECRET) FS-RESOURCE=$(kvuri FP-SC-RESOURCE)) ;
-	else
-		echo " Fhir Service URL will be referenced directly in App Settings for readability"
-		stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fhirServiceUrl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE))
-	fi
+	echo " Fhir Service URL will be referenced directly in App Settings for readability"
+	stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fhirServiceUrl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE) FS-ISMSI=$(kvuri FS-ISMSI))
 	
 	# Apply App Setting (static)
 	# Note:  We need to by default disable the ImportBlobTrigger as that will conflict with the EventGridTrigger
@@ -764,7 +692,7 @@ echo "Creating Event Grid Subscription...  this may take a while"
 	echo "**************************************************************************************"
 	echo "FHIR Loader has successfully been deployed to group "$resourceGroupName" on "$(date)
 	echo "Please note the following reference information for future use:"
-	echo "Your Loader Destination FHIR Service/Proxy URL is: "$fhirServiceUrl
+	echo "Your Loader Destination FHIR Service URL is: "$fhirServiceUrl
 	echo "Your FHIRLoader Storage Account name is: "$deployPrefix$storageAccountNameSuffix
 	echo "***************************************************************************************"
 	echo " "
