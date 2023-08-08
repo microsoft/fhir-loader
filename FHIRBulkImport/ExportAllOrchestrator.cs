@@ -9,23 +9,32 @@ using System.Linq;
 using System;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FHIRBulkImport
 {
     public class ExportAllOrchestrator
     {
         private static int _exportResourceCount = Utils.GetIntEnvironmentVariable("FS-EXPORTRESOURCECOUNT", "1000");
+        private static string _storageAccount = Utils.GetEnvironmentVariable("FBI-STORAGEACCT");
+        private static int _maxInstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
+        private static RetryOptions _exportAllRetryOptions = new RetryOptions(firstRetryInterval: TimeSpan.FromSeconds(5), maxNumberOfAttempts: 5)
+        {
+            BackoffCoefficient = 3,
+        };
 
         [FunctionName(nameof(ExportAll_RunOrchestrator))]
         public async Task<JObject> ExportAll_RunOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context,
             ILogger logger)
         {
+            // Setup function level variables.
             JObject retVal = new JObject();
             retVal["instanceid"] = context.InstanceId;
             string inputs = context.GetInput<string>();
-            var fileResourceCounts = new Dictionary<string, int>();
+            var fileTracker = new Dictionary<string, int>();
 
+            // Get the input from the request to the function.
             JObject requestParameters;
             try
             {
@@ -38,7 +47,8 @@ namespace FHIRBulkImport
                 return retVal;
             }
 
-            string resourceType = (string)requestParameters["resourceType"];
+            // We only allow execution for a certain resource type.
+            string resourceType = (string)requestParameters["_type"];
 
             if (resourceType is null)
             {
@@ -46,53 +56,80 @@ namespace FHIRBulkImport
                 return retVal;
             }
 
-            retVal["exportStarted"] = context.CurrentUtcDateTime;
-            context.SetCustomStatus(retVal);
+            // Get and validate the time range for the export if given.
+            string sinceStr = (string)requestParameters["_since"];
+            string tillStr = (string)requestParameters["_till"];
 
-            logger.LogError($"ExportAllOrchestrator started at {context.CurrentUtcDateTime} with resource type {resourceType}.");
-
-            DataPageResult? fhirResult;
-            try
+            if ((sinceStr is not null && !DateTime.TryParse(sinceStr, out DateTime since)) ||
+                (tillStr is not null && !DateTime.TryParse(tillStr, out DateTime till)))
             {
-                fhirResult = await ProcessPagedFhirExport(context, resourceType, $"{resourceType}?_count={_exportResourceCount}", fileResourceCounts, logger);
-            }
-            catch (Exception ex)
-            {
-                retVal["error"] = ex.Message;
-                logger.LogError(ex.Message);
+                string message = $"Invalid input for _since  or _till parameter. _since: {sinceStr ?? string.Empty} _till: {tillStr ?? string.Empty}";
+                retVal["error"] = message;
+                logger.LogError(message);
                 return retVal;
             }
 
-            retVal["exportFilesCompleted"] = fileResourceCounts.Keys.Count;
-            retVal["exportResourceCount"] = fileResourceCounts.Values.Sum();
+            // Signal function start in the durable task status object.
+            retVal["exportStarted"] = context.CurrentUtcDateTime;
             context.SetCustomStatus(retVal);
 
-            var retryOptions = new RetryOptions(firstRetryInterval: TimeSpan.FromSeconds(15), maxNumberOfAttempts: 3);
+            // Setup our first execution query to get the given resource with the configured page size.
+            string nextLink = $"{resourceType}?_count={_exportResourceCount}";
 
-            while (fhirResult.Value.NextLink is not null)
+            // Add custom date range if given.
+            if (sinceStr is not null)
             {
-                logger.LogInformation($"NextLink: {fhirResult.Value.NextLink}");
+                nextLink += $"&_lastUpdated=ge{sinceStr}";
+            }
+            if (tillStr is not null)
+            {
+                nextLink += $"&_lastUpdated=lt{tillStr}";
+            }
 
-                try
+            // Loop until no continuation token is returned.
+            while (nextLink is not null)
+            {
+                logger.LogInformation($"Fetching page of resources using query ${nextLink}");
+
+                DataPageResult fhirResult = await context.CallActivityWithRetryAsync<DataPageResult>(
+                                            nameof(ExportAllOrchestrator_GetAndWriteDataPage),
+                                            _exportAllRetryOptions,
+                                            new DataPageRequest(FhirRequestPath: nextLink, context.InstanceId, ResourceType: resourceType));
+
+                // Report the error in the logs and response if found.
+                if (fhirResult.ErrorMessage is not null)
                 {
-                    fhirResult = await ProcessPagedFhirExport(context, resourceType, fhirResult.Value.NextLink, fileResourceCounts, logger);
-                }
-                catch (Exception ex)
-                {
-                    retVal["error"] = ex.Message;
-                    logger.LogError(ex.Message);
+                    string message = $"Invalid response from the FHIR endpoint. Response: {fhirResult.ErrorMessage}";
+                    retVal["error"] = message;
+                    logger.LogError(message);
                     return retVal;
                 }
 
-                retVal["exportFilesCompleted"] = fileResourceCounts.Keys.Count;
-                retVal["exportResourceCount"] = fileResourceCounts.Values.Sum();
+                // Keep track of how many files we export and the number of resources per file.
+                if (fileTracker.ContainsKey(fhirResult.BlobUrl))
+                {
+                    fileTracker[fhirResult.BlobUrl] = fileTracker[fhirResult.BlobUrl] + fhirResult.ResourceCount;
+                }
+                else
+                {
+                    fileTracker[fhirResult.BlobUrl] = fhirResult.ResourceCount;
+                }
+
+                // Subsequent executions will use the continuation token.
+                nextLink = fhirResult.NextLink;
+
+                // Update durable function status
+                retVal["exportFilesCompleted"] = fileTracker.Keys.Count;
+                retVal["exportResourceCount"] = fileTracker.Values.Sum();
                 context.SetCustomStatus(retVal);
             }
 
+            // Report completed export
             retVal["exportCompleted"] = context.CurrentUtcDateTime;
 
+            // Attempt to add output array - untested.
             retVal["output"] = new JArray();
-            foreach (var item in fileResourceCounts)
+            foreach (var item in fileTracker)
             {
                 var fileInfo = new JObject();
                 fileInfo["type"] = resourceType;
@@ -101,109 +138,87 @@ namespace FHIRBulkImport
                 ((JArray)retVal["output"]).Add(fileInfo);
             }
 
-            await context.CallActivityAsync(nameof(ExportAllOrchestrator_UpdateStatus), retVal);
+            // Save the status in blob storage next to the exported files.
+            await context.CallActivityAsync(nameof(ExportAllOrchestrator_WriteCompletionStatusToBlob), retVal);
 
             logger.LogInformation($"Completed orchestration with ID = '{context.InstanceId}'.");
             return retVal;
         }
 
-        private async Task<DataPageResult?> ProcessPagedFhirExport(IDurableOrchestrationContext context, string resourceType, string localPathAndQuery, Dictionary<string, int> fileResourceCounts, ILogger logger)
-        {
-            // Get the first result in the orchestrator since this query is not idempotent
-            var fhirResult = await context.CallActivityAsync<DataPageResult?>(
-                                        nameof(ExportAllOrchestrator_GetAndWriteDataPage),
-                                        new DataPageRequest(LocalPathAndQuery: localPathAndQuery, context.InstanceId, ResourceType: resourceType));
-
-            if (fhirResult is null)
-            {
-                string message = "Exiting as FHIR response from ExportAllOrchestrator_GetAndWriteDataPage is empty indicating failure. Check the logs for more information";
-                throw new Exception("Exiting as FHIR response from ExportAllOrchestrator_GetAndWriteDataPage is empty indicating failure. Check the logs for more information");
-            }
-
-            if (fileResourceCounts.ContainsKey(fhirResult.Value.BlobUri))
-            {
-                fileResourceCounts[fhirResult.Value.BlobUri] = fileResourceCounts[fhirResult.Value.BlobUri] + fhirResult.Value.ResourceCount;
-            }
-            else
-            {
-                fileResourceCounts[fhirResult.Value.BlobUri] = fhirResult.Value.ResourceCount;
-            }
-
-            return fhirResult;
-        }
-
         [FunctionName(nameof(ExportAllOrchestrator_GetAndWriteDataPage))]
-        public async Task<DataPageResult?> ExportAllOrchestrator_GetAndWriteDataPage(
+        public async Task<DataPageResult> ExportAllOrchestrator_GetAndWriteDataPage(
             [ActivityTrigger] DataPageRequest req,
             [DurableClient] IDurableEntityClient ec,
             ILogger logger)
         {
 
-            var response = await FHIRUtils.CallFHIRServer(req.LocalPathAndQuery, "", HttpMethod.Get, logger);
+            var response = await FHIRUtils.CallFHIRServer(req.FhirRequestPath, "", HttpMethod.Get, logger);
 
             if (response.Success && !string.IsNullOrEmpty(response.Content))
             {
+                // Parse the content and try to find the continuation token.
                 var result = JObject.Parse(response.Content);
                 var nextLinkObject = result["link"].FirstOrDefault(link => (string)link["relation"] == "next");
                 var nextLinkUrl = nextLinkObject != null ? nextLinkObject.Value<string>("url") : null;
 
+                // Write bundle resources to NDJSON using the file manager - this will prevent many small files.
                 var ndjsonResult = await ExportOrchestrator.ConvertToNDJSON(result, req.InstanceId, req.ResourceType, ec, logger);
 
+                // Placeholder in case any issues are found writing to NDJSON.
                 if (ndjsonResult is null)
                 {
                     throw new Exception("ndjsonResult is null unexpectedly");
                 }
 
-                DataPageResult? retVal = new DataPageResult(nextLinkUrl, ndjsonResult.Value.ResourceCount, ndjsonResult.Value.BlobUrl);
                 logger.LogInformation($"ExportAll: FHIR Server Call Succeeded: {response.Status} Next: {nextLinkUrl}, Count: {ndjsonResult.Value.ResourceCount}");
-                return retVal;
+
+                return new DataPageResult(nextLinkUrl, ndjsonResult.Value.ResourceCount, ndjsonResult.Value.BlobUrl, null);
             }
             
-            logger.LogError($"ExportAll: FHIR Server Call Failed: {response.Status} Content:{response.Content} Query:{req.LocalPathAndQuery}");
-            return null;
+            logger.LogError($"ExportAll: FHIR Server Call Failed: {response.Status} Content:{response.Content} Query:{req.FhirRequestPath}");
+            return new DataPageResult(null, -1, null, response.Content);
         }
 
         
         [FunctionName(nameof(ExportAllOrchestrator_HttpStart))]
         public async Task<HttpResponseMessage> ExportAllOrchestrator_HttpStart(
-            [HttpTrigger(AuthorizationLevel.Function,"post",Route = "$alt-export-all")] HttpRequestMessage req,
+            [HttpTrigger(AuthorizationLevel.Function,"post", Route = "$alt-export-all")] HttpRequestMessage req,
             [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
-
             string requestParameters = await req.Content.ReadAsStringAsync();
             var state  = await ExportOrchestrator.runningInstances(starter, log);
             int running = state.Count();
-            int maxinstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
-            if (maxinstances > 0 && running >= maxinstances)
+
+            if (_maxInstances > 0 && running >= _maxInstances)
             {
-                string msg = $"Unable to start export there are {running} exports the max concurrent allowed is {maxinstances}";
+                string msg = $"Unable to start export there are {running} exports the max concurrent allowed is {_maxInstances}";
                 StringContent sc = new StringContent("{\"error\":\"" + msg + "\"");
                 return new HttpResponseMessage() { Content = sc, StatusCode = System.Net.HttpStatusCode.TooManyRequests};
             }
+
             // Function input comes from the request content.
             string instanceId = await starter.StartNewAsync(nameof(ExportAll_RunOrchestrator), null, requestParameters);
             
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
-
             return starter.CreateCheckStatusResponse(req, instanceId);
         }
 
-        [FunctionName(nameof(ExportAllOrchestrator_UpdateStatus))]
-        public async Task ExportAllOrchestrator_UpdateStatus(
+        [FunctionName(nameof(ExportAllOrchestrator_WriteCompletionStatusToBlob))]
+        public async Task ExportAllOrchestrator_WriteCompletionStatusToBlob(
            [ActivityTrigger] JObject ctx,
            ILogger log)
         {
             string instanceId = (string)ctx["instanceId"];
 
-            var blobClient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+            var blobClient = StorageUtils.GetCloudBlobClient(_storageAccount);
             await StorageUtils.WriteStringToBlob(blobClient, $"export/{instanceId}", "_completed_run.json", ctx.ToString(), log);
         }
     }
 
-    public record struct DataPageRequest(string LocalPathAndQuery, string InstanceId, string ResourceType);
+    public record struct DataPageRequest(string FhirRequestPath, string InstanceId, string ResourceType);
 
-    public record struct DataPageResult(string NextLink, int ResourceCount, string BlobUri);
+    public record struct DataPageResult(string NextLink, int ResourceCount, string BlobUrl, string ErrorMessage);
 
     public record struct ResultUpdateRequest(string InstanceId, string ResourceType, int ResourceCount, string NextLink);
 }
