@@ -400,7 +400,7 @@ namespace FHIRBulkImport
             {
 
                     var resource = JObject.Parse(fhirresp.Content);
-                    total = total + await ConvertToNDJSON(resource,instanceid,rt,entityclient,log);
+                    total = total + (await ConvertToNDJSON(resource,instanceid,rt,entityclient,log)).Value.ResourceCount;
                     bool nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                     while (nextlink)
                     {
@@ -414,7 +414,7 @@ namespace FHIRBulkImport
                         else
                         {
                             resource = JObject.Parse(fhirresp.Content);
-                            total = total + await ConvertToNDJSON(resource, instanceid, rt, entityclient, log);
+                            total = total + (await ConvertToNDJSON(resource, instanceid, rt, entityclient, log)).Value.ResourceCount;
                         nextlink = !resource["link"].IsNullOrEmpty() && ((string)resource["link"].getFirstField()["relation"]).Equals("next");
                         }
                     }
@@ -424,11 +424,14 @@ namespace FHIRBulkImport
             }
             return $"{rt}:{total}";
         }
-       
-        private static async Task<int> ConvertToNDJSON(JToken bundle, string instanceId, string resourceType, IDurableEntityClient entityclient,ILogger log)
+
+        public record struct ConvertToNDJSONResponse(int ResourceCount, string ResourceType, string BlobUrl);
+
+        internal static async Task<ConvertToNDJSONResponse?> ConvertToNDJSON(JToken bundle, string instanceId, string resourceType, IDurableEntityClient entityclient,ILogger log)
         {
-          
+            ConvertToNDJSONResponse? retVal = null;
             int cnt = 0;
+
             try
             {
                 StringBuilder sb = new StringBuilder();
@@ -459,6 +462,8 @@ namespace FHIRBulkImport
                     int bytestoadd = System.Text.ASCIIEncoding.UTF8.GetByteCount(sb.ToString());
                     var props = blobclient.GetProperties();
                     long filetotalbytes = props.Value.ContentLength + bytestoadd;
+
+                    // If the next file would be larger than the max, point to a new blob instead.
                     if (props.Value.BlobCommittedBlockCount > 49500 || (maxfilesizeinbytes > 0 && filetotalbytes >= maxfilesizeinbytes))
                     {
                         fileno++;
@@ -466,15 +471,22 @@ namespace FHIRBulkImport
                         blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
                         await entityclient.SignalEntityAsync(entityId, "set", fileno);
                     }
+
+                    // Write the data to blob storage
                     var rslt = await FileHolderManager.WriteAppendBlobAsync(blobclient, sb.ToString(), log);
+
+                    return new ConvertToNDJSONResponse(cnt, resourceType, blobclient.Uri.ToString());
                 }
-                
+
+                return new ConvertToNDJSONResponse(cnt, resourceType, null);
+
             }
             catch (Exception e)
             {
                 log.LogError($"ExportNDJSON Exception: {e.Message}\r\n{e.StackTrace}");
             }
-            return cnt;
+
+            return retVal;
         }
         [FunctionName("ExportOrchestrator_HttpStart")]
         public static async Task<HttpResponseMessage> HttpStart(
