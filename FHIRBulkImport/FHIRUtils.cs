@@ -57,15 +57,22 @@ namespace FHIRBulkImport
                 MaxConnectionsPerServer = Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-MAXCONNECTIONS", "20"),
                 
             });
-        public static async System.Threading.Tasks.Task<FHIRResponse> CallFHIRServer(string path, string body, HttpMethod method, ILogger log)
+        public static async System.Threading.Tasks.Task<FHIRResponse> CallFHIRServer(string path, string body, HttpMethod method, ILogger log, string customAudience = null)
         {
             string _bearerToken = null;
-            _tokens.TryGetValue("fhirtoken", out _bearerToken);
+
+            string tokenName = $"fhirtoken:{fsurl}";
+            if (path.StartsWith("http"))
+            {
+                tokenName = $"fhirtoken:{new Uri(path).GetLeftPart(UriPartial.Authority)}";
+            }
+
+            _tokens.TryGetValue(tokenName, out _bearerToken);
             if (ADUtils.isTokenExpired(_bearerToken))
             {
                     log.LogInformation("CallFHIRServer:Bearer Token is expired...Obtaining new bearer token...");
-                    _bearerToken = await ADUtils.GetAADAccessToken($"{authority}/{tenant}", clientid,secret,resource, isMsi,log);
-                    _tokens["fhirtoken"]=_bearerToken;
+                    _bearerToken = await ADUtils.GetAADAccessToken($"{authority}/{tenant}", clientid, secret, customAudience ?? resource, isMsi,log);
+                    _tokens[tokenName] =_bearerToken;
             }
             var retryPolicy = Policy
                 .Handle<HttpRequestException>()

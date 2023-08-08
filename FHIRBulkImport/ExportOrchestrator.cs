@@ -462,6 +462,8 @@ namespace FHIRBulkImport
                     int bytestoadd = System.Text.ASCIIEncoding.UTF8.GetByteCount(sb.ToString());
                     var props = blobclient.GetProperties();
                     long filetotalbytes = props.Value.ContentLength + bytestoadd;
+
+                    // If the next file would be larger than the max, point to a new blob instead.
                     if (props.Value.BlobCommittedBlockCount > 49500 || (maxfilesizeinbytes > 0 && filetotalbytes >= maxfilesizeinbytes))
                     {
                         fileno++;
@@ -469,11 +471,15 @@ namespace FHIRBulkImport
                         blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
                         await entityclient.SignalEntityAsync(entityId, "set", fileno);
                     }
+
+                    // Write the data to blob storage
                     var rslt = await FileHolderManager.WriteAppendBlobAsync(blobclient, sb.ToString(), log);
 
-                    retVal = new ConvertToNDJSONResponse(cnt, resourceType, blobclient.Uri.ToString());
+                    return new ConvertToNDJSONResponse(cnt, resourceType, blobclient.Uri.ToString());
                 }
-                
+
+                return new ConvertToNDJSONResponse(cnt, resourceType, null);
+
             }
             catch (Exception e)
             {
