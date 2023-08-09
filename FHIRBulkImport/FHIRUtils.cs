@@ -83,6 +83,29 @@ namespace FHIRBulkImport
                        log.LogWarning($"FHIR Request failed on a retryable status...Waiting {timeSpan} before next retry. Attempt {retryCount}");
                    }
                 );
+
+            if (Utils.GetBoolEnvironmentVariable("FBI-POLLY-EXPONENTIAL"))
+            {
+                int maxRetries = Utils.GetIntEnvironmentVariable("FBI-POLLY-MAXRETRIES", "3");
+                double retryMs = Utils.GetIntEnvironmentVariable("FBI-POLLY-RETRYMS", "500");
+                double jitterFactor = 0.2; // You can adjust this value as needed
+                Random jitterRandom = new Random();
+
+                retryPolicy = Policy
+                    .Handle<HttpRequestException>()
+                    .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
+                    .WaitAndRetryAsync(maxRetries, retryAttempt =>
+                    {
+                        double retryDelay = retryMs * Math.Pow(2, retryAttempt - 1);
+                        double jitter = (jitterRandom.NextDouble() * 2 - 1) * jitterFactor * retryDelay; // Generates a value between -jitterFactor and +jitterFactor
+                        return TimeSpan.FromMilliseconds(retryDelay + jitter);
+                    },
+                        (result, timeSpan, retryCount, context) =>
+                        {
+                            log.LogWarning($"FHIR Request failed on a retryable status...Waiting {timeSpan} before next retry. Attempt {retryCount}");
+                        }
+                    );
+            }
             
             HttpResponseMessage _fhirResponse =
             await retryPolicy.ExecuteAsync(async () =>
