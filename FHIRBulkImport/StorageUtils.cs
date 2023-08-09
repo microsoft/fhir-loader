@@ -52,7 +52,7 @@ namespace FHIRBulkImport
         public static async Task<System.IO.Stream> GetStreamForBlob(CloudBlobClient blobClient, string containerName, string filePath, ILogger log)
         {
             var sourceContainer = blobClient.GetContainerReference(containerName);
-            CloudBlockBlob sourceBlob = sourceContainer.GetBlockBlobReference(filePath);
+            CloudBlob sourceBlob = sourceContainer.GetBlobReference(filePath);
             if (await sourceBlob.ExistsAsync())
                 return await sourceBlob.OpenReadAsync();
             return null;
