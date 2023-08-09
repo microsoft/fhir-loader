@@ -49,18 +49,18 @@ namespace FHIRBulkImport
             }
             var sourceBlob = sourceContainer.GetBlobReference(filePath);
 
-            if (sourceBlob is CloudBlockBlob sourceBlockBlob)
+            if (sourceBlob.BlobType == BlobType.BlockBlob)
             {
-                await sourceBlockBlob.UploadTextAsync(contents);
+                await ((CloudBlockBlob)sourceBlob).UploadTextAsync(contents);
             }
 
-            if (sourceBlob is CloudAppendBlob sourceAppendBlob)
+            if (sourceBlob.BlobType == BlobType.AppendBlob)
             {
                 byte[] bytes = Encoding.UTF8.GetBytes(contents);
 
                 // Write the bytes to the blob
                 using MemoryStream stream = new MemoryStream(bytes);
-                await sourceAppendBlob.AppendBlockAsync(stream);
+                await ((CloudAppendBlob) sourceBlob).AppendBlockAsync(stream);
             }
 
             throw new Exception($"Cannot write string to blob. Blob type must be block or append blob. Type: {sourceBlob.GetType()}");
