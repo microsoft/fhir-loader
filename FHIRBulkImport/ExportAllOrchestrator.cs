@@ -19,8 +19,8 @@ namespace FHIRBulkImport
         private static int _maxInstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
         private static int _maxParallelizationCount = 100;
         private static int _parallelSearchBundleSize = _maxInstances = Utils.GetIntEnvironmentVariable("FBI-PARALLELSEARCHBUNDLESIZE", "50");
-        private static RetryOptions _exportAllRetryOptions = new RetryOptions(firstRetryInterval: TimeSpan.FromSeconds(5), maxNumberOfAttempts: 5)
-                                                                 { BackoffCoefficient = 2  };
+        private static RetryOptions _exportAllRetryOptions = new RetryOptions(firstRetryInterval: TimeSpan.FromSeconds(Utils.GetIntEnvironmentVariable("FBI-EXPORTALLRETRYINTERVAL", "30")), maxNumberOfAttempts: 5)
+                                                                 { BackoffCoefficient = Utils.GetIntEnvironmentVariable("FBI-EXPORTALLBACKOFFCOEFFICIENT", "3") };
 
         [FunctionName(nameof(ExportAllOrchestrator_HttpStart))]
         public async Task<HttpResponseMessage> ExportAllOrchestrator_HttpStart(
