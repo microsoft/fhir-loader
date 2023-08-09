@@ -7,6 +7,7 @@ using Azure.Storage.Blobs.Specialized;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
 using System.Threading;
+using System.IO;
 
 namespace FHIRBulkImport
 {
@@ -46,15 +47,32 @@ namespace FHIRBulkImport
             {
                 await sourceContainer.CreateAsync();
             }
-            CloudBlockBlob sourceBlob = sourceContainer.GetBlockBlobReference(filePath);
-            await sourceBlob.UploadTextAsync(contents);
+            var sourceBlob = sourceContainer.GetBlobReference(filePath);
+
+            if (sourceBlob is CloudBlockBlob sourceBlockBlob)
+            {
+                await sourceBlockBlob.UploadTextAsync(contents);
+            }
+
+            if (sourceBlob is CloudAppendBlob sourceAppendBlob)
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(contents);
+
+                // Write the bytes to the blob
+                using MemoryStream stream = new MemoryStream(bytes);
+                await sourceAppendBlob.AppendBlockAsync(stream);
+            }
+
+            throw new Exception($"Cannot write string to blob. Blob type must be block or append blob. Type: {sourceBlob.GetType()}");
         }
         public static async Task<System.IO.Stream> GetStreamForBlob(CloudBlobClient blobClient, string containerName, string filePath, ILogger log)
         {
             var sourceContainer = blobClient.GetContainerReference(containerName);
             CloudBlob sourceBlob = sourceContainer.GetBlobReference(filePath);
             if (await sourceBlob.ExistsAsync())
+            {
                 return await sourceBlob.OpenReadAsync();
+            }
             return null;
         }
         public static async Task Delete(CloudBlobClient blobClient, string sourceContainerName, string name,ILogger log)
@@ -68,7 +86,7 @@ namespace FHIRBulkImport
            
                 var sourceContainer = blobClient.GetContainerReference(sourceContainerName);
                 
-                CloudBlockBlob sourceBlob = sourceContainer.GetBlockBlobReference(sourceFilePath);
+                CloudBlob sourceBlob = sourceContainer.GetBlobReference(sourceFilePath);
                if (await sourceBlob.ExistsAsync()) await sourceBlob.DeleteAsync();
             }
             catch (Exception e)
@@ -94,10 +112,11 @@ namespace FHIRBulkImport
                 {
                     await destContainer.CreateAsync();
                 }
-                CloudBlockBlob sourceBlob = sourceContainer.GetBlockBlobReference(sourceFilePath);
-                CloudBlockBlob destBlob = destContainer.GetBlockBlobReference(destFilePath);
+
+                CloudBlob sourceBlob = sourceContainer.GetBlobReference(sourceFilePath);
+                CloudBlob destBlob = destContainer.GetBlobReference(destFilePath);
                 
-                string copyid = await destBlob.StartCopyAsync(sourceBlob);
+                string copyid = await destBlob.StartCopyAsync(sourceBlob.Uri);
                 //fetch current attributes
                 await destBlob.FetchAttributesAsync();
                 //waiting for completion
