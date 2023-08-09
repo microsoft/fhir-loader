@@ -427,7 +427,7 @@ namespace FHIRBulkImport
 
         public record struct ConvertToNDJSONResponse(int ResourceCount, string ResourceType, string BlobUrl);
 
-        internal static async Task<ConvertToNDJSONResponse?> ConvertToNDJSON(JToken bundle, string instanceId, string resourceType, IDurableEntityClient entityclient,ILogger log)
+        internal static async Task<ConvertToNDJSONResponse?> ConvertToNDJSON(JToken bundle, string instanceId, string resourceType, IDurableEntityClient entityclient, ILogger log)
         {
             ConvertToNDJSONResponse? retVal = null;
             int cnt = 0;
