@@ -224,7 +224,7 @@ namespace FHIRBulkImport
 
                 var entry = result["entry"];
 
-                if (entry is null || entry is not JArray entryArray || input.SearchRangeList.Count != ((JArray)entry).Count)
+                if (entry is null || entry is not JArray entryArray || input.SearchRangeList.Count != entryArray.Count)
                 {
                     string exceptionMessage = $"Did not get matching result set back for {nameof(ExportAllOrchestrator_GetCountsForListOfDateRanges)}. EntryExists: {entry is not null}";
                     if (entry is not null)
@@ -232,9 +232,9 @@ namespace FHIRBulkImport
                         exceptionMessage += $", Entry Type: {entry.GetType()}";
                     }
 
-                    if (entry.GetType() == typeof(JArray))
+                    if (entry is JArray entryArray2)
                     {
-                        exceptionMessage += $", EntryCount: {((JArray)entry).Count}";
+                        exceptionMessage += $", EntryCount: {entryArray2.Count}";
                     }
                     throw new Exception(exceptionMessage);
                 }
@@ -351,7 +351,7 @@ namespace FHIRBulkImport
             }
 
             // Get and validate the time range for the export if given.
-            string sinceStr = (string)requestParameters["_since"], tillStr = (string)requestParameters["_till"];
+            string sinceStr = requestParameters["_since"]?.ToString(), tillStr = requestParameters["_till"]?.ToString();
             DateTime since = default, till = default;
 
             if ((sinceStr is not null && !DateTime.TryParse(sinceStr, out since)) ||
@@ -360,35 +360,35 @@ namespace FHIRBulkImport
                 throw new ArgumentException($"Invalid input for _since  or _till parameter. _since: {sinceStr ?? string.Empty} _till: {tillStr ?? string.Empty}");
             }
 
-            string baseAddress = requestParameters["_baseAddress"].ToString();
+            string baseAddress = requestParameters["_baseAddress"]?.ToString();
             if (baseAddress is null)
             {
                 baseAddress = string.Empty;
             }
             else if (!baseAddress.EndsWith('/'))
             {
-                baseAddress = baseAddress + "/";
+                baseAddress += "/";
             }
 
             ExportAllOrchestratorOptions options = new(
-                ResourceType: requestParameters["_type"].ToString(),
+                ResourceType: requestParameters["_type"]?.ToString(),
                 Since: since == default ? null : since,
                 Till: till == default ? null : till,
                 BaseAddress: baseAddress,
-                Audience: requestParameters["_audience"].ToString(),
+                Audience: requestParameters["_audience"]?.ToString(),
                 ParallelizationCount: null,
                 ParallelSearchInSecondsInterval: null,
                 ParallelSearchRanges: null); ;
 
             // We only allow execution for a certain resource type.
-            if (options.ResourceType is null)
+            if (string.IsNullOrEmpty(options.ResourceType))
             {
                 throw new ArgumentException("_type is null. It must be provided to execute this function.");
             }
 
             if (requestParameters["_parallelizationCount"] is not null)
             {
-                if (!int.TryParse((string)requestParameters["_parallelizationCount"], out int parallelizationCountParsed) || parallelizationCountParsed < 1 || parallelizationCountParsed > _maxParallelizationCount)
+                if (!int.TryParse(requestParameters["_parallelizationCount"].ToString(), out int parallelizationCountParsed) || parallelizationCountParsed < 1 || parallelizationCountParsed > _maxParallelizationCount)
                 {
                     throw new ArgumentException($"Invalid parallelization count interval received: {requestParameters["_parallelizationCount"]}");
                 }
@@ -398,7 +398,7 @@ namespace FHIRBulkImport
 
             if (requestParameters["_parallelSearchInSecondsInterval"] is not null)
             {
-                if (!int.TryParse((string)requestParameters["_parallelSearchInSecondsInterval"], out int parallelSearchInSecondsInterval) || parallelSearchInSecondsInterval < 1)
+                if (!int.TryParse(requestParameters["_parallelSearchInSecondsInterval"].ToString(), out int parallelSearchInSecondsInterval) || parallelSearchInSecondsInterval < 1)
                 {
                     throw new ArgumentException($"Invalid parallel search count interval received: {requestParameters["_parallelSearchInSecondsInterval"]}");
                 }
@@ -406,18 +406,18 @@ namespace FHIRBulkImport
                 options.ParallelSearchInSecondsInterval = parallelSearchInSecondsInterval;
             }
 
-            if ((options.ParallelizationCount is not null && options.ParallelSearchInSecondsInterval is null || options.Since is null) ||
-                (options.ParallelizationCount is null && options.ParallelSearchInSecondsInterval is not null || options.Since is null))
-            {
-                throw new ArgumentException($"Invalid request: _parallelizationCount, _parallelSearchInSecondsInterval, and _since must be specified to use parallelization");
-            }
-            else
+            if (options.Since is not null && options.ParallelizationCount is not null && options.ParallelSearchInSecondsInterval is not null)
             {
                 options.ParallelSearchRanges = GetSearchRanges(options.Since.Value, options.Till ?? executionTime, options.ParallelSearchInSecondsInterval.Value);
+            }
+            else if (options.ParallelizationCount is not null || options.ParallelSearchInSecondsInterval is not null)
+            {
+                throw new ArgumentException("_parallelizationCount, _parallelSearchInSecondsInterval, and _since must all be specified for parallel export.");
             }
 
             return options;
         }
+
         private List<(DateTime Start, DateTime End, int Count)> FlattenCountsByParallelizationCount(
             List<(DateTime Start, DateTime End, int Count)>[] input, 
             int parallelizationCount)
