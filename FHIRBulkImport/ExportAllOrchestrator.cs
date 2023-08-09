@@ -98,6 +98,7 @@ namespace FHIRBulkImport
             retVal["exportStarted"] = context.CurrentUtcDateTime;
             context.SetCustomStatus(retVal);
 
+            // Build the search Urls for the export
             List<Task<DataPageResult>> exportTasks = new();
             for (int i = 0; i < searchRanges.Count; i++)
             {
@@ -116,10 +117,10 @@ namespace FHIRBulkImport
                 exportTasks.Add(context.CallActivityWithRetryAsync<DataPageResult>(
                             nameof(ExportAllOrchestrator_GetAndWriteDataPage),
                             _exportAllRetryOptions,
-                            new DataPageRequest(FhirRequestPath: nextLink, InstanceId: $"{context.InstanceId}-{i}", ResourceType: options.ResourceType, Audience: options.Audience)));
+                            new DataPageRequest(FhirRequestPath: nextLink, InstanceId: context.InstanceId, ParallelTaskIndex: i, ResourceType: options.ResourceType, Audience: options.Audience)));
             }
 
-            // Continue as long as there are pending tasks
+            // Start and continue export as long as there are pending tasks
             while (exportTasks.Count > 0)
             {
                 // Wait for the next task to complete
@@ -168,7 +169,7 @@ namespace FHIRBulkImport
                     exportTasks.Add(context.CallActivityWithRetryAsync<DataPageResult>(
                                 nameof(ExportAllOrchestrator_GetAndWriteDataPage),
                                 _exportAllRetryOptions,
-                                new DataPageRequest(FhirRequestPath: fhirResult.NextLink, InstanceId: fhirResult.InstanceId, ResourceType: options.ResourceType, Audience: options.Audience)));
+                                new DataPageRequest(FhirRequestPath: fhirResult.NextLink, InstanceId: fhirResult.InstanceId, ParallelTaskIndex: fhirResult.ParallelTaskIndex, ResourceType: options.ResourceType, Audience: options.Audience)));
                 }
             }
 
@@ -209,11 +210,11 @@ namespace FHIRBulkImport
 
             requestBody["entry"] = entries;
 
-            logger.LogInformation($"Running parallelization logic bundle: {requestBody}");
+            logger.LogTrace($"Running parallelization logic bundle: {requestBody}");
 
             var response = await FHIRUtils.CallFHIRServer("", requestBody.ToString(), HttpMethod.Post, logger, null);
 
-            logger.LogInformation($"Parallelization logic response: {response.Content}");
+            logger.LogTrace($"Parallelization logic response: {response.Content}");
 
             if (response.Success && !string.IsNullOrEmpty(response.Content))
             {
@@ -281,28 +282,29 @@ namespace FHIRBulkImport
 
                 try
                 {
-                    ndjsonResult = await ExportOrchestrator.ConvertToNDJSON(result, input.InstanceId, input.ResourceType, ec, logger);
+                    logger.LogInformation($"Bundle response successfully received. Writing it to NDJSON. InstanceId: {input.InstanceId}, ResourceType: {input.ResourceType}, ParallelFileId: {input.ParallelTaskIndex}, Query: {input.FhirRequestPath}.");
+                    ndjsonResult = await ExportOrchestrator.ConvertToNDJSON(result, input.InstanceId, input.ResourceType, ec, logger, input.ParallelTaskIndex);
                 }
                 catch (Exception ex)
                 {
                     string exceptionMessage = $"Unhandled error occurred in ConvertToNDJSON. Exception: {ex.Message}, InnerException: {ex.InnerException.Message}, Trace: {ex.StackTrace}";
-                    return new DataPageResult(null, -1, null, input.InstanceId, exceptionMessage);
+                    return new DataPageResult(null, -1, null, input.InstanceId, input.ParallelTaskIndex, exceptionMessage);
                 }
 
                 // Placeholder in case any issues are found writing to NDJSON.
                 if (ndjsonResult is null)
                 {
-                    return new DataPageResult(null, -1, null, input.InstanceId, "ConvertToNDJSON returned null unexpectedly");
+                    return new DataPageResult(null, -1, null, input.InstanceId, input.ParallelTaskIndex, "ConvertToNDJSON returned null unexpectedly");
                 }
 
                 logger.LogInformation($"ExportAll: FHIR Server Call Succeeded: {response.Status} Next: {nextLinkUrl}, Count: {ndjsonResult.Value.ResourceCount}");
 
-                return new DataPageResult(nextLinkUrl, ndjsonResult.Value.ResourceCount, ndjsonResult.Value.BlobUrl, input.InstanceId, null);
+                return new DataPageResult(nextLinkUrl, ndjsonResult.Value.ResourceCount, ndjsonResult.Value.BlobUrl, input.InstanceId, input.ParallelTaskIndex, null);
             }
             
             string message = $"ExportAll: FHIR Server Call Failed: {response.Status} Content:{response.Content} Query:{input.FhirRequestPath}";
             logger.LogError(message);
-            return new DataPageResult(null, -1, null, input.InstanceId, message); ;
+            return new DataPageResult(null, -1, null, input.InstanceId, input.ParallelTaskIndex, message); ;
         }
 
         private static List<List<(DateTime start, DateTime end)>> GetSearchRanges(DateTime start, DateTime end, int rangeSizeInSeconds)
@@ -452,9 +454,9 @@ namespace FHIRBulkImport
         }
     }
 
-    public record struct DataPageRequest(string FhirRequestPath, string InstanceId, string ResourceType, string Audience);
+    public record struct DataPageRequest(string FhirRequestPath, string InstanceId, int? ParallelTaskIndex, string ResourceType, string Audience);
 
-    public record struct DataPageResult(string NextLink, int ResourceCount, string BlobUrl, string InstanceId, string Error);
+    public record struct DataPageResult(string NextLink, int ResourceCount, string BlobUrl, string InstanceId, int? ParallelTaskIndex, string Error);
 
     public record struct ResultUpdateRequest(string InstanceId, string ResourceType, int ResourceCount, string NextLink);
 

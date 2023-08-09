@@ -427,7 +427,7 @@ namespace FHIRBulkImport
 
         public record struct ConvertToNDJSONResponse(int ResourceCount, string ResourceType, string BlobUrl);
 
-        internal static async Task<ConvertToNDJSONResponse?> ConvertToNDJSON(JToken bundle, string instanceId, string resourceType, IDurableEntityClient entityclient, ILogger log)
+        internal static async Task<ConvertToNDJSONResponse?> ConvertToNDJSON(JToken bundle, string instanceId, string resourceType, IDurableEntityClient entityclient, ILogger log, int? parallelFileId = null)
         {
             ConvertToNDJSONResponse? retVal = null;
             int cnt = 0;
@@ -452,11 +452,13 @@ namespace FHIRBulkImport
                 }
                 if (sb.Length > 0)
                 {
-                    string key = $"{instanceId}-{resourceType}";
+                    string parallelizationModifierStr = parallelFileId.HasValue ? $"-{parallelFileId.Value}" : string.Empty;
+                    string key = $"{instanceId}{parallelizationModifierStr}-{resourceType}";
+                   
                     var entityId = new EntityId(nameof(FileTracker), key);
                     var esresp = await entityclient.ReadEntityStateAsync<int>(entityId);
                     int fileno = esresp.EntityState;
-                    var filename = resourceType + "-" + (fileno + 1) + ".ndjson";
+                    var filename = resourceType + parallelizationModifierStr + "-" + (fileno + 1) + ".ndjson";                                  
                     var blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
                     long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "-1") * 1024000;
                     int bytestoadd = System.Text.ASCIIEncoding.UTF8.GetByteCount(sb.ToString());
@@ -467,7 +469,7 @@ namespace FHIRBulkImport
                     if (props.Value.BlobCommittedBlockCount > 49500 || (maxfilesizeinbytes > 0 && filetotalbytes >= maxfilesizeinbytes))
                     {
                         fileno++;
-                        filename = resourceType + "-" + (fileno + 1) + ".ndjson";
+                        filename = resourceType + parallelizationModifierStr + "-" + (fileno + 1) + ".ndjson";
                         blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
                         await entityclient.SignalEntityAsync(entityId, "set", fileno);
                     }
