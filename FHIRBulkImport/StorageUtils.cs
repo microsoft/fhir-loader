@@ -52,6 +52,7 @@ namespace FHIRBulkImport
             if (sourceBlob.BlobType == BlobType.BlockBlob)
             {
                 await ((CloudBlockBlob)sourceBlob).UploadTextAsync(contents);
+                return;
             }
 
             if (sourceBlob.BlobType == BlobType.AppendBlob)
@@ -61,6 +62,7 @@ namespace FHIRBulkImport
                 // Write the bytes to the blob
                 using MemoryStream stream = new MemoryStream(bytes);
                 await ((CloudAppendBlob) sourceBlob).AppendBlockAsync(stream);
+                return;
             }
 
             throw new Exception($"Cannot write string to blob. Blob type must be block or append blob. Type: {sourceBlob.GetType()}");
