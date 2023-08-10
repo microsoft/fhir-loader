@@ -261,17 +261,18 @@ namespace FHIRBulkImport
 
             var response = await FHIRUtils.CallFHIRServer(input.FhirRequestPath, "", HttpMethod.Get, logger, input.Audience);
 
-            if (response.Success && !string.IsNullOrEmpty(response.Content))
+            if (response != null && response.Success && !string.IsNullOrEmpty(response.Content))
             {
                 // Parse the content and try to find the continuation token.
                 var result = JObject.Parse(response.Content);
 
-                if (((JArray)result["entry"]).Count < 1)
+                var entry = ((JArray)result["entry"]);
+                if (entry == null || entry.Count < 1)
                 {
                     throw new Exception($"Zero result bundle returned for query {input.FhirRequestPath}. Ensure your inputs will return data.");
                 }
 
-                var nextLinkObject = result["link"].FirstOrDefault(link => (string)link["relation"] == "next");
+                var nextLinkObject = result["link"]?.FirstOrDefault(link => (string)link["relation"] == "next");
                 var nextLinkUrl = nextLinkObject != null ? nextLinkObject.Value<string>("url") : null;
 
                 // Write bundle resources to NDJSON using the file manager - this will prevent many small files.
@@ -284,7 +285,7 @@ namespace FHIRBulkImport
                 }
                 catch (Exception ex)
                 {
-                    string exceptionMessage = $"Unhandled error occurred in ConvertToNDJSON. Exception: {ex.Message}, InnerException: {ex.InnerException.Message}, Trace: {ex.StackTrace}";
+                    string exceptionMessage = $"Unhandled error occurred in ConvertToNDJSON. Exception: {ex.Message}, InnerException: {ex.InnerException?.Message}, Trace: {ex.StackTrace}";
                     return new DataPageResult(null, -1, null, input.InstanceId, input.ParallelTaskIndex, exceptionMessage);
                 }
 
@@ -299,7 +300,7 @@ namespace FHIRBulkImport
                 return new DataPageResult(nextLinkUrl, ndjsonResult.Value.ResourceCount, ndjsonResult.Value.BlobUrl, input.InstanceId, input.ParallelTaskIndex, null);
             }
             
-            string message = $"ExportAll: FHIR Server Call Failed: {response.Status} Content:{response.Content} Query:{input.FhirRequestPath}";
+            string message = $"ExportAll: FHIR Server Call Failed: {response?.Status} Content:{response?.Content} Query:{input.FhirRequestPath}";
             logger.LogError(message);
             return new DataPageResult(null, -1, null, input.InstanceId, input.ParallelTaskIndex, message); ;
         }
