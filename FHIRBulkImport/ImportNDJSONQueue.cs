@@ -19,7 +19,7 @@ namespace FHIRBulkImport
             string url = (string)blobCreatedEvent["data"]["url"];
             if (queueMessage.DequeueCount > 1)
             {
-                log.LogInformation($"ImportNDJSONQueue: Ignoring long running requeue of file {url}");
+                log.LogInformation($"ImportNDJSONQueue: Ignoring long running requeue of file {url} on dequeue {queueMessage.DequeueCount}");
                 return;
             }
             int maxresourcesperbundle = 200;
