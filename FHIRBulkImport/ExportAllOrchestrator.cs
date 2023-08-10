@@ -149,14 +149,11 @@ namespace FHIRBulkImport
                 }
 
                 // Attempt to add output array - untested.
-                retVal["output"] = new JArray();
-                foreach (var item in fileTracker)
+                // Putting every file in the array was too large. Durable functions have a max payload size of 16KB. After about 50 files it started throwing errors.
+                // Adding the url of the first exported file as a sample url, the other files can be found based on it.
+                if (fileTracker.Count > 0)
                 {
-                    var fileInfo = new JObject();
-                    fileInfo["type"] = options.ResourceType;
-                    fileInfo["url"] = item.Key;
-                    fileInfo["count"] = item.Value;
-                    ((JArray)retVal["output"]).Add(fileInfo);
+                    retVal["exportFilesSampleUrl"] = fileTracker.First().Key;
                 }
 
                 // Update durable function status
