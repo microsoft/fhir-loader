@@ -47,25 +47,34 @@ namespace FHIRBulkImport
             {
                 await sourceContainer.CreateAsync();
             }
+          
             var sourceBlob = sourceContainer.GetBlobReference(filePath);
-
-            if (sourceBlob.BlobType == BlobType.BlockBlob)
+            if (await sourceBlob.ExistsAsync())
             {
-                await ((CloudBlockBlob)sourceBlob).UploadTextAsync(contents);
-                return;
+                if (sourceBlob.BlobType == BlobType.BlockBlob)
+                {
+                    var cbb = sourceContainer.GetBlockBlobReference(filePath);
+                    await cbb.UploadTextAsync(contents);
+                    return;
+                }
+
+                if (sourceBlob.BlobType == BlobType.AppendBlob)
+                {
+                    var cab = sourceContainer.GetAppendBlobReference(filePath);
+                    byte[] bytes = Encoding.UTF8.GetBytes(contents);
+
+                    // Write the bytes to the blob
+                    using MemoryStream stream = new MemoryStream(bytes);
+                    await cab.AppendBlockAsync(stream);
+                    return;
+                }
+                throw new Exception($"Cannot write string to blob. Blob type must be block or append blob. Type: {sourceBlob.GetType()}");
             }
 
-            if (sourceBlob.BlobType == BlobType.AppendBlob)
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(contents);
+            CloudBlockBlob newblob = sourceContainer.GetBlockBlobReference(filePath);
+            await newblob.UploadTextAsync(contents);
 
-                // Write the bytes to the blob
-                using MemoryStream stream = new MemoryStream(bytes);
-                await ((CloudAppendBlob) sourceBlob).AppendBlockAsync(stream);
-                return;
-            }
 
-            throw new Exception($"Cannot write string to blob. Blob type must be block or append blob. Type: {sourceBlob.GetType()}");
         }
         public static async Task<System.IO.Stream> GetStreamForBlob(CloudBlobClient blobClient, string containerName, string filePath, ILogger log)
         {
