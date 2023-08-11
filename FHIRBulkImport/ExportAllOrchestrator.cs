@@ -20,7 +20,7 @@ namespace FHIRBulkImport
         private static int _maxParallelizationCount = 100;
         private static int _parallelSearchBundleSize = _maxInstances = Utils.GetIntEnvironmentVariable("FBI-PARALLELSEARCHBUNDLESIZE", "50");
         private static RetryOptions _exportAllRetryOptions = new RetryOptions(firstRetryInterval: TimeSpan.FromSeconds(Utils.GetIntEnvironmentVariable("FBI-EXPORTALLRETRYINTERVAL", "30")), maxNumberOfAttempts: 5)
-                                                                 { BackoffCoefficient = Utils.GetIntEnvironmentVariable("FBI-EXPORTALLBACKOFFCOEFFICIENT", "3") };
+        { BackoffCoefficient = Utils.GetIntEnvironmentVariable("FBI-EXPORTALLBACKOFFCOEFFICIENT", "3") };
 
         [FunctionName(nameof(ExportAllOrchestrator_HttpStart))]
         public async Task<HttpResponseMessage> ExportAllOrchestrator_HttpStart(
@@ -83,7 +83,7 @@ namespace FHIRBulkImport
                 context.SetCustomStatus(retVal);
 
                 var parallelizationTasks = options.ParallelSearchRanges.Select(
-                    x => context.CallActivityWithRetryAsync<List<(DateTime Start, DateTime End, int Count)>> (
+                    x => context.CallActivityWithRetryAsync<List<(DateTime Start, DateTime End, int Count)>>(
                         nameof(ExportAllOrchestrator_GetCountsForListOfDateRanges),
                         _exportAllRetryOptions,
                         new GetCountsForListOfDateRangesRequest(options.ResourceType, x.Select(y => (y.Start, y.End, -1)).ToList())));
@@ -138,14 +138,16 @@ namespace FHIRBulkImport
                     context.SetCustomStatus(retVal);
                     return retVal;
                 }
-
-                if (fileTracker.ContainsKey(fhirResult.BlobUrl))
+                else if (fhirResult.ResourceCount > 0)
                 {
-                    fileTracker[fhirResult.BlobUrl] = fileTracker[fhirResult.BlobUrl] + fhirResult.ResourceCount;
-                }
-                else
-                {
-                    fileTracker[fhirResult.BlobUrl] = fhirResult.ResourceCount;
+                    if (fileTracker.ContainsKey(fhirResult.BlobUrl))
+                    {
+                        fileTracker[fhirResult.BlobUrl] = fileTracker[fhirResult.BlobUrl] + fhirResult.ResourceCount;
+                    }
+                    else
+                    {
+                        fileTracker[fhirResult.BlobUrl] = fhirResult.ResourceCount;
+                    }
                 }
 
                 // Attempt to add output array - untested.
@@ -266,14 +268,15 @@ namespace FHIRBulkImport
                 // Parse the content and try to find the continuation token.
                 var result = JObject.Parse(response.Content);
 
+                var nextLinkObject = result["link"]?.FirstOrDefault(link => (string)link["relation"] == "next");
+                var nextLinkUrl = nextLinkObject != null ? nextLinkObject.Value<string>("url") : null;
+
                 var entry = ((JArray)result["entry"]);
                 if (entry == null || entry.Count < 1)
                 {
-                    throw new Exception($"Zero result bundle returned for query {input.FhirRequestPath}. Ensure your inputs will return data.");
+                    logger.LogWarning($"Zero result bundle returned for query {input.FhirRequestPath}. Ensure your inputs will return data.");
+                    return new DataPageResult(nextLinkUrl, 0, null, input.InstanceId, input.ParallelTaskIndex, null);
                 }
-
-                var nextLinkObject = result["link"]?.FirstOrDefault(link => (string)link["relation"] == "next");
-                var nextLinkUrl = nextLinkObject != null ? nextLinkObject.Value<string>("url") : null;
 
                 // Write bundle resources to NDJSON using the file manager - this will prevent many small files.
                 ExportOrchestrator.ConvertToNDJSONResponse? ndjsonResult = null;
@@ -299,7 +302,7 @@ namespace FHIRBulkImport
 
                 return new DataPageResult(nextLinkUrl, ndjsonResult.Value.ResourceCount, ndjsonResult.Value.BlobUrl, input.InstanceId, input.ParallelTaskIndex, null);
             }
-            
+
             string message = $"ExportAll: FHIR Server Call Failed: {response?.Status} Content:{response?.Content} Query:{input.FhirRequestPath}";
             logger.LogError(message);
             return new DataPageResult(null, -1, null, input.InstanceId, input.ParallelTaskIndex, message); ;
@@ -417,7 +420,7 @@ namespace FHIRBulkImport
         }
 
         private List<(DateTime Start, DateTime End, int Count)> FlattenCountsByParallelizationCount(
-            List<(DateTime Start, DateTime End, int Count)>[] input, 
+            List<(DateTime Start, DateTime End, int Count)>[] input,
             int parallelizationCount)
         {
 
