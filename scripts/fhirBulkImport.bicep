@@ -99,7 +99,22 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
     }
   }
 }
-
+@description('Storage Queue for Bundle Blob processing')
+resource storageQueueBundle 'Microsoft.Storage/storageAccounts/queueServices/queues@2022-09-01' = {
+  name: 'bundlequeue'
+  parent: storageAccount
+  properties: {
+    metadata: {}
+  }
+}
+@description('Storage Queue for NDJSON Blob processing')
+resource storageQueueNDjson 'Microsoft.Storage/storageAccounts/queueServices/queues@2022-09-01' = {
+  name: 'ndjsonqueue'
+  parent: storageAccount
+  properties: {
+    metadata: {}
+  }
+}
 @description('App Service used to run Azure Function')
 resource hostingPlan 'Microsoft.Web/serverfarms@2021-03-01' = {
   name: '${prefixNameCleanShort}-app'
