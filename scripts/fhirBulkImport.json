@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.20.4.51522",
-      "templateHash": "10104116401241136138"
+      "templateHash": "12061980490768654660"
     }
   },
   "parameters": {
@@ -141,8 +141,6 @@
     "uniqueResourceIdentifier": "[substring(uniqueString(resourceGroup().id, parameters('prefix')), 0, 4)]",
     "prefixNameClean": "[format('{0}{1}', replace(parameters('prefix'), '-', ''), variables('uniqueResourceIdentifier'))]",
     "prefixNameCleanShort": "[if(greater(length(variables('prefixNameClean')), 16), substring(variables('prefixNameClean'), 0, 8), variables('prefixNameClean'))]",
-    "importNDJsonFunctionName": "ImportNDJSON",
-    "importBundleFunctionName": "ImportBundleEventGrid",
     "fhirUrlClean": "[replace(split(variables('fhirUrl'), '.')[0], 'https://', '')]",
     "fhirUrlCleanSplit": "[split(variables('fhirUrlClean'), '-')]"
   },
@@ -387,54 +385,6 @@
       ],
       "metadata": {
         "description": "Uses source control deploy if requested"
-      }
-    },
-    {
-      "type": "Microsoft.Web/sites/functions",
-      "apiVersion": "2022-09-01",
-      "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), variables('importNDJsonFunctionName'))]",
-      "properties": {
-        "config": {
-          "disabled": false,
-          "bindings": [
-            {
-              "type": "eventGridTrigger",
-              "direction": "in",
-              "name": "blobCreatedEvent"
-            }
-          ]
-        },
-        "language": "CSharp"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
-      ],
-      "metadata": {
-        "description": "Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes."
-      }
-    },
-    {
-      "type": "Microsoft.Web/sites/functions",
-      "apiVersion": "2022-09-01",
-      "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), variables('importBundleFunctionName'))]",
-      "properties": {
-        "config": {
-          "disabled": false,
-          "bindings": [
-            {
-              "type": "eventGridTrigger",
-              "direction": "in",
-              "name": "blobCreatedEvent"
-            }
-          ]
-        },
-        "language": "CSharp"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
-      ],
-      "metadata": {
-        "description": "Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes."
       }
     },
     {

@@ -60,12 +60,6 @@ var uniqueResourceIdentifier = substring(uniqueString(resourceGroup().id, prefix
 var prefixNameClean = '${replace(prefix, '-', '')}${uniqueResourceIdentifier}'
 var prefixNameCleanShort = length(prefixNameClean) > 16 ? substring(prefixNameClean, 0, 8) : prefixNameClean
 
-@description('Name of the NDJSON import function. Used for setting up the Storage to Event Grid subscription')
-var importNDJsonFunctionName = 'ImportNDJSON'
-
-@description('Name of the bundle import function. Used for setting up the Storage to Event Grid subscription')
-var importBundleFunctionName = 'ImportBundleEventGrid'
-
 @description('Storage account used for loading files')
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
   name: '${prefixNameCleanShort}stor'
@@ -269,44 +263,6 @@ resource functionAppDeployment 'Microsoft.Web/sites/sourcecontrols@2021-03-01' =
     repoUrl: repoUrl
     branch: 'main'
     isManualIntegration: true
-  }
-}
-
-@description('Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes.')
-resource importNDJsonFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
-  name: importNDJsonFunctionName
-  parent: functionApp
-  properties: {
-    config: {
-      disabled: false
-      bindings: [
-        {
-          type: 'eventGridTrigger'
-          direction: 'in'
-          name: 'blobCreatedEvent'
-        }
-      ]
-    }
-    language: 'CSharp'
-  }
-}
-
-@description('Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes.')
-resource importBundleFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
-  name: importBundleFunctionName
-  parent: functionApp
-  properties: {
-    config: {
-      disabled: false
-      bindings: [
-        {
-          type: 'eventGridTrigger'
-          direction: 'in'
-          name: 'blobCreatedEvent'
-        }
-      ]
-    }
-    language: 'CSharp'
   }
 }
 
