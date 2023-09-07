@@ -99,10 +99,16 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
     }
   }
 }
+@description('Storage Queue Service')
+resource storageQueues 'Microsoft.Storage/storageAccounts/queueServices@2022-09-01' = {
+  name: 'default'
+  parent: storageAccount
+ 
+}
 @description('Storage Queue for Bundle Blob processing')
 resource storageQueueBundle 'Microsoft.Storage/storageAccounts/queueServices/queues@2022-09-01' = {
   name: 'bundlequeue'
-  parent: storageAccount
+  parent: storageQueues
   properties: {
     metadata: {}
   }
@@ -110,7 +116,7 @@ resource storageQueueBundle 'Microsoft.Storage/storageAccounts/queueServices/que
 @description('Storage Queue for NDJSON Blob processing')
 resource storageQueueNDjson 'Microsoft.Storage/storageAccounts/queueServices/queues@2022-09-01' = {
   name: 'ndjsonqueue'
-  parent: storageAccount
+  parent: storageQueues
   properties: {
     metadata: {}
   }
@@ -328,7 +334,7 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     }
     eventDeliverySchema: 'EventGridSchema'
   }
-o
+  
   dependsOn: [ functionAppDeployment, importNDJsonFunction ]
 }
 

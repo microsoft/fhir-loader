@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.16.2.56959",
-      "templateHash": "10152056999520828466"
+      "version": "0.20.4.51522",
+      "templateHash": "2060609847680698069"
     }
   },
   "parameters": {
@@ -26,14 +26,14 @@
     "fhirType": {
       "type": "string",
       "defaultValue": "FhirService",
-      "metadata": {
-        "description": "Type of FHIR instance to integrate the loader with."
-      },
       "allowedValues": [
         "FhirService",
         "APIforFhir",
         "FhirServer"
-      ]
+      ],
+      "metadata": {
+        "description": "Type of FHIR instance to integrate the loader with."
+      }
     },
     "fhirServiceName": {
       "type": "string",
@@ -59,20 +59,17 @@
     "authenticationType": {
       "type": "string",
       "defaultValue": "managedIdentity",
-      "metadata": {
-        "description": "Type of FHIR instance to integrate the loader with."
-      },
       "allowedValues": [
         "managedIdentity",
         "servicePrincipal"
-      ]
+      ],
+      "metadata": {
+        "description": "Type of FHIR instance to integrate the loader with."
+      }
     },
     "appServiceSize": {
       "type": "string",
       "defaultValue": "B1",
-      "metadata": {
-        "description": "Size of the app service to run loader function"
-      },
       "allowedValues": [
         "B1",
         "B2",
@@ -86,7 +83,10 @@
         "P1v3",
         "P2v3",
         "P3v3"
-      ]
+      ],
+      "metadata": {
+        "description": "Size of the app service to run loader function"
+      }
     },
     "serviceAccountClientId": {
       "type": "string",
@@ -109,11 +109,18 @@
         "description": "Audience used for FHIR Server tokens. Leave blank to use the FHIR url which will work for default FHIR deployments."
       }
     },
-    "loaderRepoBranch": {
-      "type": "string",
-      "defaultValue": "fhir-loader-cli",
+    "createRoleAssignment": {
+      "type": "bool",
+      "defaultValue": true,
       "metadata": {
-        "description": "Branch of the FHIR Loader repo for git integration"
+        "description": "Automatically create a role assignment for the function app to access the FHIR service."
+      }
+    },
+    "fhirContributorRoleAssignmentId": {
+      "type": "string",
+      "defaultValue": "5a1fc7df-4bf1-4951-a576-89034ee01acd",
+      "metadata": {
+        "description": "The Bulk Loader function app needs to access the FHIR service. This is the role assignment ID to use."
       }
     },
     "transformTransactionBundles": {
@@ -125,7 +132,7 @@
     }
   },
   "variables": {
-    "loaderRepoUrl": "https://github.com/microsoft/fhir-loader",
+    "repoUrl": "https://github.com/microsoft/fhir-loader/",
     "fhirUrl": "[if(equals(parameters('fhirType'), 'FhirService'), format('https://{0}.fhir.azurehealthcareapis.com', replace(parameters('fhirServiceName'), '/', '-')), if(equals(parameters('fhirType'), 'APIforFhir'), format('https://{0}.azurehealthcareapis.com', parameters('apiForFhirName')), parameters('fhirServerUrl')))]",
     "tenantId": "[subscription().tenantId]",
     "appTags": {
@@ -189,6 +196,42 @@
       ]
     },
     {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2021-03-01",
+      "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
+      "properties": {
+        "ftpsState": "Disabled",
+        "minTlsVersion": "1.2"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
+      "apiVersion": "2021-03-01",
+      "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), 'ftp')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "allow": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
+      "apiVersion": "2021-03-01",
+      "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), 'scm')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "allow": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
+      ]
+    },
+    {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2021-08-01",
       "name": "[format('{0}stor', variables('prefixNameCleanShort'))]",
@@ -199,6 +242,45 @@
       "kind": "StorageV2",
       "metadata": {
         "description": "Storage account used for loading files"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', format('{0}stor', variables('prefixNameCleanShort')), 'default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]"
+      ],
+      "metadata": {
+        "description": "Storage Queue Service"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}/{2}', format('{0}stor', variables('prefixNameCleanShort')), 'default', 'bundlequeue')]",
+      "properties": {
+        "metadata": {}
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/queueServices', format('{0}stor', variables('prefixNameCleanShort')), 'default')]"
+      ],
+      "metadata": {
+        "description": "Storage Queue for Bundle Blob processing"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}/{2}', format('{0}stor', variables('prefixNameCleanShort')), 'default', 'ndjsonqueue')]",
+      "properties": {
+        "metadata": {}
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/queueServices', format('{0}stor', variables('prefixNameCleanShort')), 'default')]"
+      ],
+      "metadata": {
+        "description": "Storage Queue for NDJSON Blob processing"
       }
     },
     {
@@ -252,56 +334,8 @@
       }
     },
     {
-      "type": "Microsoft.Web/sites/functions",
-      "apiVersion": "2022-09-01",
-      "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), variables('importNDJsonFunctionName'))]",
-      "properties": {
-        "config": {
-          "disabled": false,
-          "bindings": [
-            {
-              "type": "eventGridTrigger",
-              "direction": "in",
-              "name": "blobCreatedEvent"
-            }
-          ]
-        },
-        "language": "CSharp"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
-      ],
-      "metadata": {
-        "description": "Placeholder function used to setup the Storage to Event Grid subscription until source control deployment executes."
-      }
-    },
-    {
-      "type": "Microsoft.Web/sites/functions",
-      "apiVersion": "2022-09-01",
-      "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), variables('importBundleFunctionName'))]",
-      "properties": {
-        "config": {
-          "disabled": false,
-          "bindings": [
-            {
-              "type": "eventGridTrigger",
-              "direction": "in",
-              "name": "blobCreatedEvent"
-            }
-          ]
-        },
-        "language": "CSharp"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
-      ],
-      "metadata": {
-        "description": "Placeholder function used to setup the Storage to Event Grid subscription until source control deployment executes."
-      }
-    },
-    {
       "type": "Microsoft.Web/sites/config",
-      "apiVersion": "2020-12-01",
+      "apiVersion": "2021-03-01",
       "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), 'appsettings')]",
       "properties": {
         "AzureWebJobsStorage": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', format('{0}stor', variables('prefixNameCleanShort')), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort'))), '2021-08-01').keys[0].value)]",
@@ -341,18 +375,66 @@
     },
     {
       "type": "Microsoft.Web/sites/sourcecontrols",
-      "apiVersion": "2022-03-01",
+      "apiVersion": "2021-03-01",
       "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
       "properties": {
-        "repoUrl": "[variables('loaderRepoUrl')]",
-        "branch": "[parameters('loaderRepoBranch')]",
+        "repoUrl": "[variables('repoUrl')]",
+        "branch": "main",
         "isManualIntegration": true
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
       ],
       "metadata": {
-        "description": "Git integration for the function app code"
+        "description": "Uses source control deploy if requested"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/functions",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), variables('importNDJsonFunctionName'))]",
+      "properties": {
+        "config": {
+          "disabled": false,
+          "bindings": [
+            {
+              "type": "eventGridTrigger",
+              "direction": "in",
+              "name": "blobCreatedEvent"
+            }
+          ]
+        },
+        "language": "CSharp"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
+      ],
+      "metadata": {
+        "description": "Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes."
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/functions",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), variables('importBundleFunctionName'))]",
+      "properties": {
+        "config": {
+          "disabled": false,
+          "bindings": [
+            {
+              "type": "eventGridTrigger",
+              "direction": "in",
+              "name": "blobCreatedEvent"
+            }
+          ]
+        },
+        "language": "CSharp"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
+      ],
+      "metadata": {
+        "description": "Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes."
       }
     },
     {
@@ -387,6 +469,7 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]",
+        "[resourceId('Microsoft.Web/sites/sourcecontrols', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
         "[resourceId('Microsoft.Web/sites/functions', format('{0}-func', variables('prefixNameCleanShort')), variables('importNDJsonFunctionName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]"
       ],
@@ -427,6 +510,7 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]",
+        "[resourceId('Microsoft.Web/sites/sourcecontrols', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
         "[resourceId('Microsoft.Web/sites/functions', format('{0}-func', variables('prefixNameCleanShort')), variables('importBundleFunctionName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]"
       ],
@@ -449,7 +533,7 @@
       }
     },
     {
-      "condition": "[equals(parameters('fhirType'), 'FhirService')]",
+      "condition": "[and(equals(parameters('fhirType'), 'FhirService'), equals(parameters('createRoleAssignment'), true()))]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "functionFhirServiceRoleAssignment",
@@ -463,7 +547,7 @@
             "value": "[resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1])]"
           },
           "roleId": {
-            "value": "5a1fc7df-4bf1-4951-a576-89034ee01acd"
+            "value": "[parameters('fhirContributorRoleAssignmentId')]"
           },
           "principalId": {
             "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
@@ -475,8 +559,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.16.2.56959",
-              "templateHash": "15312434787615452365"
+              "version": "0.20.4.51522",
+              "templateHash": "3552119704774092970"
             }
           },
           "parameters": {
@@ -516,7 +600,7 @@
       }
     },
     {
-      "condition": "[equals(parameters('fhirType'), 'APIforFhir')]",
+      "condition": "[and(equals(parameters('fhirType'), 'APIforFhir'), equals(parameters('createRoleAssignment'), true()))]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "bulk-import-function-fhir-managed-id-role-assignment",
@@ -530,7 +614,7 @@
             "value": "[resourceId('Microsoft.HealthcareApis/services', variables('fhirUrlClean'))]"
           },
           "roleId": {
-            "value": "5a1fc7df-4bf1-4951-a576-89034ee01acd"
+            "value": "[parameters('fhirContributorRoleAssignmentId')]"
           },
           "principalId": {
             "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
@@ -542,8 +626,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.16.2.56959",
-              "templateHash": "15312434787615452365"
+              "version": "0.20.4.51522",
+              "templateHash": "3552119704774092970"
             }
           },
           "parameters": {
