@@ -318,7 +318,7 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     destination: {
       endpointType: 'StorageQueue'
       properties: {
-        resourceId: storageQueues.id
+        resourceId: storageAccount.id
 		queueName:'ndjsonqueue'
       }
     }
@@ -346,7 +346,7 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     destination: {
       endpointType: 'StorageQueue'
       properties: {
-         resourceId: storageQueues.id
+         resourceId: storageAccount.id
 		 queueName: 'bundlequeue'
       }
     }
