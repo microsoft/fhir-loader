@@ -32,11 +32,11 @@ _Larger image [here](./docs/images/architecture/install-components.png)_
 
 ## Deployment
 
-### Portal Deployment
+### Portal Deployment (Recommended)
 
 To quickly deploy the FHIR Bulk Loader, you can use the Azure deployment below. This deployment method provides simple configuration.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/healtharchitectures.onmicrosoft.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fsteveo-fixes%2Fscripts%2FfhirBulkImport.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fsteveo-fixes%2Fscripts%2FcreateUiDefinition.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fmain%2Fscripts%2FfhirBulkImport.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fmain%2Fscripts%2FcreateUiDefinition.json)
 
 
 ### CLI Deployment
