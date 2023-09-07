@@ -318,7 +318,7 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     destination: {
       endpointType: 'StorageQueue'
       properties: {
-        resourceId: '${storageAccount.id}/queueServices/default'
+        resourceId: storageQueues.id
 		queueName:'ndjsonqueue'
       }
     }
@@ -336,7 +336,6 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     eventDeliverySchema: 'EventGridSchema'
   }
   
- 
 }
 
 @description('Subscription to bundle container')
@@ -347,7 +346,7 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     destination: {
       endpointType: 'StorageQueue'
       properties: {
-         resourceId: '${storageAccount.id}/queueServices/default'
+         resourceId: storageQueues.id
 		 queueName: 'bundlequeue'
       }
     }
@@ -366,7 +365,6 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
 
   }
 
-  
 }
 
 @description('Monitoring for Function App')

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.20.4.51522",
-      "templateHash": "16015740395631937892"
+      "templateHash": "8372813702664981498"
     }
   },
   "parameters": {
@@ -446,7 +446,7 @@
         "destination": {
           "endpointType": "StorageQueue",
           "properties": {
-            "resourceId": "[format('{0}/queueServices/default', resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort'))))]",
+            "resourceId": "[resourceId('Microsoft.Storage/storageAccounts/queueServices', format('{0}stor', variables('prefixNameCleanShort')), 'default')]",
             "queueName": "ndjsonqueue"
           }
         },
@@ -469,7 +469,8 @@
         "eventDeliverySchema": "EventGridSchema"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/queueServices', format('{0}stor', variables('prefixNameCleanShort')), 'default')]"
       ],
       "metadata": {
         "description": "Subscription to ndjson container"
@@ -484,7 +485,7 @@
         "destination": {
           "endpointType": "StorageQueue",
           "properties": {
-            "resourceId": "[format('{0}/queueServices/default', resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort'))))]",
+            "resourceId": "[resourceId('Microsoft.Storage/storageAccounts/queueServices', format('{0}stor', variables('prefixNameCleanShort')), 'default')]",
             "queueName": "bundlequeue"
           }
         },
@@ -507,7 +508,8 @@
         "eventDeliverySchema": "EventGridSchema"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/queueServices', format('{0}stor', variables('prefixNameCleanShort')), 'default')]"
       ],
       "metadata": {
         "description": "Subscription to bundle container"
