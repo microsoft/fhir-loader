@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.20.4.51522",
-      "templateHash": "2060609847680698069"
+      "templateHash": "16015740395631937892"
     }
   },
   "parameters": {
@@ -444,9 +444,10 @@
       "name": "ndjsoncreated",
       "properties": {
         "destination": {
-          "endpointType": "AzureFunction",
+          "endpointType": "StorageQueue",
           "properties": {
-            "resourceId": "[format('{0}/functions/{1}', resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), variables('importNDJsonFunctionName'))]"
+            "resourceId": "[format('{0}/queueServices/default', resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort'))))]",
+            "queueName": "ndjsonqueue"
           }
         },
         "filter": {
@@ -468,9 +469,6 @@
         "eventDeliverySchema": "EventGridSchema"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]",
-        "[resourceId('Microsoft.Web/sites/sourcecontrols', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
-        "[resourceId('Microsoft.Web/sites/functions', format('{0}-func', variables('prefixNameCleanShort')), variables('importNDJsonFunctionName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]"
       ],
       "metadata": {
@@ -484,10 +482,10 @@
       "name": "bundlecreated",
       "properties": {
         "destination": {
-          "endpointType": "AzureFunction",
+          "endpointType": "StorageQueue",
           "properties": {
-            "resourceId": "[format('{0}/functions/{1}', resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), variables('importBundleFunctionName'))]",
-            "maxEventsPerBatch": 10
+            "resourceId": "[format('{0}/queueServices/default', resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort'))))]",
+            "queueName": "bundlequeue"
           }
         },
         "filter": {
@@ -509,9 +507,6 @@
         "eventDeliverySchema": "EventGridSchema"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]",
-        "[resourceId('Microsoft.Web/sites/sourcecontrols', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
-        "[resourceId('Microsoft.Web/sites/functions', format('{0}-func', variables('prefixNameCleanShort')), variables('importBundleFunctionName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]"
       ],
       "metadata": {

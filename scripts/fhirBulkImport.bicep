@@ -316,9 +316,10 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
   scope: storageAccount
   properties: {
     destination: {
-      endpointType: 'AzureFunction'
+      endpointType: 'StorageQueue'
       properties: {
-        resourceId: '${functionApp.id}/functions/${importNDJsonFunctionName}'
+        resourceId: '${storageAccount.id}/queueServices/default'
+		queueName:'ndjsonqueue'
       }
     }
     filter: {
@@ -335,7 +336,7 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     eventDeliverySchema: 'EventGridSchema'
   }
   
-  dependsOn: [ functionAppDeployment, importNDJsonFunction ]
+ 
 }
 
 @description('Subscription to bundle container')
@@ -344,10 +345,10 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
   scope: storageAccount
   properties: {
     destination: {
-      endpointType: 'AzureFunction'
+      endpointType: 'StorageQueue'
       properties: {
-        resourceId: '${functionApp.id}/functions/${importBundleFunctionName}'
-        maxEventsPerBatch: 10
+         resourceId: '${storageAccount.id}/queueServices/default'
+		 queueName: 'bundlequeue'
       }
     }
     filter: {
@@ -365,7 +366,7 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
 
   }
 
-  dependsOn: [ functionAppDeployment, importBundleFunction ]
+  
 }
 
 @description('Monitoring for Function App')
