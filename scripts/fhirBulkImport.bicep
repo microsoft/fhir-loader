@@ -346,12 +346,22 @@ resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if
   name: fhirUrlClean
 }
 
+resource roleDefinitionapiForFhir 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
+  scope: apiForFhir
+  name: fhirContributorRoleAssignmentId
+}
+
+resource roleDefinitionFhirService 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = if (fhirType == 'FhirService' && createRoleAssignment == true) {
+  scope: fhirService
+  name: fhirContributorRoleAssignmentId
+}
+
 @description('Setup access between FHIR and the deployment script managed identity')
 module functionFhirServiceRoleAssignment './roleAssignment.bicep' = if (fhirType == 'FhirService' && createRoleAssignment == true) {
   name: 'functionFhirServiceRoleAssignment'
   params: {
     resourceId: fhirService.id
-    roleId: fhirContributorRoleAssignmentId
+	roleDefinitionId: roleDefinitionFhirService.id
     principalId: functionApp.identity.principalId
   }
 }
@@ -361,7 +371,7 @@ module functionApiForFhirRoleAssignment './roleAssignment.bicep' = if (fhirType 
   name: 'bulk-import-function-fhir-managed-id-role-assignment'
   params: {
     resourceId: apiForFhir.id
-    roleId: fhirContributorRoleAssignmentId
+	roleDefinitionId: roleDefinitionapiForFhir.id
     principalId: functionApp.identity.principalId
   }
 }

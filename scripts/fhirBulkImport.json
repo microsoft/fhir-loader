@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.20.4.51522",
-      "templateHash": "12061980490768654660"
+      "templateHash": "791925762623797096"
     }
   },
   "parameters": {
@@ -491,8 +491,8 @@
           "resourceId": {
             "value": "[resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1])]"
           },
-          "roleId": {
-            "value": "[parameters('fhirContributorRoleAssignmentId')]"
+          "roleDefinitionId": {
+            "value": "[extensionResourceId(resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1]), 'Microsoft.Authorization/roleDefinitions', parameters('fhirContributorRoleAssignmentId'))]"
           },
           "principalId": {
             "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
@@ -505,14 +505,14 @@
             "_generator": {
               "name": "bicep",
               "version": "0.20.4.51522",
-              "templateHash": "3552119704774092970"
+              "templateHash": "16173110267477419454"
             }
           },
           "parameters": {
             "resourceId": {
               "type": "string"
             },
-            "roleId": {
+            "roleDefinitionId": {
               "type": "string"
             },
             "principalId": {
@@ -527,9 +527,9 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2020-04-01-preview",
-              "name": "[guid(parameters('resourceId'), parameters('principalId'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId')))]",
+              "name": "[guid(parameters('resourceId'), parameters('principalId'), parameters('roleDefinitionId'))]",
               "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId'))]",
+                "roleDefinitionId": "[parameters('roleDefinitionId')]",
                 "principalId": "[parameters('principalId')]",
                 "principalType": "[parameters('principalType')]"
               }
@@ -558,8 +558,8 @@
           "resourceId": {
             "value": "[resourceId('Microsoft.HealthcareApis/services', variables('fhirUrlClean'))]"
           },
-          "roleId": {
-            "value": "[parameters('fhirContributorRoleAssignmentId')]"
+          "roleDefinitionId": {
+            "value": "[extensionResourceId(resourceId('Microsoft.HealthcareApis/services', variables('fhirUrlClean')), 'Microsoft.Authorization/roleDefinitions', parameters('fhirContributorRoleAssignmentId'))]"
           },
           "principalId": {
             "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
@@ -572,14 +572,14 @@
             "_generator": {
               "name": "bicep",
               "version": "0.20.4.51522",
-              "templateHash": "3552119704774092970"
+              "templateHash": "16173110267477419454"
             }
           },
           "parameters": {
             "resourceId": {
               "type": "string"
             },
-            "roleId": {
+            "roleDefinitionId": {
               "type": "string"
             },
             "principalId": {
@@ -594,9 +594,9 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2020-04-01-preview",
-              "name": "[guid(parameters('resourceId'), parameters('principalId'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId')))]",
+              "name": "[guid(parameters('resourceId'), parameters('principalId'), parameters('roleDefinitionId'))]",
               "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId'))]",
+                "roleDefinitionId": "[parameters('roleDefinitionId')]",
                 "principalId": "[parameters('principalId')]",
                 "principalType": "[parameters('principalType')]"
               }
