@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.20.4.51522",
-      "templateHash": "791925762623797096"
+      "templateHash": "11868246001459222426"
     }
   },
   "parameters": {
@@ -475,140 +475,6 @@
       "tags": "[variables('appTags')]",
       "metadata": {
         "description": "Monitoring for Function App"
-      }
-    },
-    {
-      "condition": "[and(equals(parameters('fhirType'), 'FhirService'), equals(parameters('createRoleAssignment'), true()))]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "functionFhirServiceRoleAssignment",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "resourceId": {
-            "value": "[resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1])]"
-          },
-          "roleDefinitionId": {
-            "value": "[extensionResourceId(resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1]), 'Microsoft.Authorization/roleDefinitions', parameters('fhirContributorRoleAssignmentId'))]"
-          },
-          "principalId": {
-            "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.20.4.51522",
-              "templateHash": "16173110267477419454"
-            }
-          },
-          "parameters": {
-            "resourceId": {
-              "type": "string"
-            },
-            "roleDefinitionId": {
-              "type": "string"
-            },
-            "principalId": {
-              "type": "string"
-            },
-            "principalType": {
-              "type": "string",
-              "defaultValue": "ServicePrincipal"
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2020-04-01-preview",
-              "name": "[guid(parameters('resourceId'), parameters('principalId'), parameters('roleDefinitionId'))]",
-              "properties": {
-                "roleDefinitionId": "[parameters('roleDefinitionId')]",
-                "principalId": "[parameters('principalId')]",
-                "principalType": "[parameters('principalType')]"
-              }
-            }
-          ]
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
-      ],
-      "metadata": {
-        "description": "Setup access between FHIR and the deployment script managed identity"
-      }
-    },
-    {
-      "condition": "[and(equals(parameters('fhirType'), 'APIforFhir'), equals(parameters('createRoleAssignment'), true()))]",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "bulk-import-function-fhir-managed-id-role-assignment",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "resourceId": {
-            "value": "[resourceId('Microsoft.HealthcareApis/services', variables('fhirUrlClean'))]"
-          },
-          "roleDefinitionId": {
-            "value": "[extensionResourceId(resourceId('Microsoft.HealthcareApis/services', variables('fhirUrlClean')), 'Microsoft.Authorization/roleDefinitions', parameters('fhirContributorRoleAssignmentId'))]"
-          },
-          "principalId": {
-            "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.20.4.51522",
-              "templateHash": "16173110267477419454"
-            }
-          },
-          "parameters": {
-            "resourceId": {
-              "type": "string"
-            },
-            "roleDefinitionId": {
-              "type": "string"
-            },
-            "principalId": {
-              "type": "string"
-            },
-            "principalType": {
-              "type": "string",
-              "defaultValue": "ServicePrincipal"
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2020-04-01-preview",
-              "name": "[guid(parameters('resourceId'), parameters('principalId'), parameters('roleDefinitionId'))]",
-              "properties": {
-                "roleDefinitionId": "[parameters('roleDefinitionId')]",
-                "principalId": "[parameters('principalId')]",
-                "principalType": "[parameters('principalType')]"
-              }
-            }
-          ]
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
-      ],
-      "metadata": {
-        "description": "Setup access between FHIR and the deployment script managed identity"
       }
     }
   ]

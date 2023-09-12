@@ -346,32 +346,21 @@ resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if
   name: fhirUrlClean
 }
 
-resource roleDefinitionapiForFhir 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
-  scope: apiForFhir
-  name: fhirContributorRoleAssignmentId
-}
-
-resource roleDefinitionFhirService 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = if (fhirType == 'FhirService' && createRoleAssignment == true) {
+resource roleAssignmentFhirService 'Microsoft.Authorization/roleAssignments@2022-04-01' existing = if (fhirType == 'FhirService' && createRoleAssignment == true) {
+  name: guid(fhirService.id, functionApp.identity.principalId, fhirContributorRoleAssignmentId)
   scope: fhirService
-  name: fhirContributorRoleAssignmentId
-}
-
-@description('Setup access between FHIR and the deployment script managed identity')
-module functionFhirServiceRoleAssignment './roleAssignment.bicep' = if (fhirType == 'FhirService' && createRoleAssignment == true) {
-  name: 'functionFhirServiceRoleAssignment'
-  params: {
-    resourceId: fhirService.id
-	roleDefinitionId: roleDefinitionFhirService.id
+  properties: {
     principalId: functionApp.identity.principalId
+    roleDefinitionId: fhirContributorRoleAssignmentId
+	principalType: 'ServicePrincipal'
   }
 }
-
-@description('Setup access between FHIR and the deployment script managed identity')
-module functionApiForFhirRoleAssignment './roleAssignment.bicep' = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
-  name: 'bulk-import-function-fhir-managed-id-role-assignment'
-  params: {
-    resourceId: apiForFhir.id
-	roleDefinitionId: roleDefinitionapiForFhir.id
+resource roleAssignmentapiforFhir 'Microsoft.Authorization/roleAssignments@2022-04-01' existing = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
+  name: guid(apiForFhir.id, functionApp.identity.principalId, fhirContributorRoleAssignmentId)
+  scope: apiForFhir
+  properties: {
     principalId: functionApp.identity.principalId
+    roleDefinitionId: fhirContributorRoleAssignmentId
+	principalType: 'ServicePrincipal'
   }
 }
