@@ -340,27 +340,27 @@ var fhirUrlCleanSplit = split(fhirUrlClean, '-')
 resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (fhirType == 'FhirService' && createRoleAssignment == true) {
   #disable-next-line prefer-interpolation
   name: concat(fhirUrlCleanSplit[0], '/', join(skip(fhirUrlCleanSplit, 1), '-'))
+ 
 }
 
 resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
   name: fhirUrlClean
+ 
 }
 
-resource roleAssignmentFhirService 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (fhirType == 'FhirService' && createRoleAssignment == true) {
-  name: guid(subscription().id, 'fhirservice-${prefixNameCleanShort}-func', fhirContributorRoleAssignmentId)
-  scope: fhirService
-  properties: {
+module roleAssignmentFhirService './roleAssignment.bicep' = if (fhirType == 'FhirService' && createRoleAssignment == true) {
+  name: 'role-assign-fhir-service'
+  params: {
+    resourceId: fhirService.id
     principalId: functionApp.identity.principalId
-    roleDefinitionId: fhirContributorRoleAssignmentId
-	principalType: 'ServicePrincipal'
+	roleDefinitionId: fhirContributorRoleAssignmentId
   }
 }
-resource roleAssignmentapiforFhir 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
-  name: guid(subscription().id, 'apiforfhir-${prefixNameCleanShort}-func', fhirContributorRoleAssignmentId)
-  scope: apiForFhir
-  properties: {
+module roleAssignmentApiforFhir './roleAssignment.bicep' = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
+  name: 'role-assign-api-for-fhir'
+  params: {
+    resourceId: apiForFhir.id
     principalId: functionApp.identity.principalId
-    roleDefinitionId: fhirContributorRoleAssignmentId
-	principalType: 'ServicePrincipal'
+	roleDefinitionId: fhirContributorRoleAssignmentId
   }
 }
