@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.21.1.54444",
-      "templateHash": "11557296824662740281"
+      "templateHash": "5675840120858719717"
     }
   },
   "parameters": {
@@ -482,21 +482,20 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "role-assign-fhir-service",
-      "resourceGroup": "ahdschallenge",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
         "mode": "Incremental",
         "parameters": {
+          "roleId": {
+            "value": "[parameters('fhirContributorRoleAssignmentId')]"
+          },
           "resourceId": {
             "value": "[resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1])]"
           },
           "principalId": {
             "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
-          },
-          "roleDefinitionId": {
-            "value": "[parameters('fhirContributorRoleAssignmentId')]"
           }
         },
         "template": {
@@ -506,29 +505,33 @@
             "_generator": {
               "name": "bicep",
               "version": "0.21.1.54444",
-              "templateHash": "17530063810790107061"
+              "templateHash": "7749603984194250326"
             }
           },
           "parameters": {
             "resourceId": {
               "type": "string"
             },
-            "roleDefinitionId": {
+            "roleId": {
               "type": "string"
             },
             "principalId": {
               "type": "string"
+            },
+            "principalType": {
+              "type": "string",
+              "defaultValue": "ServicePrincipal"
             }
           },
           "resources": [
             {
               "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[guid(parameters('resourceId'), parameters('principalId'), parameters('roleDefinitionId'))]",
+              "apiVersion": "2020-04-01-preview",
+              "name": "[guid(parameters('resourceId'), parameters('principalId'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId')))]",
               "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId'))]",
                 "principalId": "[parameters('principalId')]",
-                "roleDefinitionId": "[parameters('roleDefinitionId')]",
-                "principalType": "ServicePrincipal"
+                "principalType": "[parameters('principalType')]"
               }
             }
           ]
@@ -550,14 +553,14 @@
         },
         "mode": "Incremental",
         "parameters": {
+          "roleId": {
+            "value": "[parameters('fhirContributorRoleAssignmentId')]"
+          },
           "resourceId": {
             "value": "[resourceId('Microsoft.HealthcareApis/services', variables('fhirUrlClean'))]"
           },
           "principalId": {
             "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
-          },
-          "roleDefinitionId": {
-            "value": "[parameters('fhirContributorRoleAssignmentId')]"
           }
         },
         "template": {
@@ -567,29 +570,33 @@
             "_generator": {
               "name": "bicep",
               "version": "0.21.1.54444",
-              "templateHash": "17530063810790107061"
+              "templateHash": "7749603984194250326"
             }
           },
           "parameters": {
             "resourceId": {
               "type": "string"
             },
-            "roleDefinitionId": {
+            "roleId": {
               "type": "string"
             },
             "principalId": {
               "type": "string"
+            },
+            "principalType": {
+              "type": "string",
+              "defaultValue": "ServicePrincipal"
             }
           },
           "resources": [
             {
               "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[guid(parameters('resourceId'), parameters('principalId'), parameters('roleDefinitionId'))]",
+              "apiVersion": "2020-04-01-preview",
+              "name": "[guid(parameters('resourceId'), parameters('principalId'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId')))]",
               "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId'))]",
                 "principalId": "[parameters('principalId')]",
-                "roleDefinitionId": "[parameters('roleDefinitionId')]",
-                "principalType": "ServicePrincipal"
+                "principalType": "[parameters('principalType')]"
               }
             }
           ]
