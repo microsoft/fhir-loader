@@ -350,6 +350,7 @@ resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if
 
 module roleAssignmentFhirService './roleAssignment.bicep' = if (fhirType == 'FhirService' && createRoleAssignment == true) {
   name: 'role-assign-fhir-service'
+  scope: resourceGroup('ahdschallenge')
   params: {
     resourceId: fhirService.id
     principalId: functionApp.identity.principalId
@@ -358,6 +359,7 @@ module roleAssignmentFhirService './roleAssignment.bicep' = if (fhirType == 'Fhi
 }
 module roleAssignmentApiforFhir './roleAssignment.bicep' = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
   name: 'role-assign-api-for-fhir'
+  scope: resourceGroup('ahdschallenge')
   params: {
     resourceId: apiForFhir.id
     principalId: functionApp.identity.principalId
