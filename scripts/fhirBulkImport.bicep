@@ -346,8 +346,8 @@ resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if
   name: fhirUrlClean
 }
 
-resource roleAssignmentFhirService 'Microsoft.Authorization/roleAssignments@2022-04-01' existing = if (fhirType == 'FhirService' && createRoleAssignment == true) {
-  name: guid(fhirService.id, functionApp.identity.principalId, fhirContributorRoleAssignmentId)
+resource roleAssignmentFhirService 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (fhirType == 'FhirService' && createRoleAssignment == true) {
+  name: guid(subscription().id, 'fhirservice-${prefixNameCleanShort}-func', fhirContributorRoleAssignmentId)
   scope: fhirService
   properties: {
     principalId: functionApp.identity.principalId
@@ -355,8 +355,8 @@ resource roleAssignmentFhirService 'Microsoft.Authorization/roleAssignments@2022
 	principalType: 'ServicePrincipal'
   }
 }
-resource roleAssignmentapiforFhir 'Microsoft.Authorization/roleAssignments@2022-04-01' existing = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
-  name: guid(apiForFhir.id, functionApp.identity.principalId, fhirContributorRoleAssignmentId)
+resource roleAssignmentapiforFhir 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
+  name: guid(subscription().id, 'apiforfhir-${prefixNameCleanShort}-func', fhirContributorRoleAssignmentId)
   scope: apiForFhir
   properties: {
     principalId: functionApp.identity.principalId

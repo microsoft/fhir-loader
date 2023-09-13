@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.20.4.51522",
-      "templateHash": "11868246001459222426"
+      "version": "0.21.1.54444",
+      "templateHash": "3454120720647989325"
     }
   },
   "parameters": {
@@ -476,6 +476,36 @@
       "metadata": {
         "description": "Monitoring for Function App"
       }
+    },
+    {
+      "condition": "[and(equals(parameters('fhirType'), 'FhirService'), equals(parameters('createRoleAssignment'), true()))]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.HealthcareApis/workspaces/{0}/fhirservices/{1}', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1])]",
+      "name": "[guid(subscription().id, format('fhirservice-{0}-func', variables('prefixNameCleanShort')), parameters('fhirContributorRoleAssignmentId'))]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[parameters('fhirContributorRoleAssignmentId')]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
+      ]
+    },
+    {
+      "condition": "[and(equals(parameters('fhirType'), 'APIforFhir'), equals(parameters('createRoleAssignment'), true()))]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.HealthcareApis/services/{0}', variables('fhirUrlClean'))]",
+      "name": "[guid(subscription().id, format('apiforfhir-{0}-func', variables('prefixNameCleanShort')), parameters('fhirContributorRoleAssignmentId'))]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]",
+        "roleDefinitionId": "[parameters('fhirContributorRoleAssignmentId')]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort')))]"
+      ]
     }
   ]
 }
