@@ -322,7 +322,6 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
   }
 
 }
-
 @description('Monitoring for Function App')
 resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
   name: '${prefixNameCleanShort}-ai'
@@ -333,35 +332,12 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
   }
   tags: appTags
 }
-
-var fhirUrlClean = replace(split(fhirUrl, '.')[0], 'https://', '')
-var fhirUrlCleanSplit = split(fhirUrlClean, '-')
-
-resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (fhirType == 'FhirService' && createRoleAssignment == true) {
-  #disable-next-line prefer-interpolation
-  name: concat(fhirUrlCleanSplit[0], '/', join(skip(fhirUrlCleanSplit, 1), '-'))
- 
-}
-
-resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
-  name: fhirUrlClean
- 
-}
-
-module roleAssignmentFhirService './roleAssignment.bicep' = if (fhirType == 'FhirService' && createRoleAssignment == true) {
-  name: 'role-assign-fhir-service'
+module roleAssignmentFhirService './roleAssignment.bicep' = if (createRoleAssignment == true) {
+  name: 'role-assign-fhir'
   params: {
-    roleId: fhirContributorRoleAssignmentId
-    resourceId: fhirService.id
-    principalId: functionApp.identity.principalId
-  }
-}
-module roleAssignmentApiforFhir './roleAssignment.bicep' = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
-  name: 'role-assign-api-for-fhir'
-  scope: resourceGroup('ahdschallenge')
-  params: {
-    roleId: fhirContributorRoleAssignmentId
-    resourceId: apiForFhir.id
+    fhirUrl: fhirUrl
+    fhirType: fhirType
+	fhirContributorRoleAssignmentId: fhirContributorRoleAssignmentId
     principalId: functionApp.identity.principalId
   }
 }

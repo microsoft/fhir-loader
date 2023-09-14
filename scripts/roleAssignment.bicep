@@ -1,18 +1,36 @@
-param resourceId string
-param roleId string
+param fhirUrl string
+param fhirType string
+param fhirContributorRoleAssignmentId string
 param principalId string
 param principalType string = 'ServicePrincipal'
+param subscriptionId string = subscription().subscriptionId
 
-@description('See https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#fhir-data-contributor')
-resource roleDefinition 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
-  scope: resourceGroup('ahdschallenge')
-  name: roleId
+var fhirUrlClean = replace(split(fhirUrl, '.')[0], 'https://', '')
+var fhirUrlCleanSplit = split(fhirUrlClean, '-')
+
+resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (fhirType == 'FhirService') {
+  #disable-next-line prefer-interpolation
+  name: concat(fhirUrlCleanSplit[0], '/', join(skip(fhirUrlCleanSplit, 1), '-'))
+ 
 }
-
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' =  {
-  name: guid(resourceId, principalId, roleDefinition.id)
+resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if (fhirType == 'APIforFhir') {
+  name: fhirUrlClean
+ 
+}
+resource roleAssignmentFhirService 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' =  if (fhirType == 'FhirService') {
+  name: principalId
+  scope: fhirService
   properties: {
-    roleDefinitionId: roleDefinition.id
+    roleDefinitionId: '/subscriptions/${subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/${fhirContributorRoleAssignmentId}'
+    principalId: principalId
+    principalType: principalType
+  }
+}
+resource roleAssignmenApiforFhir 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' =  if (fhirType == 'APIforFhir') {
+  name: principalId
+  scope: apiForFhir
+  properties: {
+    roleDefinitionId: '/subscriptions/${subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/${fhirContributorRoleAssignmentId}'
     principalId: principalId
     principalType: principalType
   }
