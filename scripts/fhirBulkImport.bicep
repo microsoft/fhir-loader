@@ -334,6 +334,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
 }
 module roleAssignmentFhirService './roleAssignment.bicep' = if (createRoleAssignment == true) {
   name: 'role-assign-fhir'
+  scope: resourceGroup('ahdschallenge')
   params: {
     fhirUrl: fhirUrl
     fhirType: fhirType

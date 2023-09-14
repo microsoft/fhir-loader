@@ -11,11 +11,11 @@ var fhirUrlCleanSplit = split(fhirUrlClean, '-')
 resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (fhirType == 'FhirService') {
   #disable-next-line prefer-interpolation
   name: concat(fhirUrlCleanSplit[0], '/', join(skip(fhirUrlCleanSplit, 1), '-'))
- 
+  
 }
 resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if (fhirType == 'APIforFhir') {
   name: fhirUrlClean
- 
+  
 }
 resource roleAssignmentFhirService 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' =  if (fhirType == 'FhirService') {
   name: principalId

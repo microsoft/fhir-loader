@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.21.1.54444",
-      "templateHash": "1923442440256909509"
+      "templateHash": "6528975536007085703"
     }
   },
   "parameters": {
@@ -480,6 +480,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "role-assign-fhir",
+      "resourceGroup": "ahdschallenge",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
