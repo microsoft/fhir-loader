@@ -5,7 +5,7 @@ param principalType string = 'ServicePrincipal'
 
 @description('See https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#fhir-data-contributor')
 resource roleDefinition 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
-  scope: subscription()
+  scope: resourceGroup('ahdschallenge')
   name: roleId
 }
 

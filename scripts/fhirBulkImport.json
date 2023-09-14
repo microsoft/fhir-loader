@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.21.1.54444",
-      "templateHash": "5675840120858719717"
+      "templateHash": "18032477798386923433"
     }
   },
   "parameters": {
@@ -505,7 +505,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.21.1.54444",
-              "templateHash": "7749603984194250326"
+              "templateHash": "7984157286174127007"
             }
           },
           "parameters": {
@@ -527,9 +527,9 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2020-04-01-preview",
-              "name": "[guid(parameters('resourceId'), parameters('principalId'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId')))]",
+              "name": "[guid(parameters('resourceId'), parameters('principalId'), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, 'ahdschallenge'), 'Microsoft.Authorization/roleDefinitions', parameters('roleId')))]",
               "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId'))]",
+                "roleDefinitionId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, 'ahdschallenge'), 'Microsoft.Authorization/roleDefinitions', parameters('roleId'))]",
                 "principalId": "[parameters('principalId')]",
                 "principalType": "[parameters('principalType')]"
               }
@@ -570,7 +570,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.21.1.54444",
-              "templateHash": "7749603984194250326"
+              "templateHash": "7984157286174127007"
             }
           },
           "parameters": {
@@ -592,9 +592,9 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2020-04-01-preview",
-              "name": "[guid(parameters('resourceId'), parameters('principalId'), subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId')))]",
+              "name": "[guid(parameters('resourceId'), parameters('principalId'), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, 'ahdschallenge'), 'Microsoft.Authorization/roleDefinitions', parameters('roleId')))]",
               "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('roleId'))]",
+                "roleDefinitionId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, 'ahdschallenge'), 'Microsoft.Authorization/roleDefinitions', parameters('roleId'))]",
                 "principalId": "[parameters('principalId')]",
                 "principalType": "[parameters('principalType')]"
               }
