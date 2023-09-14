@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.21.1.54444",
-      "templateHash": "11756911136262901394"
+      "templateHash": "5698708636951765885"
     }
   },
   "parameters": {
@@ -523,7 +523,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.21.1.54444",
-              "templateHash": "3890714268988146978"
+              "templateHash": "3790216184586938451"
             }
           },
           "parameters": {
@@ -558,7 +558,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2020-04-01-preview",
               "scope": "[format('Microsoft.HealthcareApis/workspaces/{0}/fhirservices/{1}', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1])]",
-              "name": "[parameters('principalId')]",
+              "name": "[guid(parameters('principalId'), resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1]), parameters('fhirContributorRoleAssignmentId'))]",
               "properties": {
                 "roleDefinitionId": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/{1}', parameters('subscriptionId'), parameters('fhirContributorRoleAssignmentId'))]",
                 "principalId": "[parameters('principalId')]",
@@ -570,7 +570,7 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2020-04-01-preview",
               "scope": "[format('Microsoft.HealthcareApis/services/{0}', variables('fhirUrlClean'))]",
-              "name": "[parameters('principalId')]",
+              "name": "[guid(parameters('principalId'), resourceId('Microsoft.HealthcareApis/services', variables('fhirUrlClean')), parameters('fhirContributorRoleAssignmentId'))]",
               "properties": {
                 "roleDefinitionId": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/{1}', parameters('subscriptionId'), parameters('fhirContributorRoleAssignmentId'))]",
                 "principalId": "[parameters('principalId')]",

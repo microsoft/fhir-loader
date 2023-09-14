@@ -18,7 +18,7 @@ resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if
   
 }
 resource roleAssignmentFhirService 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' =  if (fhirType == 'FhirService') {
-  name: principalId
+  name: guid(principalId,fhirService.id,fhirContributorRoleAssignmentId)
   scope: fhirService
   properties: {
     roleDefinitionId: '/subscriptions/${subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/${fhirContributorRoleAssignmentId}'
@@ -27,7 +27,7 @@ resource roleAssignmentFhirService 'Microsoft.Authorization/roleAssignments@2020
   }
 }
 resource roleAssignmenApiforFhir 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' =  if (fhirType == 'APIforFhir') {
-  name: principalId
+  name: guid(principalId,apiForFhir.id,fhirContributorRoleAssignmentId)
   scope: apiForFhir
   properties: {
     roleDefinitionId: '/subscriptions/${subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/${fhirContributorRoleAssignmentId}'
