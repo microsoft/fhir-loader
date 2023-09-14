@@ -14,6 +14,12 @@ param fhirServiceName string = ''
 @description('Name of the API for FHIR to load resources into.')
 param apiForFhirName string = ''
 
+@description('Id of the FHIR Service to load resources into.')
+param fhirServiceId string = ''
+
+@description('Id of the API for FHIR to load resources into.')
+param apiForFhirId string = ''
+
 @description('The full URL of the OSS FHIR Server to load resources.')
 param fhirServerUrl string = ''
 
@@ -48,6 +54,10 @@ var repoUrl = 'https://github.com/microsoft/fhir-loader/'
 
 var fhirUrl = fhirType == 'FhirService' ? 'https://${replace(fhirServiceName, '/', '-')}.fhir.azurehealthcareapis.com' : fhirType == 'APIforFhir' ? 'https://${apiForFhirName}.azurehealthcareapis.com' : fhirServerUrl
 
+var fhirResourceIdSplit = fhirType == 'FhirService' ? split(fhirServiceId,'/') : split(apiForFhirId,'/')
+
+var fhirResourceGroupName = fhirResourceIdSplit[4]
+
 @description('Tenant ID where resources are deployed')
 var tenantId = subscription().tenantId
 
@@ -59,12 +69,6 @@ var appTags = {
 var uniqueResourceIdentifier = substring(uniqueString(resourceGroup().id, prefix), 0, 4)
 var prefixNameClean = '${replace(prefix, '-', '')}${uniqueResourceIdentifier}'
 var prefixNameCleanShort = length(prefixNameClean) > 16 ? substring(prefixNameClean, 0, 8) : prefixNameClean
-
-@description('Name of the NDJSON import function. Used for setting up the Storage to Event Grid subscription')
-var importNDJsonFunctionName = 'ImportNDJSON'
-
-@description('Name of the bundle import function. Used for setting up the Storage to Event Grid subscription')
-var importBundleFunctionName = 'ImportBundleEventGrid'
 
 @description('Storage account used for loading files')
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
@@ -99,7 +103,28 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
     }
   }
 }
-
+@description('Storage Queue Service')
+resource storageQueues 'Microsoft.Storage/storageAccounts/queueServices@2022-09-01' = {
+  name: 'default'
+  parent: storageAccount
+ 
+}
+@description('Storage Queue for Bundle Blob processing')
+resource storageQueueBundle 'Microsoft.Storage/storageAccounts/queueServices/queues@2022-09-01' = {
+  name: 'bundlequeue'
+  parent: storageQueues
+  properties: {
+    metadata: {}
+  }
+}
+@description('Storage Queue for NDJSON Blob processing')
+resource storageQueueNDjson 'Microsoft.Storage/storageAccounts/queueServices/queues@2022-09-01' = {
+  name: 'ndjsonqueue'
+  parent: storageQueues
+  properties: {
+    metadata: {}
+  }
+}
 @description('App Service used to run Azure Function')
 resource hostingPlan 'Microsoft.Web/serverfarms@2021-03-01' = {
   name: '${prefixNameCleanShort}-app'
@@ -251,53 +276,16 @@ resource functionAppDeployment 'Microsoft.Web/sites/sourcecontrols@2021-03-01' =
   }
 }
 
-@description('Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes.')
-resource importNDJsonFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
-  name: importNDJsonFunctionName
-  parent: functionApp
-  properties: {
-    config: {
-      disabled: false
-      bindings: [
-        {
-          type: 'eventGridTrigger'
-          direction: 'in'
-          name: 'blobCreatedEvent'
-        }
-      ]
-    }
-    language: 'CSharp'
-  }
-}
-
-@description('Placeholder function used to setup the Storage to Event Grid subscription until source control / web url deployment executes.')
-resource importBundleFunction 'Microsoft.Web/sites/functions@2022-09-01' = {
-  name: importBundleFunctionName
-  parent: functionApp
-  properties: {
-    config: {
-      disabled: false
-      bindings: [
-        {
-          type: 'eventGridTrigger'
-          direction: 'in'
-          name: 'blobCreatedEvent'
-        }
-      ]
-    }
-    language: 'CSharp'
-  }
-}
-
 @description('Subscription to ndjson container')
 resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
   name: 'ndjsoncreated'
   scope: storageAccount
   properties: {
     destination: {
-      endpointType: 'AzureFunction'
+      endpointType: 'StorageQueue'
       properties: {
-        resourceId: '${functionApp.id}/functions/${importNDJsonFunctionName}'
+        resourceId: storageAccount.id
+		queueName:'ndjsonqueue'
       }
     }
     filter: {
@@ -313,8 +301,7 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     }
     eventDeliverySchema: 'EventGridSchema'
   }
-o
-  dependsOn: [ functionAppDeployment, importNDJsonFunction ]
+  
 }
 
 @description('Subscription to bundle container')
@@ -323,10 +310,10 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
   scope: storageAccount
   properties: {
     destination: {
-      endpointType: 'AzureFunction'
+      endpointType: 'StorageQueue'
       properties: {
-        resourceId: '${functionApp.id}/functions/${importBundleFunctionName}'
-        maxEventsPerBatch: 10
+         resourceId: storageAccount.id
+		 queueName: 'bundlequeue'
       }
     }
     filter: {
@@ -344,9 +331,7 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
 
   }
 
-  dependsOn: [ functionAppDeployment, importBundleFunction ]
 }
-
 @description('Monitoring for Function App')
 resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
   name: '${prefixNameCleanShort}-ai'
@@ -357,35 +342,13 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
   }
   tags: appTags
 }
-
-var fhirUrlClean = replace(split(fhirUrl, '.')[0], 'https://', '')
-var fhirUrlCleanSplit = split(fhirUrlClean, '-')
-
-resource fhirService 'Microsoft.HealthcareApis/workspaces/fhirservices@2021-06-01-preview' existing = if (fhirType == 'FhirService' && createRoleAssignment == true) {
-  #disable-next-line prefer-interpolation
-  name: concat(fhirUrlCleanSplit[0], '/', join(skip(fhirUrlCleanSplit, 1), '-'))
-}
-
-resource apiForFhir 'Microsoft.HealthcareApis/services@2021-11-01' existing = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
-  name: fhirUrlClean
-}
-
-@description('Setup access between FHIR and the deployment script managed identity')
-module functionFhirServiceRoleAssignment './roleAssignment.bicep' = if (fhirType == 'FhirService' && createRoleAssignment == true) {
-  name: 'functionFhirServiceRoleAssignment'
+module roleAssignmentFhirService './roleAssignment.bicep' = if (createRoleAssignment == true) {
+  name: 'role-assign-fhir'
+  scope: resourceGroup(fhirResourceGroupName)
   params: {
-    resourceId: fhirService.id
-    roleId: fhirContributorRoleAssignmentId
-    principalId: functionApp.identity.principalId
-  }
-}
-
-@description('Setup access between FHIR and the deployment script managed identity')
-module functionApiForFhirRoleAssignment './roleAssignment.bicep' = if (fhirType == 'APIforFhir' && createRoleAssignment == true) {
-  name: 'bulk-import-function-fhir-managed-id-role-assignment'
-  params: {
-    resourceId: apiForFhir.id
-    roleId: fhirContributorRoleAssignmentId
+    fhirUrl: fhirUrl
+    fhirType: fhirType
+	fhirContributorRoleAssignmentId: fhirContributorRoleAssignmentId
     principalId: functionApp.identity.principalId
   }
 }
