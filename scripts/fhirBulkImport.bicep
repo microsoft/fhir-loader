@@ -14,6 +14,12 @@ param fhirServiceName string = ''
 @description('Name of the API for FHIR to load resources into.')
 param apiForFhirName string = ''
 
+@description('Id of the FHIR Service to load resources into.')
+param fhirServiceId string = ''
+
+@description('Id of the API for FHIR to load resources into.')
+param apiForFhirId string = ''
+
 @description('The full URL of the OSS FHIR Server to load resources.')
 param fhirServerUrl string = ''
 
@@ -47,6 +53,10 @@ param transformTransactionBundles bool = false
 var repoUrl = 'https://github.com/microsoft/fhir-loader/'
 
 var fhirUrl = fhirType == 'FhirService' ? 'https://${replace(fhirServiceName, '/', '-')}.fhir.azurehealthcareapis.com' : fhirType == 'APIforFhir' ? 'https://${apiForFhirName}.azurehealthcareapis.com' : fhirServerUrl
+
+var fhirResourceIdSplit = fhirType == 'FhirService' ? split(fhirServiceId,'/') : split(apiForFhirId,'/')
+
+var fhirResourceGroupName = fhirResourceIdSplit[4]
 
 @description('Tenant ID where resources are deployed')
 var tenantId = subscription().tenantId
@@ -334,7 +344,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
 }
 module roleAssignmentFhirService './roleAssignment.bicep' = if (createRoleAssignment == true) {
   name: 'role-assign-fhir'
-  scope: resourceGroup('ahdschallenge')
+  scope: resourceGroup(fhirResourceGroupName)
   params: {
     fhirUrl: fhirUrl
     fhirType: fhirType

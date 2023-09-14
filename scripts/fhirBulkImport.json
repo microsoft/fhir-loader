@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.21.1.54444",
-      "templateHash": "6528975536007085703"
+      "templateHash": "11756911136262901394"
     }
   },
   "parameters": {
@@ -47,6 +47,20 @@
       "defaultValue": "",
       "metadata": {
         "description": "Name of the API for FHIR to load resources into."
+      }
+    },
+    "fhirServiceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Id of the FHIR Service to load resources into."
+      }
+    },
+    "apiForFhirId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Id of the API for FHIR to load resources into."
       }
     },
     "fhirServerUrl": {
@@ -134,6 +148,8 @@
   "variables": {
     "repoUrl": "https://github.com/microsoft/fhir-loader/",
     "fhirUrl": "[if(equals(parameters('fhirType'), 'FhirService'), format('https://{0}.fhir.azurehealthcareapis.com', replace(parameters('fhirServiceName'), '/', '-')), if(equals(parameters('fhirType'), 'APIforFhir'), format('https://{0}.azurehealthcareapis.com', parameters('apiForFhirName')), parameters('fhirServerUrl')))]",
+    "fhirResourceIdSplit": "[if(equals(parameters('fhirType'), 'FhirService'), split(parameters('fhirServiceId'), '/'), split(parameters('apiForFhirId'), '/'))]",
+    "fhirResourceGroupName": "[variables('fhirResourceIdSplit')[4]]",
     "tenantId": "[subscription().tenantId]",
     "appTags": {
       "AppID": "fhir-loader-function"
@@ -480,7 +496,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "role-assign-fhir",
-      "resourceGroup": "ahdschallenge",
+      "resourceGroup": "[variables('fhirResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
