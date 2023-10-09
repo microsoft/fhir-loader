@@ -641,7 +641,7 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 
 	# Deploy Function Application code
 	echo "Deploying FHIR Bulk Loader & Export App from source repo to ["$bulkAppName"]...  note - this can take a while"
-	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $bulkAppName --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
+	stepresult=$(retry az functionapp deployment source config --branch personal/snarang/ndjsonfix --manual-integration --name $bulkAppName --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
 
 	sleep 30	
 	#---
