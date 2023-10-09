@@ -29,7 +29,8 @@ namespace FHIRBulkImport
         {
             string url = (string)blobCreatedEvent["data"]["url"];
             log.LogInformation($"ImportBundleEventGrid: Processing blob at {url}...");
-            string name = url.Substring(url.LastIndexOf('/') + 1);
+            string name = url.Substring(url.IndexOf("/bundles/") + "/bundles/".Length);
+            // string name = url.Substring(url.LastIndexOf('/') + 1);
             await ImportUtils.ImportBundle(name, log, _telemetryClient);
         }
         [FunctionName("PoisonQueueRetries")]
