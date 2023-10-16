@@ -31,7 +31,6 @@ namespace FHIRBulkImport
             log.LogInformation($"ImportBundleEventGrid: Processing blob at {url}...");
             string container = Utils.GetEnvironmentVariable("FBI-CONTAINER-BUNDLES", "bundles");
             string name = url.Substring(url.IndexOf($"/{container}/") + $"/{container}/".Length);
-            // string name = url.Substring(url.LastIndexOf('/') + 1);
             await ImportUtils.ImportBundle(name, log, _telemetryClient);
         }
         [FunctionName("PoisonQueueRetries")]

@@ -26,7 +26,6 @@ namespace FHIRBulkImport
             var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI-STORAGEACCT"));
             string container = Utils.GetEnvironmentVariable("FBI-CONTAINER-NDJSON", "ndjson");
             string name = url.Substring(url.IndexOf($"/{container}/") + $"/{container}/".Length);
-            //string name = url.Substring(url.LastIndexOf("/")+1);
             string mrbundlemax = System.Environment.GetEnvironmentVariable("FBI-MAXRESOURCESPERBUNDLE");
             if (!string.IsNullOrEmpty(mrbundlemax))
             {
