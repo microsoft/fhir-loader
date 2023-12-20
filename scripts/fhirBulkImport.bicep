@@ -74,6 +74,9 @@ var prefixNameCleanShort = length(prefixNameClean) > 16 ? substring(prefixNameCl
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
   name: '${prefixNameCleanShort}stor'
   location: location
+  properties: {
+    allowBlobPublicAccess: false
+  }
   sku: {
     name: 'Standard_LRS'
   }
