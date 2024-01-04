@@ -251,6 +251,9 @@
       "sku": {
         "name": "Standard_LRS"
       },
+      "properties": {
+          "allowBlobPublicAccess": false
+      },
       "kind": "StorageV2",
       "metadata": {
         "description": "Storage account used for loading files"
