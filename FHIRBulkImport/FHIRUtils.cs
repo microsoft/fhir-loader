@@ -108,7 +108,7 @@ namespace FHIRBulkImport
             }
 
             string bundleProcessingLogic = Utils.GetEnvironmentVariable("FBI-FHIR-BUNDLEPROCESSINGLOGIC", "");
-            
+
             HttpResponseMessage _fhirResponse =
             await retryPolicy.ExecuteAsync(async () =>
             {
