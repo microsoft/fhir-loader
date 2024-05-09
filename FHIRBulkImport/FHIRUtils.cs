@@ -120,7 +120,7 @@ namespace FHIRBulkImport
                 _fhirRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 _fhirRequest.Content = new StringContent(body, Encoding.UTF8, "application/json");
 
-                if (!string.IsNullOrEmpty(bundleProcessingLogic) && method == HttpMethod.Post && string.IsNullOrEmpty(path))
+                if (!string.IsNullOrEmpty(bundleProcessingLogic) && method == HttpMethod.Post)
                 {
                     _fhirRequest.Headers.Add("x-bundle-processing-logic", bundleProcessingLogic);
                 }
