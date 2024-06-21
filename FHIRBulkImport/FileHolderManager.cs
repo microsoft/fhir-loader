@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using Azure.Storage.Blobs.Specialized;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Core;
+using Azure.Identity;
 
 namespace FHIRBulkImport
 {
@@ -43,8 +45,18 @@ namespace FHIRBulkImport
             string key = instanceid;
             try
             {
+                var credential = new DefaultAzureCredential();
+
+                BlobClientOptions blobOpts = new BlobClientOptions(BlobClientOptions.ServiceVersion.V2019_02_02);
+                blobOpts.Retry.Delay = TimeSpan.FromSeconds(5);
+                blobOpts.Retry.Mode = RetryMode.Fixed;
+                blobOpts.Retry.MaxRetries = 3;
+
+                var saconnectionString = Utils.GetEnvironmentVariable("FBI-STORAGEACCT");
+
+
                 // Create a BlobServiceClient object which will be used to create a container client
-                BlobServiceClient blobServiceClient = new BlobServiceClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+                BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(saconnectionString), credential, blobOpts);
 
                 //Create a unique name for the container
              
