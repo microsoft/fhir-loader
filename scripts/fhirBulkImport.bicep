@@ -305,6 +305,10 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     }
     eventDeliverySchema: 'EventGridSchema'
   }
+
+  dependsOn: [
+    storageAccount
+  ]
   
 }
 
@@ -334,6 +338,10 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     eventDeliverySchema: 'EventGridSchema'
 
   }
+
+  dependsOn: [
+    storageAccount
+  ]
 
 }
 @description('Monitoring for Function App')
