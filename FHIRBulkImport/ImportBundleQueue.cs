@@ -39,8 +39,8 @@ namespace FHIRBulkImport
        ILogger log)
         {
             log.LogInformation($"PoisonQueueRetries:Checking for poison queue messages in bundlequeue-poison...");
-            var sourceQueue = new QueueClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), "bundlequeue-poison");
-            var targetQueue = new QueueClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), "bundlequeue");
+            var sourceQueue = new QueueClient(new Uri(Utils.GetEnvironmentVariable("FBI-STORAGEACCT-POISONQUEUE")));
+            var targetQueue = new QueueClient(new Uri(Utils.GetEnvironmentVariable("FBI-STORAGEACCT-BUNDLEQUEUE")));
             int maxrequeuemessages = Utils.GetIntEnvironmentVariable("FBI-MAXREQUEUE-MESSAGE-COUNT", "100");
             int messagesrequeued = 0;
             if (await sourceQueue.ExistsAsync())
