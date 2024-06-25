@@ -76,6 +76,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' = {
   location: location
   properties: {
     allowBlobPublicAccess: false
+    allowSharedKeyAccess: false
   }
   sku: {
     name: 'Standard_LRS'
@@ -210,7 +211,7 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'appsettings'
   parent: functionApp
   properties: {
-    AzureWebJobsStorage: storageAccountConnectionString
+    AzureWebJobsStorage__accountname: storageAccount.name
     FUNCTIONS_EXTENSION_VERSION: '~4'
     FUNCTIONS_WORKER_RUNTIME: 'dotnet'
     APPINSIGHTS_INSTRUMENTATIONKEY: appInsights.properties.InstrumentationKey
@@ -304,6 +305,10 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     }
     eventDeliverySchema: 'EventGridSchema'
   }
+
+  dependsOn: [
+    storageAccount
+  ]
   
 }
 
@@ -333,6 +338,10 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
     eventDeliverySchema: 'EventGridSchema'
 
   }
+
+  dependsOn: [
+    storageAccount
+  ]
 
 }
 @description('Monitoring for Function App')
