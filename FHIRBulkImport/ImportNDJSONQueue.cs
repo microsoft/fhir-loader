@@ -13,7 +13,7 @@ namespace FHIRBulkImport
     public class ImportNDJSONQueue
     {
         [FunctionName("ImportNDJSONQueue")]
-        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI-STORAGEACCT-NDJSONQUEUE")] QueueMessage queueMessage,ILogger log)
+        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] QueueMessage queueMessage,ILogger log)
         {
             JObject blobCreatedEvent = JObject.Parse(queueMessage.Body.ToString());
             string url = (string)blobCreatedEvent["data"]["url"];
@@ -44,6 +44,7 @@ namespace FHIRBulkImport
                 log.LogWarning($"ImportNDJSONQueue:The blob {name} in container {container} does not exist or cannot be read.");
                 return;
             }
+            log.LogInformation($"ImportNDJSONQueue: Blob at {url} read successfully");
             StringBuilder errsb = new StringBuilder();
             using (StreamReader reader = new StreamReader(myBlob))
             {

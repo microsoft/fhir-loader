@@ -23,7 +23,7 @@ namespace FHIRBulkImport
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
         }
         [FunctionName("ImportCompressedFiles")]
-        public static async Task Run([BlobTrigger("zip/{name}", Connection = "FBI-STORAGEACCT")]Stream myBlob, string name, ILogger log)
+        public static async Task Run([BlobTrigger("zip/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")]Stream myBlob, string name, ILogger log)
         {
             try
             {
