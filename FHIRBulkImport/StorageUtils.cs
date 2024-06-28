@@ -65,11 +65,11 @@ namespace FHIRBulkImport
             }
 
             BlobClient sourceBlob = sourceContainer.GetBlobClient(filePath);
-
-            BlobProperties properties = await sourceBlob.GetPropertiesAsync();
-            BlobType blobType = properties.BlobType;
+           
             if (await sourceBlob.ExistsAsync())
             {
+                BlobProperties properties = await sourceBlob.GetPropertiesAsync();
+                BlobType blobType = properties.BlobType;
                 if (blobType == BlobType.Block)
                 {
                     var cbb = sourceContainer.GetBlobClient(filePath);
