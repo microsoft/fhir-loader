@@ -13,7 +13,7 @@ namespace FHIRBulkImport
     public class ImportNDJSONQueue
     {
         [FunctionName("ImportNDJSONQueue")]
-        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI-STORAGEACCT")] QueueMessage queueMessage,ILogger log)
+        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI-STORAGEACCT-NDJSONQUEUE")] QueueMessage queueMessage,ILogger log)
         {
             JObject blobCreatedEvent = JObject.Parse(queueMessage.Body.ToString());
             string url = (string)blobCreatedEvent["data"]["url"];
