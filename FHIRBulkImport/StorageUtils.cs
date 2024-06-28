@@ -12,6 +12,7 @@ using Azure.Storage.Blobs;
 using Azure.Core;
 using Azure.Storage.Blobs.Models;
 using Azure;
+using Azure.Storage;
 
 
 namespace FHIRBulkImport
@@ -55,8 +56,8 @@ namespace FHIRBulkImport
 
             return new BlobServiceClient(new Uri(storageAccountName), credential, blobOpts);
         }
-         
-        public static async Task WriteStringToBlob(BlobServiceClient blobClient,string containerName,string filePath,string contents, ILogger log)
+
+        public static async Task WriteStringToBlob(BlobServiceClient blobClient, string containerName, string filePath, string contents, ILogger log)
         {
             var sourceContainer = blobClient.GetBlobContainerClient(containerName);
             if (!await sourceContainer.ExistsAsync())
@@ -64,16 +65,31 @@ namespace FHIRBulkImport
                 await sourceContainer.CreateAsync();
             }
 
+            // Specify the StorageTransferOptions
+            BlobUploadOptions options = new BlobUploadOptions
+            {
+                TransferOptions = new StorageTransferOptions
+                {
+                    // Set the maximum number of workers that 
+                    // may be used in a parallel transfer.
+                    MaximumConcurrency = 8,
+
+                    // Set the maximum length of a transfer to 50MB.
+                    MaximumTransferSize = 50 * 1024 * 1024
+                }
+            };
+
             BlobClient sourceBlob = sourceContainer.GetBlobClient(filePath);
-           
             if (await sourceBlob.ExistsAsync())
             {
+
                 BlobProperties properties = await sourceBlob.GetPropertiesAsync();
                 BlobType blobType = properties.BlobType;
+
                 if (blobType == BlobType.Block)
                 {
                     var cbb = sourceContainer.GetBlobClient(filePath);
-                    await cbb.UploadAsync(contents);
+                    await cbb.UploadAsync(BinaryData.FromString(contents), options);
                     return;
                 }
 
@@ -91,10 +107,10 @@ namespace FHIRBulkImport
             }
 
             BlobClient newblob = sourceContainer.GetBlobClient(filePath);
-            await newblob.UploadAsync(contents);
-
+            await newblob.UploadAsync(BinaryData.FromString(contents), options);
 
         }
+
         public static async Task<System.IO.Stream> GetStreamForBlob(BlobServiceClient blobClient, string containerName, string filePath, ILogger log)
         {
             var sourceContainer = blobClient.GetBlobContainerClient(containerName);
