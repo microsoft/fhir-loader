@@ -35,3 +35,30 @@ resource roleAssignmenApiforFhir 'Microsoft.Authorization/roleAssignments@2020-0
     principalType: principalType
   }
 }
+
+//StorageBlobDataOwner
+resource roleAssignment1 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(principalId,apiForFhir.id,'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')
+    principalId: principalId
+  }
+}
+
+//StorageAccountContributor
+resource roleAssignment2 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(principalId,apiForFhir.id,'17d1049b-9a84-46fb-8f53-869881c3d3ab')
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')
+    principalId: principalId
+  }
+}
+
+//StorageQueueDataContributor
+resource roleAssignment3 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(principalId,apiForFhir.id,'974c5e8b-45b9-4653-ba55-5f855dd0fb88')
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88')
+    principalId: principalId
+  }
+}
