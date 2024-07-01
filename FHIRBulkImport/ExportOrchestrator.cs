@@ -557,7 +557,7 @@ namespace FHIRBulkImport
             return response;
         }
         [FunctionName("ExportBlobTrigger")]
-        public static async Task RunBlobTrigger([BlobTrigger("export-trigger/{name}", Connection = "FBI-STORAGEACCT")] Stream myBlob, string name, [DurableClient] IDurableOrchestrationClient starter, ILogger log)
+        public static async Task RunBlobTrigger([BlobTrigger("export-trigger/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")] Stream myBlob, string name, [DurableClient] IDurableOrchestrationClient starter, ILogger log)
         {
 
             StreamReader reader = new StreamReader(myBlob);

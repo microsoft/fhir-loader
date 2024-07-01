@@ -20,9 +20,9 @@ namespace FHIRBulkImport
     public static class StorageUtils
     {
      
-        public static AppendBlobClient GetAppendBlobClientSync(string storageAccountName, string container, string blobname)
+        public static AppendBlobClient GetAppendBlobClientSync(string storageAccountUri, string container, string blobname)
         {
-            string uriString = $"{storageAccountName}/{container}/{blobname}";
+            string uriString = $"{storageAccountUri}/{container}/{blobname}";
             Uri uri = new Uri(uriString);
             var retVal = new AppendBlobClient(uri, new DefaultAzureCredential());
 
@@ -33,9 +33,9 @@ namespace FHIRBulkImport
 
             return retVal;
         }
-        public static async Task<AppendBlobClient> GetAppendBlobClient(string storageAccountName, string container, string blobname)
+        public static async Task<AppendBlobClient> GetAppendBlobClient(string storageAccountUri, string container, string blobname)
         {
-            string uriString = $"{storageAccountName}/{container}/{blobname}";
+            string uriString = $"{storageAccountUri}/{container}/{blobname}";
             Uri uri = new Uri(uriString);
             var retVal = new AppendBlobClient(uri, new DefaultAzureCredential());
             if (!await retVal.ExistsAsync())
@@ -45,7 +45,7 @@ namespace FHIRBulkImport
         
             return retVal;
         }
-        public static BlobServiceClient GetCloudBlobClient(string storageAccountName)
+        public static BlobServiceClient GetCloudBlobClient(string storageAccountUri)
         {
             var credential = new DefaultAzureCredential();
 
@@ -54,7 +54,7 @@ namespace FHIRBulkImport
             blobOpts.Retry.Mode = RetryMode.Fixed;
             blobOpts.Retry.MaxRetries = 3;
 
-            return new BlobServiceClient(new Uri(storageAccountName), credential, blobOpts);
+            return new BlobServiceClient(new Uri(storageAccountUri), credential, blobOpts);
         }
 
         public static async Task WriteStringToBlob(BlobServiceClient blobClient, string containerName, string filePath, string contents, ILogger log)

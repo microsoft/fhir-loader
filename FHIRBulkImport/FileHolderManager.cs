@@ -17,9 +17,9 @@ namespace FHIRBulkImport
 {
     public static class FileHolderManager
     {
-        public static async Task<JObject> CountLinesInBlob(string saconnectionString, string instanceid, string blobname,ILogger log)
+        public static async Task<JObject> CountLinesInBlob(string storageAccountUri, string instanceid, string blobname,ILogger log)
         {
-            var appendBlobSource = await StorageUtils.GetAppendBlobClient(saconnectionString, $"export/{instanceid}", $"{blobname}");
+            var appendBlobSource = await StorageUtils.GetAppendBlobClient(storageAccountUri, $"export/{instanceid}", $"{blobname}");
             appendBlobSource.Seal();
             int count = 0;
             using (var stream = appendBlobSource.OpenRead())
@@ -53,9 +53,9 @@ namespace FHIRBulkImport
                 blobOpts.Retry.Mode = RetryMode.Fixed;
                 blobOpts.Retry.MaxRetries = 3;
 
-                var storageAccountName = Utils.GetEnvironmentVariable("FBI-STORAGEACCT");
+                var storageAccountUri = Utils.GetEnvironmentVariable("FBI-STORAGEACCT");
                 // Create a BlobServiceClient object which will be used to create a container client
-                BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(storageAccountName), credential, blobOpts);
+                BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(storageAccountUri), credential, blobOpts);
 
                 //Create a unique name for the container
 

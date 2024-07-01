@@ -44,7 +44,6 @@ namespace FHIRBulkImport
                 log.LogWarning($"ImportNDJSONQueue:The blob {name} in container {container} does not exist or cannot be read.");
                 return;
             }
-            log.LogInformation($"ImportNDJSONQueue: Blob at {url} read successfully");
             StringBuilder errsb = new StringBuilder();
             using (StreamReader reader = new StreamReader(myBlob))
             {
