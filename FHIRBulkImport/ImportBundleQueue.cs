@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Collections.Generic;
 using Azure.Storage.Queues;
 using Azure.Storage.Queues.Models;
+using Azure.Identity;
 
 namespace FHIRBulkImport
 {
@@ -25,7 +26,7 @@ namespace FHIRBulkImport
             
         }
         [FunctionName("ImportBundleQueue")]
-        public async Task Run([QueueTrigger("bundlequeue", Connection = "FBI-STORAGEACCT")] JObject blobCreatedEvent, ILogger log)
+        public async Task Run([QueueTrigger("bundlequeue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] JObject blobCreatedEvent, ILogger log)
         {
             string url = (string)blobCreatedEvent["data"]["url"];
             log.LogInformation($"ImportBundleEventGrid: Processing blob at {url}...");
@@ -39,8 +40,10 @@ namespace FHIRBulkImport
        ILogger log)
         {
             log.LogInformation($"PoisonQueueRetries:Checking for poison queue messages in bundlequeue-poison...");
-            var sourceQueue = new QueueClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), "bundlequeue-poison");
-            var targetQueue = new QueueClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), "bundlequeue");
+            var sourceQueue = new QueueClient(new Uri($"{Utils.GetEnvironmentVariable("FBI-STORAGEACCT-QUEUEURI")}/bundlequeue-poison"),new DefaultAzureCredential());
+            await sourceQueue.CreateIfNotExistsAsync();
+            var targetQueue = new QueueClient(new Uri($"{Utils.GetEnvironmentVariable("FBI-STORAGEACCT-QUEUEURI")}/bundlequeue"), new DefaultAzureCredential());
+            await targetQueue.CreateIfNotExistsAsync();
             int maxrequeuemessages = Utils.GetIntEnvironmentVariable("FBI-MAXREQUEUE-MESSAGE-COUNT", "100");
             int messagesrequeued = 0;
             if (await sourceQueue.ExistsAsync())

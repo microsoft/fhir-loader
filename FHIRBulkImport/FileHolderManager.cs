@@ -10,14 +10,16 @@ using System.Threading.Tasks;
 using Azure.Storage.Blobs.Specialized;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Core;
+using Azure.Identity;
 
 namespace FHIRBulkImport
 {
     public static class FileHolderManager
     {
-        public static async Task<JObject> CountLinesInBlob(string saconnectionString, string instanceid, string blobname,ILogger log)
+        public static async Task<JObject> CountLinesInBlob(string storageAccountUri, string instanceid, string blobname,ILogger log)
         {
-            var appendBlobSource = await StorageUtils.GetAppendBlobClient(saconnectionString, $"export/{instanceid}", $"{blobname}");
+            var appendBlobSource = await StorageUtils.GetAppendBlobClient(storageAccountUri, $"export/{instanceid}", $"{blobname}");
             appendBlobSource.Seal();
             int count = 0;
             using (var stream = appendBlobSource.OpenRead())
@@ -43,11 +45,20 @@ namespace FHIRBulkImport
             string key = instanceid;
             try
             {
+
+                var credential = new DefaultAzureCredential();
+
+                BlobClientOptions blobOpts = new BlobClientOptions(BlobClientOptions.ServiceVersion.V2019_02_02);
+                blobOpts.Retry.Delay = TimeSpan.FromSeconds(5);
+                blobOpts.Retry.Mode = RetryMode.Fixed;
+                blobOpts.Retry.MaxRetries = 3;
+
+                var storageAccountUri = Utils.GetEnvironmentVariable("FBI-STORAGEACCT");
                 // Create a BlobServiceClient object which will be used to create a container client
-                BlobServiceClient blobServiceClient = new BlobServiceClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+                BlobServiceClient blobServiceClient = new BlobServiceClient(new Uri(storageAccountUri), credential, blobOpts);
 
                 //Create a unique name for the container
-             
+
 
                 // Create the container and return a container client object
                 BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient("export");

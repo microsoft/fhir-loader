@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Azure.Storage.Blobs;
 
 namespace FHIRBulkImport
 {
@@ -22,7 +23,7 @@ namespace FHIRBulkImport
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
         }
         [FunctionName("ImportCompressedFiles")]
-        public static async Task Run([BlobTrigger("zip/{name}", Connection = "FBI-STORAGEACCT")]Stream myBlob, string name, ILogger log)
+        public static async Task Run([BlobTrigger("zip/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")]Stream myBlob, string name, ILogger log)
         {
             try
             {
@@ -30,10 +31,9 @@ namespace FHIRBulkImport
                 if (name.Split('.').Last().ToLower() == "zip")
                 {
 
-                    CloudStorageAccount storageAccount = CloudStorageAccount.Parse(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
-                    CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-                    CloudBlobContainer containerndjson = blobClient.GetContainerReference("ndjson");
-                    CloudBlobContainer containerbundles = blobClient.GetContainerReference("bundles");
+                    var blobClient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+                    var containerndjson = blobClient.GetBlobContainerClient("ndjson");
+                    var containerbundles = blobClient.GetBlobContainerClient("bundles");
 
                     using (MemoryStream blobMemStream = new MemoryStream())
                     {
@@ -48,7 +48,7 @@ namespace FHIRBulkImport
                                 //Replace all NO digits, letters, or "-" by a "-" Azure storage is specific on valid characters
                                 string validname = Regex.Replace(entry.Name, @"[^a-zA-Z0-9\-]", "-").ToLower();
                                 //log.LogInformation($"ImportCompressedFiles: Now processing {entry.FullName} size {FormatSize(entry.Length)}");
-                                CloudBlobContainer destination = null;
+                                BlobContainerClient destination = null;
                                 if (validname.ToLower().EndsWith("ndjson"))
                                 {
                                     destination = containerndjson;
@@ -61,10 +61,10 @@ namespace FHIRBulkImport
                                 }
                                 if (destination != null)
                                 {
-                                    CloudBlockBlob blockBlob = destination.GetBlockBlobReference(validname);
+                                    BlobClient blockBlob = destination.GetBlobClient(validname);
                                     using (var fileStream = entry.Open())
                                     {
-                                        await blockBlob.UploadFromStreamAsync(fileStream);
+                                        await blockBlob.UploadAsync(fileStream);
                                         
                                     }
                                     log.LogInformation($"ImportCompressedFiles: Extracted {entry.FullName} to {destination.Name}/{validname}");

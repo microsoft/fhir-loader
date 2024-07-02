@@ -19,7 +19,7 @@ namespace FHIRBulkImport
         }
         [Disable("FBI-DISABLE-BLOBTRIGGER")]
         [FunctionName("ImportBundleBlobTrigger")]
-        public async Task Run([BlobTrigger("bundles/{name}", Connection = "FBI-STORAGEACCT")]Stream myBlob, string name, ILogger log)
+        public async Task Run([BlobTrigger("bundles/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")]Stream myBlob, string name, ILogger log)
         {
             await ImportUtils.ImportBundle(name, log, _telemetryClient);
         }

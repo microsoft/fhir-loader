@@ -205,7 +205,8 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
   }
 }
 
-var storageAccountConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+var storageAccountUri = 'https://${storageAccount.name}.blob.core.windows.net/'
+var storageAccountQueueUri = 'https://${storageAccount.name}.queue.core.windows.net/'
 
 resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'appsettings'
@@ -221,7 +222,10 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2021-03-01' = {
     AzureFunctionsJobHost__functionTimeout: '23:00:00'
 
     // Storage account to setup import from
-    'FBI-STORAGEACCT': storageAccountConnectionString
+    'FBI-STORAGEACCT': storageAccountUri
+    'FBI-STORAGEACCT-QUEUEURI-IDENTITY__queueServiceUri': storageAccountQueueUri
+    'FBI-STORAGEACCT-IDENTITY__blobServiceUri': storageAccountUri
+    'FBI-STORAGEACCT-QUEUEURI': storageAccountQueueUri
 
     // URL for the FHIR endpoint
     'FS-URL': fhirUrl
