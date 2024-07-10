@@ -160,6 +160,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     serverFarmId: hostingPlan.id
     clientAffinityEnabled: false
     siteConfig: {
+      netFrameworkVersion: 'v8.0'
       alwaysOn: true
       appSettings: [
         {
@@ -215,6 +216,7 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2021-03-01' = {
     AzureWebJobsStorage__accountname: storageAccount.name
     FUNCTIONS_EXTENSION_VERSION: '~4'
     FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+    FUNCTIONS_INPROC_NET8_ENABLED: '1'
     APPINSIGHTS_INSTRUMENTATIONKEY: appInsights.properties.InstrumentationKey
     APPLICATIONINSIGHTS_CONNECTION_STRING: appInsights.properties.ConnectionString
     SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
