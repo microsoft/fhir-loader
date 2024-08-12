@@ -381,7 +381,7 @@
             "fhirServerUrl": "[steps('appSettings').fhirSection.fhirServerUrl]",
             "authenticationType": "[steps('appSettings').fhirAuthenticationSection.authenticationType]",
             "appServiceSize": "[steps('appSettings').functionAppConfigurationSection.appServiceSize]",
-            "serviceAccountClientId": "[steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.objectId]",
+            "serviceAccountClientId": "[first(steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.objectId)]",
             "serviceAccountSecret": "[steps('appSettings').fhirServicePrincipalSection.servicePrincipalSelector.password]",
             "fhirAudience": "[steps('advanced').advancedAudienceConfigurationSection.fhirAudienceTextBox]",
             "createRoleAssignment": "[steps('advanced').advancedRoleAssignmentConfigurationSection.roleAssignmentSelector]"
