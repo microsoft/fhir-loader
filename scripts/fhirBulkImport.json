@@ -576,7 +576,7 @@
               "scope": "[parameters('fhirServerScopeId')]",
               "name": "[guid(parameters('principalId'), resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1]), parameters('fhirContributorRoleAssignmentId'))]",
               "properties": {
-                "roleDefinitionId": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/{1}', parameters('subscriptionId'), parameters('fhirContributorRoleAssignmentId'))]",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5a1fc7df-4bf1-4951-a576-89034ee01acd')]",
                 "principalId": "[parameters('principalId')]",
                 "principalType": "[parameters('principalType')]"
               }
