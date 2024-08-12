@@ -559,6 +559,9 @@
             "subscriptionId": {
               "type": "string",
               "defaultValue": "[subscription().subscriptionId]"
+            },
+            "fhirServerScopeId": {
+              "type": "string"
             }
           },
           "variables": {
