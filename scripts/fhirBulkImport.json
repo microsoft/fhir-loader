@@ -522,9 +522,6 @@
           "fhirContributorRoleAssignmentId": {
             "value": "[parameters('fhirContributorRoleAssignmentId')]"
           },
-          "fhirServerScopeId": {
-            "value": "[parameters('fhirServiceId')]"
-          },
           "principalId": {
             "value": "[if(equals(parameters('authenticationType'), 'servicePrincipal'), parameters('serviceAccountClientId'), reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId)]"
           }
@@ -559,9 +556,6 @@
             "subscriptionId": {
               "type": "string",
               "defaultValue": "[subscription().subscriptionId]"
-            },
-            "fhirServerScopeId": {
-              "type": "string"
             }
           },
           "variables": {
@@ -576,7 +570,7 @@
               "scope": "[format('Microsoft.HealthcareApis/workspaces/{0}/fhirservices/{1}', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1])]",
               "name": "[guid(parameters('principalId'), resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[0], split(concat(variables('fhirUrlCleanSplit')[0], '/', join(skip(variables('fhirUrlCleanSplit'), 1), '-')), '/')[1]), parameters('fhirContributorRoleAssignmentId'))]",
               "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5a1fc7df-4bf1-4951-a576-89034ee01acd')]",
+                "roleDefinitionId": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/{1}', parameters('subscriptionId'), parameters('fhirContributorRoleAssignmentId'))]",
                 "principalId": "[parameters('principalId')]",
                 "principalType": "[parameters('principalType')]"
               }
