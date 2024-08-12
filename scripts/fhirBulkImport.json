@@ -523,7 +523,7 @@
             "value": "[parameters('fhirContributorRoleAssignmentId')]"
           },
           "principalId": {
-            "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
+            "value": "[if(equals(parameters('authenticationType'), 'servicePrincipal'), parameters('serviceAccountClientId'), reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId)]"
           }
         },
         "template": {
