@@ -109,6 +109,13 @@
         "description": "If not using MSI, client ID of the service account used to connect to the FHIR Server"
       }
     },
+    "serviceAccountServicePrincipalId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "If not using MSI, service principal ID of the service account used to assign roles to connect to the FHIR Server"
+      }
+    },
     "serviceAccountSecret": {
       "type": "securestring",
       "defaultValue": "",
@@ -523,7 +530,7 @@
             "value": "[parameters('fhirContributorRoleAssignmentId')]"
           },
           "principalId": {
-            "value": "[if(equals(parameters('authenticationType'), 'servicePrincipal'), parameters('serviceAccountClientId'), reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId)]"
+            "value": "[if(equals(parameters('authenticationType'), 'servicePrincipal'), parameters('serviceAccountServicePrincipalId'), reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId)]"
           }
         },
         "template": {
