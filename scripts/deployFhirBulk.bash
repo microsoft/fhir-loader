@@ -481,6 +481,24 @@ if [[ "$authType" == "SP" ]] ; then
 		fi
 	fi 
 	[[ "${fhirServiceAudience:?}" ]]
+	msifhirserverdefault=${fhirServiceUrl#https://}
+		msifhirserverdefault=${msifhirserverdefault%%.*}
+		if [[ "$fhirServiceUrl" == *".fhir.azurehealthcareapis.com"* ]]; then
+			IFS='-' read -ra Arr <<< "$msifhirserverdefault"
+			fhirServiceWorkspace=${Arr[0]}
+			msifhirservername=""
+			for (( i=1; i<${#Arr[@]}; i++ ));
+			do
+				msifhirservername=$msifhirservername${Arr[$i]}"-"
+			done
+			msifhirservername=${msifhirservername::-1}
+			IFS=$'\n\t'
+			msifhirserverrg=$(az resource list --name $fhirServiceWorkspace/$msifhirservername --resource-type 'Microsoft.HealthcareApis/workspaces/fhirservices' --query "[0].resourceGroup" --output tsv)
+		else 
+			msifhirservername=$msifhirserverdefault
+			msifhirserverrg=$(az resource list --name $msifhirservername --resource-type 'Microsoft.HealthcareApis/services' --query "[0].resourceGroup" --output tsv)
+		fi
+		fhirServiceAudience=${fhirServiceUrl}
 else
 		echo "Auth Type is set to Managed Service Identity (MSI)"		
 		echo "Note: API for FHIR or AHDS FHIR Server must be in same tenant as fhir-loader to use MSI..."
@@ -647,6 +665,10 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 		echo "Setting "$fahost" app role assignment on FHIR Server..."
 		stepresult=$(retry az role assignment create --assignee "${msi}" --role "${msirolename}" --scope "${msifhirserverrid}" --only-show-errors)
 	fi
+	else
+        clientAppServicePrincipalId=$(az ad sp show --id $fhirServiceClientId --query id --output tsv)
+        stepresult=$(retry az role assignment create --assignee-object-id $clientAppServicePrincipalId --assignee-principal-type ServicePrincipal --role $msirolename --scope $msifhirserverrid --only-show-errors)
+    fi
 
 	storageAccountQueueUri=$(az storage account show --name $deployPrefix$storageAccountNameSuffix --resource-group $resourceGroupName --query "primaryEndpoints.queue" --output tsv)
 
