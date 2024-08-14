@@ -109,6 +109,13 @@
         "description": "If not using MSI, client ID of the service account used to connect to the FHIR Server"
       }
     },
+    "serviceAccountServicePrincipalId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "If not using MSI, service principal ID of the service account used to assign roles to connect to the FHIR Server"
+      }
+    },
     "serviceAccountSecret": {
       "type": "securestring",
       "defaultValue": "",
@@ -121,13 +128,6 @@
       "defaultValue": "",
       "metadata": {
         "description": "Audience used for FHIR Server tokens. Leave blank to use the FHIR url which will work for default FHIR deployments."
-      }
-    },
-    "createRoleAssignment": {
-      "type": "bool",
-      "defaultValue": true,
-      "metadata": {
-        "description": "Automatically create a role assignment for the function app to access the FHIR service."
       }
     },
     "fhirContributorRoleAssignmentId": {
@@ -502,7 +502,6 @@
       }
     },
     {
-      "condition": "[equals(parameters('createRoleAssignment'), true())]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "role-assign-fhir",
@@ -523,7 +522,7 @@
             "value": "[parameters('fhirContributorRoleAssignmentId')]"
           },
           "principalId": {
-            "value": "[reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId]"
+            "value": "[if(equals(parameters('authenticationType'), 'servicePrincipal'), parameters('serviceAccountServicePrincipalId'), reference(resourceId('Microsoft.Web/sites', format('{0}-func', variables('prefixNameCleanShort'))), '2021-03-01', 'full').identity.principalId)]"
           }
         },
         "template": {
