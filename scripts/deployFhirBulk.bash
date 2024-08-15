@@ -59,7 +59,7 @@ declare useExistingResourceGroup=""
 declare createNewResourceGroup=""
 declare resourceGroupLocation=""
 declare storageAccountNameSuffix="store"
-declare storageConnectionString=""
+declare storageAccountUri=""
 declare serviceplanSuffix="asp"
 declare redisAccountNameSuffix="cache"
 declare redisConnectionString=""
@@ -88,6 +88,7 @@ declare fhirServiceClientRoleAssignment=""
 # KeyVault 
 declare keyVaultName=""
 declare keyVaultExists=""
+declare keyVaultId=""
 declare useExistingKeyVault=""
 declare createNewKeyVault=""
 declare storeFHIRServiceConfig=""
@@ -106,12 +107,12 @@ declare deployPrefix=""
 declare stepresult=""
 declare bulkAppName=""
 declare defsubscriptionId=""
+declare userName=""
 declare subscriptionId=""
 declare resourceGroupName=""
 declare resourceGroupLocation=""
 declare bulkAppName=""
 declare deployPrefix=""
-declare storageConnectionString=""
 declare storesourceid=""
 declare stepresult=""
 declare keyVaultName=""
@@ -232,6 +233,7 @@ fi
 # set default subscription information
 #
 defsubscriptionId=$(az account show --query "id" --out json | sed 's/"//g') 
+userName=$(az account show --query user.name -o tsv)
 
 # Test for correct directory path / destination 
 #
@@ -373,6 +375,14 @@ if [[ -n "$keyVaultExists" ]]; then
 	echo "  "$keyVaultName" found"
 	echo " "
 	echo "Checking for FHIR Service configuration..."
+
+    keyVaultId=$(az keyvault show --name $keyVaultName --resource-group $resourceGroupName --query id --output tsv) 
+
+	# Assign the "Key Vault Secrets Officer" role to the service principal
+	az role assignment create --assignee $userName --role "Key Vault Secrets Officer" --scope $keyVaultId
+	echo "Assigned role Key Vault Secrets Officer to user..."
+	sleep 10
+
 	fhirServiceUrl=$(az keyvault secret show --vault-name $keyVaultName --name FS-URL --query "value" --out tsv 2>/dev/null)
 	if [ -n "$fhirServiceUrl" ]; then
 		echo "  FHIR Service URL: "$fhirServiceUrl
@@ -471,6 +481,24 @@ if [[ "$authType" == "SP" ]] ; then
 		fi
 	fi 
 	[[ "${fhirServiceAudience:?}" ]]
+	msifhirserverdefault=${fhirServiceUrl#https://}
+		msifhirserverdefault=${msifhirserverdefault%%.*}
+		if [[ "$fhirServiceUrl" == *".fhir.azurehealthcareapis.com"* ]]; then
+			IFS='-' read -ra Arr <<< "$msifhirserverdefault"
+			fhirServiceWorkspace=${Arr[0]}
+			msifhirservername=""
+			for (( i=1; i<${#Arr[@]}; i++ ));
+			do
+				msifhirservername=$msifhirservername${Arr[$i]}"-"
+			done
+			msifhirservername=${msifhirservername::-1}
+			IFS=$'\n\t'
+			msifhirserverrg=$(az resource list --name $fhirServiceWorkspace/$msifhirservername --resource-type 'Microsoft.HealthcareApis/workspaces/fhirservices' --query "[0].resourceGroup" --output tsv)
+		else 
+			msifhirservername=$msifhirserverdefault
+			msifhirserverrg=$(az resource list --name $msifhirservername --resource-type 'Microsoft.HealthcareApis/services' --query "[0].resourceGroup" --output tsv)
+		fi
+		fhirServiceAudience=${fhirServiceUrl}
 else
 		echo "Auth Type is set to Managed Service Identity (MSI)"		
 		echo "Note: API for FHIR or AHDS FHIR Server must be in same tenant as fhir-loader to use MSI..."
@@ -547,8 +575,12 @@ echo "Starting Deployments... "
         echo "Creating Key Vault ["$keyVaultName"] in location ["$resourceGroupName"]"
         set -x
         stepresult=$(az keyvault create --name $keyVaultName --resource-group $resourceGroupName --location  $resourceGroupLocation --tags $TAG --output none)
-		
-		sleep 3 ;
+		keyVaultId=$(az keyvault show --name $keyVaultName --resource-group $resourceGroupName --query id --output tsv) 
+
+		# Assign the "Key Vault Secrets Officer" role to the service principal
+		az role assignment create --assignee $userName --role "Key Vault Secrets Officer" --scope $keyVaultId
+
+		sleep 10 ;
     else
         echo "Using Existing Key Vault ["$keyVaultName"]"
     fi
@@ -575,30 +607,32 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	# Create Storage Account
 	#
 	echo "Creating Storage Account ["$deployPrefix$storageAccountNameSuffix"]..."
-	stepresult=$(az storage account create --name $deployPrefix$storageAccountNameSuffix --resource-group $resourceGroupName --location  $resourceGroupLocation --sku $storageSKU --encryption-services blob --tags $TAG)
+	stepresult=$(az storage account create --name $deployPrefix$storageAccountNameSuffix --resource-group $resourceGroupName --location  $resourceGroupLocation --sku $storageSKU --encryption-services blob --tags $TAG --allow-shared-key-access false)
 
-	echo "Retrieving Storage Account Connection String..."
-	storageConnectionString=$(az storage account show-connection-string -g $resourceGroupName -n $deployPrefix$storageAccountNameSuffix --query "connectionString" --out tsv)
+	echo "Create Storage Account URI.."
+	storageAccountUri=$(az storage account show --name $deployPrefix$storageAccountNameSuffix --resource-group $resourceGroupName --query "primaryEndpoints.blob" --output tsv)
 	
-	echo "Storing Storage Account Connection String in Key Vault..."
-	stepresult=$(az keyvault secret set --vault-name $keyVaultName --name "FBI-STORAGEACCT" --value $storageConnectionString)
-	
+	storesourceid="/subscriptions/"$subscriptionId"/resourceGroups/"$resourceGroupName"/providers/Microsoft.Storage/storageAccounts/"$deployPrefix$storageAccountNameSuffix
+    stepresult=$(az role assignment create --role "Storage Blob Data Contributor" --assignee $userName --scope $storesourceid)
+	stepresult=$(az role assignment create --role "Storage Queue Data Contributor" --assignee $userName --scope $storesourceid)
+    sleep 30;
+
 	echo "Creating containers..."
 	echo "  Import bundles"
-	stepresult=$(az storage container create -n bundles --connection-string $storageConnectionString)
+	stepresult=$(az storage container create -n bundles --account-name $deployPrefix$storageAccountNameSuffix --auth-mode login)
 	echo "  Import ndjson"
-	stepresult=$(az storage container create -n ndjson --connection-string $storageConnectionString)
+	stepresult=$(az storage container create -n ndjson --account-name $deployPrefix$storageAccountNameSuffix --auth-mode login)
 	echo "  Import zip"
-	stepresult=$(az storage container create -n zip --connection-string $storageConnectionString)
+	stepresult=$(az storage container create -n zip --account-name $deployPrefix$storageAccountNameSuffix --auth-mode login)
 	echo "  Export"
-	stepresult=$(az storage container create -n export --connection-string $storageConnectionString)
+	stepresult=$(az storage container create -n export --account-name $deployPrefix$storageAccountNameSuffix --auth-mode login)
 	echo "  Export trigger"
-	stepresult=$(az storage container create -n export-trigger --connection-string $storageConnectionString)
+	stepresult=$(az storage container create -n export-trigger --account-name $deployPrefix$storageAccountNameSuffix --auth-mode login)
 	echo "Creating storage queues..."
 	echo "  Ndjson queue"
-	stepresult=$(az storage queue create -n ndjsonqueue --connection-string $storageConnectionString)
+	stepresult=$(az storage queue create -n ndjsonqueue --account-name $deployPrefix$storageAccountNameSuffix --auth-mode login)
 	echo "  Bundles queue"
-	stepresult=$(az storage queue create -n bundlequeue --connection-string $storageConnectionString)
+	stepresult=$(az storage queue create -n bundlequeue --account-name $deployPrefix$storageAccountNameSuffix --auth-mode login)
 	
 	# Create Service Plan
 	#
@@ -608,7 +642,7 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	# Create the function app
 	echo "Creating FHIR Bulk Loader & Export Function App ["$bulkAppName"]..."
 	fahost=$(az functionapp create --name $bulkAppName --storage-account $deployPrefix$storageAccountNameSuffix  --plan $deployPrefix$serviceplanSuffix  --resource-group $resourceGroupName --runtime dotnet --os-type Windows --functions-version 4 --query "defaultHostName" --output tsv --only-show-errors)
-	stepresult=$(az functionapp config set --net-framework-version v6.0 --name $bulkAppName --resource-group $resourceGroupName)
+	stepresult=$(az functionapp config set --net-framework-version v8.0 --name $bulkAppName --resource-group $resourceGroupName)
 	stepresult=$(az functionapp update --name $bulkAppName --resource-group $resourceGroupName --set httpsOnly=true)
 	
 	# Result Echo
@@ -617,20 +651,31 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	# Setup Auth 
 	echo "Creating MSI for FHIR Bulk Loader & Export Function App..."
 	msi=$(az functionapp identity assign -g $resourceGroupName -n $bulkAppName --query "principalId" --out tsv)
-	
-	# Setup Keyvault Access 
-	echo "Setting KeyVault Policy to allow secret access for FHIR Bulk Loader & Export App..."
-	stepresult=$(az keyvault set-policy -n $keyVaultName --secret-permissions list get set --object-id $msi)
+	sleep 30
 
+	# Setup Keyvault Role Assignment
+	keyVaultResourceId="/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.KeyVault/vaults/$keyVaultName"
+	stepresult=$(az role assignment create --assignee "${msi}" --role "Key Vault Secrets Officer" --scope $keyVaultResourceId)
+
+	# Setup Role Assignment on function app
+	stepresult=$(az role assignment create --role "Storage Blob Data Contributor" --assignee "${msi}" --scope $storesourceid)
+	stepresult=$(az role assignment create --role "Storage Queue Data Contributor" --assignee "${msi}" --scope $storesourceid)
 	#If using MSI set fhir-proxy function app role assignment on FHIR Server
 	if [[ "$authType" == "MSI" ]] ; then 
 		echo "Setting "$fahost" app role assignment on FHIR Server..."
 		stepresult=$(retry az role assignment create --assignee "${msi}" --role "${msirolename}" --scope "${msifhirserverrid}" --only-show-errors)
 	fi
+	else
+        clientAppServicePrincipalId=$(az ad sp show --id $fhirServiceClientId --query id --output tsv)
+        stepresult=$(retry az role assignment create --assignee-object-id $clientAppServicePrincipalId --assignee-principal-type ServicePrincipal --role $msirolename --scope $msifhirserverrid --only-show-errors)
+    fi
+
+	storageAccountQueueUri=$(az storage account show --name $deployPrefix$storageAccountNameSuffix --resource-group $resourceGroupName --query "primaryEndpoints.queue" --output tsv)
+
 	# Apply App Auth and Connection settings 
 	echo "Applying FHIR Bulk Loader & Export App settings ["$bulkAppName"]..."
 	echo " Fhir Service URL will be referenced directly in App Settings for readability"
-	stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$(kvuri FBI-STORAGEACCT) FS-URL=$fhirServiceUrl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE) FS-ISMSI=$(kvuri FS-ISMSI))
+	stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-STORAGEACCT=$storageAccountUri FBI-STORAGEACCT-QUEUEURI-IDENTITY__queueServiceUri=$storageAccountQueueUri FBI-STORAGEACCT-QUEUEURI=$storageAccountQueueUri FUNCTIONS_INPROC_NET8_ENABLED=1 FBI-STORAGEACCT-IDENTITY__blobServiceUri=$storageAccountUri FS-URL=$fhirServiceUrl FS-TENANT-NAME=$(kvuri FS-TENANT-NAME) FS-CLIENT-ID=$(kvuri FS-CLIENT-ID) FS-SECRET=$(kvuri FS-SECRET) FS-RESOURCE=$(kvuri FS-RESOURCE) FS-ISMSI=$(kvuri FS-ISMSI) AzureWebJobsStorage__accountname=$deployPrefix$storageAccountNameSuffix)
 	
 	# Apply App Setting (static)
 	# Note:  We need to by default disable the ImportBlobTrigger as that will conflict with the EventGridTrigger
@@ -638,10 +683,13 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	echo "Applying Static App settings for FHIR Bulk Loader & Export App ["$bulkAppName"]..."
 	stepresult=$(az functionapp config appsettings set --name $bulkAppName --resource-group $resourceGroupName --settings FBI-DISABLE-BLOBTRIGGER=1 FBI-DISABLE-HTTPEP=1 FBI-TRANSFORMBUNDLES=true FBI-POOLEDCON-MAXCONNECTIONS=20 AzureFunctionsJobHost__functionTimeout=23:00:00 FBI-POISONQUEUE-TIMER-CRON="0 */2 * * * *")
 
-
 	# Deploy Function Application code
 	echo "Deploying FHIR Bulk Loader & Export App from source repo to ["$bulkAppName"]...  note - this can take a while"
 	stepresult=$(retry az functionapp deployment source config --branch main --manual-integration --name $bulkAppName --repo-url https://github.com/microsoft/fhir-loader --resource-group $resourceGroupName)
+
+	echo "Deleting WebJobsStorageKey"
+	stepresult=$(az functionapp config appsettings delete --name $bulkAppName --resource-group $resourceGroupName --setting-names AzureWebJobsStorage)
+
 
 	sleep 30	
 	#---
