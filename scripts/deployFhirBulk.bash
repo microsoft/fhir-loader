@@ -664,7 +664,6 @@ echo "Creating FHIR Bulk Loader & Export Function Application"
 	if [[ "$authType" == "MSI" ]] ; then 
 		echo "Setting "$fahost" app role assignment on FHIR Server..."
 		stepresult=$(retry az role assignment create --assignee "${msi}" --role "${msirolename}" --scope "${msifhirserverrid}" --only-show-errors)
-	fi
 	else
         clientAppServicePrincipalId=$(az ad sp show --id $fhirServiceClientId --query id --output tsv)
         stepresult=$(retry az role assignment create --assignee-object-id $clientAppServicePrincipalId --assignee-principal-type ServicePrincipal --role $msirolename --scope $msifhirserverrid --only-show-errors)
