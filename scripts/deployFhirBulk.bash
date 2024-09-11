@@ -441,6 +441,8 @@ done
 # 
 if [[ "$authType" == "SP" ]] ; then 
 	echo "Auth Type is set to Service Principal (SP)"
+	echo "You will need the Client ID and Client Secret of an existing Service Principal"
+	echo "If you do not have one, please create a new Service Principal."
 
 	if [ -z "$fhirServiceTenant" ] ; then
 		echo "  Enter the FHIR Service - Tenant ID (GUID)"
@@ -453,30 +455,30 @@ if [[ "$authType" == "SP" ]] ; then
 	[[ "${fhirServiceTenant:?}" ]]
 
 	if [ -z "$fhirServiceClientId" ] ; then 
-		echo "  Enter the FHIR Service - SP Client ID (GUID)"
+		echo "  Enter the Service Principal - Client ID (GUID)"
 		read fhirServiceClientId
 		if [ -z "$fhirServiceClientId" ] ; then
-			echo "You must provide a FHIR Service - SP Client ID (GUID)"
+			echo "You must provide a Service Principal - Client ID (GUID)"
 			exit 1;
 		fi
 	fi 
 	[[ "${fhirServiceClientId:?}" ]]
 
 	if [ -z "$fhirServiceClientSecret" ] ; then 
-		echo "  Enter the FHIR Service - SP Client Secret"
+		echo "  Enter the Service Principal - Client Secret"
 		read fhirServiceClientSecret
 		if [ -z "$fhirServiceClientSecret" ] ; then
-			echo "You must provide a FHIR Service - SP Client Secret"
+			echo "You must provide a Service Principal - Client Secret"
 			exit 1;
 		fi
 	fi 
 	[[ "${fhirServiceClientSecret:?}" ]]
 
 	if [ -z "$fhirServiceAudience" ] ; then 
-		echo "  Enter the FHIR Service - SP Audience (URL)"
+		echo "  Enter the FHIR Service - Audience (URL)"
 		read fhirServiceAudience
 		if [ -z "$fhirServiceAudience" ] ; then
-			echo "You must provide a FHIR Service - SP Audience (URL)"
+			echo "You must provide a FHIR Service - Audience (URL)"
 			exit 1;
 		fi
 	fi 
@@ -537,12 +539,18 @@ fi
 echo "Subscription ID:....................... "$subscriptionId
 echo "Subscription Tenant ID:................ "$sptenant
 echo "Resource Group Name:................... "$resourceGroupName
-echo "  Use Existing Resource Group:......... "$useExistingResourceGroup
-echo "  Create New Resource Group:........... "$createNewResourceGroup
+if [[ "$useExistingResourceGroup" == "yes"]]; then
+	echo "  Use Existing Resource Group:......... "$useExistingResourceGroup
+else
+	echo "  Create New Resource Group:........... "$createNewResourceGroup
+fi
 echo "Resource Group Location:............... "$resourceGroupLocation 
 echo "KeyVault Name:......................... "$keyVaultName
-echo "  Use Existing Key Vault:.............. "$useExistingKeyVault
-echo "  Create New Key Vault:................ "$createNewKeyVault
+if [[ "$useExistingKeyVault" == "yes"]]; then
+	echo "  Use Existing Key Vault:.............. "$useExistingKeyVault
+else
+	echo "  Create New Key Vault:................ "$createNewKeyVault
+fi
 echo " "
 echo "Please validate the settings above before continuing"
 read -p 'Press Enter to continue, or Ctrl+C to exit...'
