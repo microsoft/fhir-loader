@@ -539,14 +539,14 @@ fi
 echo "Subscription ID:....................... "$subscriptionId
 echo "Subscription Tenant ID:................ "$sptenant
 echo "Resource Group Name:................... "$resourceGroupName
-if [[ "$useExistingResourceGroup" == "yes"]]; then
+if [[ "$useExistingResourceGroup" == "yes" ]] ; then
 	echo "  Use Existing Resource Group:......... "$useExistingResourceGroup
 else
 	echo "  Create New Resource Group:........... "$createNewResourceGroup
 fi
 echo "Resource Group Location:............... "$resourceGroupLocation 
 echo "KeyVault Name:......................... "$keyVaultName
-if [[ "$useExistingKeyVault" == "yes"]]; then
+if [[ "$useExistingKeyVault" == "yes" ]] ; then
 	echo "  Use Existing Key Vault:.............. "$useExistingKeyVault
 else
 	echo "  Create New Key Vault:................ "$createNewKeyVault
