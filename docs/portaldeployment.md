@@ -23,51 +23,50 @@
 ### 4. FHIR Authentication
 ![FHIR Authentication](./images/portal-deployment/fhir-authentication.png)
 1. Choose the authentication method to be used.
-1. If you select Managed Identity, click `Next`.
+1. If you select Managed Identity, click `Next` and skip to [step 5](#5-fhir-audience).
 1. If you select Service Principal, follow the steps below:
 
-    *Note- If you select Service Principal, you need to create or have a Service Principal and generate a Client Secret for it.*
+- **Service Principal Configuration:**
 
-### 5. Service Principal Configuration
-If you have an existing Service Principal, you can choose `Select existing`. Alternatively, choose `Create new` to create a new Service Principal. 
+    - If you have an existing Service Principal, you can choose `Select existing`. Alternatively, choose `Create new` to create a new Service Principal. 
 
-*Note- You need to follow one of the steps below.*
+        *Note- You need to follow one of the steps below.*
 
-#### A. Create New Service Principal
-![New Service Principal](./images/portal-deployment/service-principal-config-new.png)
-1. Choose `Create new` to create a new Service Principal.
-1. Click on `Change Selection`.
-1. Enter name of the Service Principal you wish to create.
-1. Click `Register`. You will be redirected to the Certificates & Secrets section of your newly created Service Principal.
+    - **A. Create New Service Principal**
+        ![New Service Principal](./images/portal-deployment/service-principal-config-new.png)
+        1. Choose `Create new` to create a new Service Principal.
+        1. Click on `Change Selection`.
+        1. Enter name of the Service Principal you wish to create.
+        1. Click `Register`. You will be redirected to the Certificates & Secrets section of your newly created Service Principal.
 
-![New Service Principal Generate Secret](./images/portal-deployment/service-principal-new-secret1.png)
-1. Click on `New client secret`.
-1. Create a new client secret by providing name.
-1. Copy the secret for use in subsequent steps.
-1. Close the current section.
+        ![New Service Principal Generate Secret](./images/portal-deployment/service-principal-new-secret1.png)
+        1. Click on `New client secret`.
+        1. Create a new client secret by providing name.
+        1. Copy the secret for use in subsequent steps.
+        1. Close the current section.
 
-![New Service Principal Provide Secret](./images/portal-deployment/service-principal-new-secret2.png)
-1. Paste the previously copied secret here.
-1. Click on `Next`.
+        ![New Service Principal Provide Secret](./images/portal-deployment/service-principal-new-secret2.png)
+        1. Paste the previously copied secret here.
+        1. Click on `Next`.
 
-#### B. Use Existing Service Principal
+    - **B. Use Existing Service Principal**
 
-![Existing Service Principal](./images/portal-deployment/service-principal-config-existing.png)
-1. If you have an existing Service Principal, select `Select existing`.
-1. Click on `Make Selection`.
-1. Search for the existing Service Principal using either the name or Application Client ID.
-1. Select the existing Service Principal.
-1. Click on `Select`.
+        ![Existing Service Principal](./images/portal-deployment/service-principal-config-existing.png)
+        1. If you have an existing Service Principal, select `Select existing`.
+        1. Click on `Make Selection`.
+        1. Search for the existing Service Principal using either the name or Application Client ID.
+        1. Select the existing Service Principal.
+        1. Click on `Select`.
 
-![Existing Service Principal Secret](./images/portal-deployment/service-principal-config-existing-secret.png)
-1. Provide a new or old(not expired) secret for the existing Service Principal.
-1. Click on `Next`.
+        ![Existing Service Principal Secret](./images/portal-deployment/service-principal-config-existing-secret.png)
+        1. Provide a new or old(not expired) secret for the existing Service Principal.
+        1. Click on `Next`.
 
-### 6. FHIR Audience
+### 5. FHIR Audience
 ![FHIR Audience](./images/portal-deployment/fhir-audience.png)
 1. If you have configured a custom audience for your FHIR endpoint, provide the same custom audience here. Otherwise, you can leave it blank.
 1. Click on `Next`.
 
-### 7. Review + Create
+### 6. Review + Create
 1. Review all the inputs you provided in the previous steps.
 1. Click on `Create`.

@@ -8,7 +8,7 @@ There are no open issues at this time.
 
 These scripts will gather (and export) information necessary for the proper deployment and configuration of FHIR Bulk Loader. Credentials and other secure information will be stored in the existing Key Vault attached to your FHIR Service/FHIR Proxy deployment.
 
- - User must have FHIR Server (OSS)/Azure API for FHIR/Azure Healthcare APIs FHIR Service already deployed and set up with FHIR-Proxy.
+ - User must have FHIR Server (OSS)/Azure API for FHIR/Azure Healthcare APIs FHIR Service already deployed. Enable FHIR-Proxy if required.
  - User must have rights to deploy resources at the Azure Subscription scope (i.e., Contributor role or above).
 
 __Note:__
@@ -74,6 +74,13 @@ Optionally the deployment script can be used with command line options
 ./deployFhirBulk.bash -i <subscriptionId> -g <resourceGroupName> -l <resourceGroupLocation> -n <deployPrefix> -k <keyVaultName> -o <fhir or proxy>
 ```
 
+Optional Parameters details:- 
+- **subscriptionId** - The unique identifier for your Azure subscription. 
+- **resourceGroupName** - Name of the Resource Group where all the resources will be deployed.
+- **resourceGroupLocation** - Location where the resources will be deployed.
+- **deployPrefix** - This prefix will be appended to all the resources created while deployment.
+- **keyVaultName** - Name of the Key Vault which will be created while deployment.
+- **fhir or proxy** - Use `proxy` if Smart on FHIR Proxy is enabled; otherwise, use `fhir` when running the script.
 
 Azure Components installed 
  - Function App with App Insights and Storage 
