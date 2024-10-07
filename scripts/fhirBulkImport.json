@@ -401,7 +401,7 @@
       "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
       "properties": {
         "repoUrl": "[variables('repoUrl')]",
-        "branch": "main",
+        "branch": "storagerolefix",
         "isManualIntegration": true
       },
       "dependsOn": [
