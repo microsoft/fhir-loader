@@ -313,7 +313,7 @@ resource ndjsoncreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
   }
 
   dependsOn: [
-    storageAccount
+    ndjson
   ]
   
 }
@@ -346,7 +346,7 @@ resource bundlecreated 'Microsoft.EventGrid/eventSubscriptions@2022-06-15' = {
   }
 
   dependsOn: [
-    storageAccount
+    bundles
   ]
 
 }
