@@ -184,8 +184,7 @@
                                 "resourceType": "Microsoft.HealthcareApis/workspaces/fhirservices",
                                 "options": {
                                     "filter": {
-                                        "subscription": "onBasics",
-                                        "location": "onBasics"
+                                        "subscription": "onBasics"                
                                     }
                                 },
                                 "constraints": {
@@ -200,8 +199,7 @@
                                 "resourceType": "Microsoft.HealthcareApis/services",
                                 "options": {
                                     "filter": {
-                                        "subscription": "onBasics",
-                                        "location": "onBasics"
+                                        "subscription": "onBasics"
                                     }
                                 },
                                 "constraints": {

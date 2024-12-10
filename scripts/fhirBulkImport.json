@@ -443,7 +443,7 @@
         "eventDeliverySchema": "EventGridSchema"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]"
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', format('{0}stor', variables('prefixNameCleanShort')), 'default', 'ndjson')]"
       ],
       "metadata": {
         "description": "Subscription to ndjson container"
@@ -481,7 +481,7 @@
         "eventDeliverySchema": "EventGridSchema"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Storage/storageAccounts', format('{0}stor', variables('prefixNameCleanShort')))]"
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', format('{0}stor', variables('prefixNameCleanShort')), 'default', 'bundles')]"
       ],
       "metadata": {
         "description": "Subscription to bundle container"
