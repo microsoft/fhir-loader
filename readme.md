@@ -36,7 +36,7 @@ _Larger image [here](./docs/images/architecture/install-components.png)_
 
 To quickly deploy the FHIR Bulk Loader, you can use the Azure deployment below. This deployment method provides simple configuration.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fmain%2Fscripts%2FfhirBulkImport.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fmain%2Fscripts%2FcreateUiDefinition.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fpersonal%2Fv-shahamad%2Fft_AppInsight_ConnectionString_Changes%2Fscripts%2FfhirBulkImport.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2Ffhir-loader%2Fpersonal%2Fv-shahamad%2Fft_AppInsight_ConnectionString_Changes%2Fscripts%2FcreateUiDefinition.json)
 
 For detailed steps on deploying FHIR Loader using the Azure Portal, please refer to the [deployment guide](./docs/portaldeployment.md).
 
