@@ -360,7 +360,6 @@
         "FUNCTIONS_EXTENSION_VERSION": "~4",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet",
         "FUNCTIONS_INPROC_NET8_ENABLED": "1",
-        "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', variables('prefixNameCleanShort'))), '2020-02-02-preview').InstrumentationKey]",
         "APPLICATIONINSIGHTS_CONNECTION_STRING": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', variables('prefixNameCleanShort'))), '2020-02-02-preview').ConnectionString]",
         "SCM_DO_BUILD_DURING_DEPLOYMENT": "true",
         "AzureWebJobs.ImportBundleBlobTrigger.Disabled": "1",
@@ -401,7 +400,7 @@
       "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
       "properties": {
         "repoUrl": "[variables('repoUrl')]",
-        "branch": "main",
+        "branch": "personal/v-shahamad/ft_AppInsight_ConnectionString_Changes",
         "isManualIntegration": true
       },
       "dependsOn": [
