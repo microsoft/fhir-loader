@@ -280,7 +280,7 @@ resource functionAppDeployment 'Microsoft.Web/sites/sourcecontrols@2021-03-01' =
   parent: functionApp
   properties: {
     repoUrl: repoUrl
-    branch: 'personal/v-shahamad/ft_AppInsight_ConnectionString_Changes'
+    branch: 'main'
     isManualIntegration: true
   }
 }

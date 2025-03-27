@@ -400,7 +400,7 @@
       "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
       "properties": {
         "repoUrl": "[variables('repoUrl')]",
-        "branch": "personal/v-shahamad/ft_AppInsight_ConnectionString_Changes",
+        "branch": "main",
         "isManualIntegration": true
       },
       "dependsOn": [
