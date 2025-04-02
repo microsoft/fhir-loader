@@ -217,7 +217,6 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2021-03-01' = {
     FUNCTIONS_EXTENSION_VERSION: '~4'
     FUNCTIONS_WORKER_RUNTIME: 'dotnet'
     FUNCTIONS_INPROC_NET8_ENABLED: '1'
-    APPINSIGHTS_INSTRUMENTATIONKEY: appInsights.properties.InstrumentationKey
     APPLICATIONINSIGHTS_CONNECTION_STRING: appInsights.properties.ConnectionString
     SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
     'AzureWebJobs.ImportBundleBlobTrigger.Disabled': '1'
