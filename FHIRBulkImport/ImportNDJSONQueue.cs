@@ -3,8 +3,8 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Azure.Storage.Queues.Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
+
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -12,14 +12,15 @@ namespace FHIRBulkImport
 {
     public class ImportNDJSONQueue
     {
-        [FunctionName("ImportNDJSONQueue")]
-        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] QueueMessage queueMessage,ILogger log)
+        [Function("ImportNDJSONQueue")]
+        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] QueueMessage queueMessage,FunctionContext context)
         {
+            var logger = context.GetLogger("ImportNDJSONQueue");
             JObject blobCreatedEvent = JObject.Parse(queueMessage.Body.ToString());
             string url = (string)blobCreatedEvent["data"]["url"];
             if (queueMessage.DequeueCount > 1)
             {
-                log.LogInformation($"ImportNDJSONQueue: Ignoring long running requeue of file {url} on dequeue {queueMessage.DequeueCount}");
+                logger.LogInformation($"ImportNDJSONQueue: Ignoring long running requeue of file {url} on dequeue {queueMessage.DequeueCount}");
                 return;
             }
             int maxresourcesperbundle = 200;
@@ -31,17 +32,17 @@ namespace FHIRBulkImport
             {
                 if (!int.TryParse(mrbundlemax, out maxresourcesperbundle)) maxresourcesperbundle = 200;
             }
-            log.LogInformation($"NDJSONConverter: Processing blob at {url}...");
+            logger.LogInformation($"NDJSONConverter: Processing blob at {url}...");
             JObject rv = ImportUtils.initBundle();
             int linecnt = 0;
             int total = 0;
             int bundlecnt = 0;
             int errcnt = 0;
             int fileno = 1;
-            Stream myBlob = await StorageUtils.GetStreamForBlob(cbclient, container, name,log);
+            Stream myBlob = await StorageUtils.GetStreamForBlob(cbclient, container, name,logger);
             if (myBlob==null)
             {
-                log.LogWarning($"ImportNDJSONQueue:The blob {name} in container {container} does not exist or cannot be read.");
+                logger.LogWarning($"ImportNDJSONQueue:The blob {name} in container {container} does not exist or cannot be read.");
                 return;
             }
             StringBuilder errsb = new StringBuilder();
@@ -62,14 +63,14 @@ namespace FHIRBulkImport
                     }
                     catch (Exception e)
                     {
-                        log.LogError($"NDJSONConverter: File {name} is in error or contains invalid JSON at line number {linecnt}:{e.Message}");
+                        logger.LogError($"NDJSONConverter: File {name} is in error or contains invalid JSON at line number {linecnt}:{e.Message}");
                         errsb.Append($"{line}\n");
                         errcnt++;
                     }
 
                     if (bundlecnt >= maxresourcesperbundle)
                     {
-                        await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{name}-{fileno++}.json", rv.ToString(), log);
+                        await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{name}-{fileno++}.json", rv.ToString(), logger);
                         bundlecnt = 0;
                         rv = null;
                         rv = ImportUtils.initBundle();
@@ -77,14 +78,14 @@ namespace FHIRBulkImport
                 }
                 if (bundlecnt > 0)
                 {
-                    await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{name}-{fileno++}.json", rv.ToString(), log);
+                    await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{name}-{fileno++}.json", rv.ToString(), logger);
                 }
-                await StorageUtils.MoveTo(cbclient, "ndjson", "ndjsonprocessed", name, $"{name}.processed", log);
+                await StorageUtils.MoveTo(cbclient, "ndjson", "ndjsonprocessed", name, $"{name}.processed", logger);
                 if (errcnt > 0)
                 {
-                    await StorageUtils.WriteStringToBlob(cbclient, "ndjsonerr", $"{name}.err", errsb.ToString(), log);
+                    await StorageUtils.WriteStringToBlob(cbclient, "ndjsonerr", $"{name}.err", errsb.ToString(), logger);
                 }
-                log.LogInformation($"NDJSONConverter: Processing file {name} completed with {total} resources created in {fileno - 1} bundles with {errcnt} errors...");
+                logger.LogInformation($"NDJSONConverter: Processing file {name} completed with {total} resources created in {fileno - 1} bundles with {errcnt} errors...");
 
             }
         }

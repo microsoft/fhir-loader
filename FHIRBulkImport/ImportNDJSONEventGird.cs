@@ -4,8 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.EventGrid;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
 
@@ -15,12 +14,12 @@ namespace FHIRBulkImport
     public static class ImportNDJSONEventGird
     {
       
-        [FunctionName("ImportNDJSON")]
-        [return: Queue("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")]
+        [Function("ImportNDJSON")]
+        [QueueOutput("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")]
         public static JObject Run([EventGridTrigger]JObject blobCreatedEvent,
-                                     ILogger log)
+                                     FunctionContext context)
         {
-
+            var logger = context.GetLogger("ImportNDJSON");
             return blobCreatedEvent;
 
         }

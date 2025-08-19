@@ -1,26 +1,33 @@
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.IO;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
+using Azure.Storage.Blobs.Specialized;
+using DurableTask.Core;
+using DurableTask.Core.Entities;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Extensions.Http;
+using Microsoft.Azure.Functions.Worker.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
+using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using System.Linq;
 using System;
-using System.Threading;
-using System.Net.Http.Headers;
-using DurableTask.Core;
-using Azure.Storage.Blobs.Specialized;
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace FHIRBulkImport
 {
-    public static class ExportOrchestrator
+    public class ExportOrchestrator
     {
          private static void IdentifyUniquePatientReferences(JObject resource, string patreffield, HashSet<string> uniquePats)
         {
@@ -73,28 +80,31 @@ namespace FHIRBulkImport
             if (include != null) o["include"] = include;
             return o;
         }
-        [FunctionName("CountFileLines")]
-        public static async Task<JObject> CountFileLines(
+        [Function("CountFileLines")]
+        public async Task<JObject> CountFileLines(
         [ActivityTrigger] JObject ctx,
-        ILogger log)
+        FunctionContext context)
         {
+            var log = context.GetLogger("CountFileLines");
             string instanceid = (string)ctx["instanceid"];
             string blob = (string)ctx["filename"];
             return await FileHolderManager.CountLinesInBlob(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"),instanceid, blob,log);
         }
-        [FunctionName("FileNames")]
-        public static async Task<List<string>> FileNames(
+        [Function("FileNames")]
+        public async Task<List<string>> FileNames(
          [ActivityTrigger] string instanceid,
-         ILogger log)
+         FunctionContext context)
         {
+            var log = context.GetLogger("FileNames");
+
             return await FileHolderManager.GetFileNames(instanceid,log);
         }
-        [FunctionName("ExportOrchestrator")]
-        public static async Task<JArray> RunOrchestrator(
-            [OrchestrationTrigger] IDurableOrchestrationContext context,
-            ILogger log)
+        [Function("ExportOrchestrator")]
+        public async Task<JArray> RunOrchestrator(
+            [OrchestrationTrigger] TaskOrchestrationContext context,
+            FunctionContext functionContext)
         {
-            
+            var log = functionContext.GetLogger("ExportOrchestrator");
             JObject config = null;
             JObject retVal = new JObject();
             HashSet<string> uniquePats = new HashSet<string>();
@@ -212,11 +222,12 @@ namespace FHIRBulkImport
             log.LogInformation($"Completed orchestration with ID = '{context.InstanceId}'.");
             return filecounts;
         }
-        [FunctionName("AppendBlob")]
-        public static async Task<bool> AppendBlob(
+        [Function("AppendBlob")]
+        public async Task<bool> AppendBlob(
            [ActivityTrigger] JToken ctx,
-           ILogger log)
+           FunctionContext context)
         {
+            var log = context.GetLogger("AppendBlob");
             string instanceid = (string)ctx["instanceId"];
             string rm = (string)ctx["ids"];
             var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", "_completed_run.json");
@@ -226,19 +237,19 @@ namespace FHIRBulkImport
             }
             return true;
         }
-        [FunctionName("QueryFHIR")]
-        public static async Task<HashSet<string>> QueryFHIR(
-            [ActivityTrigger] IDurableActivityContext context,
-            ILogger log)
+        [Function("QueryFHIR")]
+        public  async Task<HashSet<string>> QueryFHIR(
+            [ActivityTrigger] JToken input,
+            FunctionContext context)
         {
-            
+            var log = context.GetLogger("QueryFHIR");
             HashSet<string> uniquePats = new HashSet<string>();
             try
             {
-                JToken vars = context.GetInput<JToken>();
-                string query = vars["query"].ToString();
-                string instanceid = vars["instanceid"].ToString();
-                string patreffield = (string)vars["patreffield"];
+               
+                string query = input["query"].ToString();
+                string instanceid = input["instanceid"].ToString();
+                string patreffield = (string)input["patreffield"];
                 var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
                 if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
                 {
@@ -310,9 +321,10 @@ namespace FHIRBulkImport
             }
             return uniquePats;
         }
-        [FunctionName("ExportOrchestrator_ProcessPatientQueryPage")]
-        public static async Task<JObject> ProcessPatientQueryPage([OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
+        [Function("ExportOrchestrator_ProcessPatientQueryPage")]
+        public async Task<JObject> ProcessPatientQueryPage([OrchestrationTrigger] TaskOrchestrationContext context, FunctionContext functionContext)
         {
+            var log = functionContext.GetLogger("ExportOrchestrator_ProcessPatientQueryPage");
             JObject retVal = new JObject();
             var vars = context.GetInput<JToken>();
             try
@@ -370,31 +382,31 @@ namespace FHIRBulkImport
             }            
             return retVal;
         }
-        [FunctionName("FileTracker")]
-        public static void FileTracker ([EntityTrigger] IDurableEntityContext ctx,ILogger log)
+        [Function("FileTracker")]
+        public async Task Run([OrchestrationTrigger] TaskOrchestrationContext ctx, FunctionContext context)
         {
-            
-            switch (ctx.OperationName.ToLowerInvariant())
+            var log = context.GetLogger("FileTracker");
+            var input = ctx.GetInput<dynamic>();
+            if (input.Operation == "set")
             {
-                //Set File Number
-                case "set":
-                    ctx.SetState(ctx.GetInput<int>());
-                    break;
-                case "get":
-                    ctx.Return(ctx.GetState<int>());
-                    break;
+                await ctx.CallActivityAsync("FileTracker_Set", input.Value);
             }
-        }
-        [FunctionName("ExportOrchestrator_GatherResources")]
-        public static async Task<string> GatherResources([ActivityTrigger] IDurableActivityContext context, [DurableClient] IDurableEntityClient entityclient, ILogger log)
-        {
-           
+            else if (input.Operation == "get")
+            {
+                var value = await ctx.CallActivityAsync<string>("FileTracker_Get", null);
+                ctx.SetCustomStatus(value);
+            }
 
-            JToken vars = context.GetInput<JToken>();
+        }
+        [Function("ExportOrchestrator_GatherResources")]
+        public static async Task<string> GatherResources([ActivityTrigger] JToken input, [DurableClient] DurableTaskClient entityclient, FunctionContext context)
+        {
+            var log = context.GetLogger("ExportOrchestrator_GatherResources");
+   
             int total = 0;
-            string query = vars["ids"].ToString();
-            string instanceid = vars["instanceid"].ToString();
-            var rt = (string)vars["resourcetype"];
+            string query = input["ids"].ToString();
+            string instanceid = input["instanceid"].ToString();
+            var rt = (string)input["resourcetype"];
             var fhirresp = await FHIRUtils.CallFHIRServer(query, "", HttpMethod.Get, log);
             if (fhirresp.Success && !string.IsNullOrEmpty(fhirresp.Content))
             {
@@ -427,7 +439,7 @@ namespace FHIRBulkImport
 
         public record struct ConvertToNDJSONResponse(int ResourceCount, string ResourceType, string BlobUrl);
 
-        internal static async Task<ConvertToNDJSONResponse?> ConvertToNDJSON(JToken bundle, string instanceId, string resourceType, IDurableEntityClient entityclient, ILogger log, int? parallelFileId = null)
+        internal static async Task<ConvertToNDJSONResponse?> ConvertToNDJSON(JToken bundle, string instanceId, string resourceType, DurableTaskClient entityclient, ILogger log, int? parallelFileId = null)
         {
             ConvertToNDJSONResponse? retVal = null;
             int cnt = 0;
@@ -454,10 +466,10 @@ namespace FHIRBulkImport
                 {
                     string parallelizationModifierStr = parallelFileId.HasValue ? $"-{parallelFileId.Value}" : string.Empty;
                     string key = $"{instanceId}{parallelizationModifierStr}-{resourceType}";
-                   
-                    var entityId = new EntityId(nameof(FileTracker), key);
-                    var esresp = await entityclient.ReadEntityStateAsync<int>(entityId);
-                    int fileno = esresp.EntityState;
+
+                    var getInstanceId = await entityclient.ScheduleNewOrchestrationInstanceAsync("FileTracker", (Operation: "get", Key: key));
+                    var status = await entityclient.WaitForInstanceCompletionAsync(getInstanceId, CancellationToken.None);
+                    int fileno = status?.SerializedOutput!= null ? JsonSerializer.Deserialize<int>(status.SerializedOutput) : 0;
                     var filename = resourceType + parallelizationModifierStr + "-" + (fileno + 1) + ".ndjson";                                  
                     var blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
                     long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "-1") * 1024000;
@@ -471,7 +483,7 @@ namespace FHIRBulkImport
                         fileno++;
                         filename = resourceType + parallelizationModifierStr + "-" + (fileno + 1) + ".ndjson";
                         blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
-                        await entityclient.SignalEntityAsync(entityId, "set", fileno);
+                        await entityclient.ScheduleNewOrchestrationInstanceAsync("FileTracker", (Operation: "set", Key: key, Value: fileno));
                     }
 
                     // Write the data to blob storage
@@ -490,79 +502,86 @@ namespace FHIRBulkImport
 
             return retVal;
         }
-        [FunctionName("ExportOrchestrator_HttpStart")]
-        public static async Task<HttpResponseMessage> HttpStart(
-            [HttpTrigger(AuthorizationLevel.Function,"post",Route = "$alt-export")] HttpRequestMessage req,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
+        [Function("ExportOrchestrator_HttpStart")]
+        public async Task<HttpResponseData> HttpStart(
+            [HttpTrigger(AuthorizationLevel.Function,"post",Route = "$alt-export")] HttpRequestData req,
+            [DurableClient] DurableTaskClient starter,
+            FunctionContext context)
         {
+            var log = context.GetLogger("ExportOrchestrator_HttpStart");
 
-            string config = await req.Content.ReadAsStringAsync();
-            var state  = await runningInstances(starter, log);
+            string config = await new StreamReader(req.Body).ReadToEndAsync();
+            var state  = await runningInstances(starter, context);
             int running = state.Count();
             int maxinstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
             if (maxinstances > 0 && running >= maxinstances)
             {
                 string msg = $"Unable to start export there are {running} exports the max concurrent allowed is {maxinstances}";
-                StringContent sc = new StringContent("{\"error\":\"" + msg + "\"");
-                return new HttpResponseMessage() { Content = sc, StatusCode = System.Net.HttpStatusCode.TooManyRequests};
+                var response = req.CreateResponse(System.Net.HttpStatusCode.TooManyRequests);
+                await response.WriteStringAsync($"{{\"error\":\"{msg}\"}}");
+              
+                return response;
             }
             // Function input comes from the request content.
-            string instanceId = await starter.StartNewAsync("ExportOrchestrator",null,config);
+            string instanceId = await starter.ScheduleNewOrchestrationInstanceAsync("ExportOrchestrator",config);
             
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
 
             return starter.CreateCheckStatusResponse(req, instanceId);
         }
-        [FunctionName("ExportOrchestrator_InstanceAction")]
-        public static async Task<HttpResponseMessage> InstanceAction(
-          [HttpTrigger(AuthorizationLevel.Function, "get", Route = "$alt-export-manage/{instanceid}")] HttpRequestMessage req,
-          [DurableClient] IDurableOrchestrationClient starter,string instanceid,
-          ILogger log)
+        [Function("ExportOrchestrator_InstanceAction")]
+        public async Task<HttpResponseData> InstanceAction(
+          [HttpTrigger(AuthorizationLevel.Function, "get", Route = "$alt-export-manage/{instanceid}")] HttpRequestData req,
+          [DurableClient] DurableTaskClient starter,string instanceid,
+          FunctionContext context)
         {
-
-            var parms = System.Web.HttpUtility.ParseQueryString(req.RequestUri.Query);
+            var log = context.GetLogger("ExportOrchestrator_InstanceAction");
+            var parms = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
             string action = parms["action"];
-            await starter.TerminateAsync(instanceid, "Terminated by User");
+            await starter.TerminateInstanceAsync(instanceid, "Terminated by User");
             StringContent sc = new StringContent($"Terminated {instanceid}");
             var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
-            response.Content = sc;
-            response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+            response.Headers.Add("Content-Type", "text/plain");
+            await response.WriteStringAsync("Terminated abc");
             return response;
         }
-        [FunctionName("ExportOrchestrator_ExportStatus")]
-        public static async Task<HttpResponseMessage> ExportStatus(
-           [HttpTrigger(AuthorizationLevel.Function, "get", Route = "$alt-export-status")] HttpRequestMessage req,
-           [DurableClient] IDurableOrchestrationClient starter,
-           ILogger log)
+        [Function("ExportOrchestrator_ExportStatus")]
+        public async Task<HttpResponseData> ExportStatus(
+           [HttpTrigger(AuthorizationLevel.Function, "get", Route = "$alt-export-status")] HttpRequestData req,
+           [DurableClient] DurableTaskClient client,
+           FunctionContext context)
         {
-            string config = await req.Content.ReadAsStringAsync();
-            var state = await runningInstances(starter, log);
+            var log = context.GetLogger("ExportOrchestrator_ExportStatus");
+            string config = await new StreamReader(req.Body).ReadToEndAsync();
+            var state = await runningInstances(client, context);
             JArray retVal = new JArray();
-            foreach (DurableOrchestrationStatus status in state)
+            foreach (var status in state)
             {
+                var statusWithInput = await client.GetInstanceAsync(status.InstanceId, getInputsAndOutputs: true);
                 JObject o = new JObject();
                 o["instanceId"] = status.InstanceId;
-                o["createdDateTime"] = status.CreatedTime;
+                o["createdDateTime"] = status.CreatedAt;
                 o["status"] = status.RuntimeStatus.ToString();
-                TimeSpan span = (DateTime.UtcNow - status.CreatedTime);
+                TimeSpan span = (DateTime.UtcNow - status.CreatedAt);
                 o["elapsedtimeinminutes"] = span.TotalMinutes;
-                o["input"] = status.Input;
+                o["input"] = statusWithInput?.SerializedInput ?? "";
                 retVal.Add(o);
             }
-            StringContent sc = new StringContent(retVal.ToString());
-            var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
-            response.Content = sc;
-            response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "application/json");
+            await response.WriteStringAsync(retVal.ToString());
             return response;
         }
-        [FunctionName("ExportBlobTrigger")]
-        public static async Task RunBlobTrigger([BlobTrigger("export-trigger/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")] Stream myBlob, string name, [DurableClient] IDurableOrchestrationClient starter, ILogger log)
+
+        [Function("ExportBlobTrigger")]
+        public async Task RunBlobTrigger([BlobTrigger("export-trigger/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")] Stream myBlob, string name, [DurableClient] DurableTaskClient starter, FunctionContext context)
         {
+            var log = context.GetLogger("ExportBlobTrigger");
 
             StreamReader reader = new StreamReader(myBlob);
             var text = await reader.ReadToEndAsync();
-            var state = await runningInstances(starter, log);
+            var state = await runningInstances(starter, context);
             int running = state.Count();
             int maxinstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
             if (maxinstances > 0 && running >= maxinstances)
@@ -571,28 +590,31 @@ namespace FHIRBulkImport
                 log.LogError($"ExportBlobTrigger:{msg}");
                 return;
             }
-            string instanceId = await starter.StartNewAsync("ExportOrchestrator", null, text);
+            string instanceId = await starter.ScheduleNewOrchestrationInstanceAsync("ExportOrchestrator", text);
             var bc = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
             await StorageUtils.MoveTo(bc, "export-trigger", "export-trigger-processed", name, name, log);
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
         }
-        public static async Task<IEnumerable<DurableOrchestrationStatus>> runningInstances(IDurableOrchestrationClient client,ILogger log)
+        public async Task<IEnumerable<OrchestrationMetadata>> runningInstances(DurableTaskClient client, FunctionContext context)
         {
-            var queryFilter = new OrchestrationStatusQueryCondition
+           
+            var queryFilter = new OrchestrationQuery
             {
-                RuntimeStatus = new[]
+                Statuses = new[]
                 {
                     OrchestrationRuntimeStatus.Pending,
                     OrchestrationRuntimeStatus.Running
                 }
-                
-            };
 
-            OrchestrationStatusQueryResult result = await client.ListInstancesAsync(
-                queryFilter,
-                CancellationToken.None);
-            var retVal = new List<DurableOrchestrationStatus>();
-            foreach (DurableOrchestrationStatus status in result.DurableOrchestrationState)
+            };
+            var result = new List<OrchestrationMetadata>();
+            await foreach (var item in client.GetAllInstancesAsync(queryFilter))
+            {
+                result.Add(item);
+            }
+
+            var retVal = new List<OrchestrationMetadata>();
+            await foreach (var status in client.GetAllInstancesAsync(queryFilter))
             {
                 if (!status.InstanceId.Contains(":") && !status.InstanceId.StartsWith("@"))
                 {
@@ -600,25 +622,26 @@ namespace FHIRBulkImport
                 }
             }
             return retVal;
-            
+
         }
-        [FunctionName("ExportHistoryCleanUp")]
+        [Function("ExportHistoryCleanUp")]
         public static async Task CleanupOldRuns(
         [TimerTrigger("0 0 0 * * *")] TimerInfo timerInfo,
-        [DurableClient] IDurableOrchestrationClient orchestrationClient,
-        ILogger log)
+        [DurableClient] DurableTaskClient orchestrationClient,
+        FunctionContext context)
         {
+            var log = context.GetLogger("ExportHistoryCleanUp");
                 var createdTimeFrom = DateTime.MinValue;
                 var createdTimeTo = DateTime.UtcNow.Subtract(TimeSpan.FromDays(Utils.GetIntEnvironmentVariable("FBI-EXPORTPURGEAFTERDAYS", "30")));
-                var runtimeStatus = new List<OrchestrationStatus>
+                var runtimeStatus = new List<OrchestrationRuntimeStatus>
                 {
-                    OrchestrationStatus.Completed,
-                    OrchestrationStatus.Canceled,
-                    OrchestrationStatus.Failed,
-                    OrchestrationStatus.Terminated
+                    OrchestrationRuntimeStatus.Completed,
+                   OrchestrationRuntimeStatus.Canceled,
+                   OrchestrationRuntimeStatus.Failed,
+                   OrchestrationRuntimeStatus.Terminated
                 };
-                var result = await orchestrationClient.PurgeInstanceHistoryAsync(createdTimeFrom, createdTimeTo, runtimeStatus);
-                log.LogInformation($"Scheduled cleanup done, {result.InstancesDeleted} instances deleted");
+                var result = await orchestrationClient.PurgeInstancesAsync(createdTimeFrom, createdTimeTo, runtimeStatus);
+                log.LogInformation($"Scheduled cleanup done and instances deleted");
         }
 
     }

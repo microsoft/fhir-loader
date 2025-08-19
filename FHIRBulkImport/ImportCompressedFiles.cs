@@ -6,10 +6,8 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights;
-using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Azure.Storage.Blobs;
 
 namespace FHIRBulkImport
@@ -22,9 +20,10 @@ namespace FHIRBulkImport
         {
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
         }
-        [FunctionName("ImportCompressedFiles")]
-        public static async Task Run([BlobTrigger("zip/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")]Stream myBlob, string name, ILogger log)
+        [Function("ImportCompressedFiles")]
+        public async Task Run([BlobTrigger("zip/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")]Stream myBlob, string name, FunctionContext context)
         {
+            var logger = context.GetLogger("ImportCompressedFiles");
             try
             {
                 int filecnt = 0;
@@ -37,7 +36,7 @@ namespace FHIRBulkImport
 
                     using (MemoryStream blobMemStream = new MemoryStream())
                     {
-                        log.LogInformation($"ImportCompressedFiles: Decompressing {name} ...");
+                        logger.LogInformation($"ImportCompressedFiles: Decompressing {name} ...");
                         await myBlob.CopyToAsync(blobMemStream);
                         
                         using (ZipArchive archive = new ZipArchive(blobMemStream))
@@ -67,24 +66,24 @@ namespace FHIRBulkImport
                                         await blockBlob.UploadAsync(fileStream);
                                         
                                     }
-                                    log.LogInformation($"ImportCompressedFiles: Extracted {entry.FullName} to {destination.Name}/{validname}");
+                                    logger.LogInformation($"ImportCompressedFiles: Extracted {entry.FullName} to {destination.Name}/{validname}");
                                    
                                 } else
                                 {
-                                    log.LogInformation($"ImportCompressedFiles: Entry {entry.FullName} skipped does not end in .ndjson or .json");
+                                    logger.LogInformation($"ImportCompressedFiles: Entry {entry.FullName} skipped does not end in .ndjson or .json");
                                 }
                                 filecnt++;
                             }
                         }
                            
                     }
-                    log.LogInformation($"ImportCompressedFiles: Completed Decompressing {name} extracted {filecnt} files...");
-                    await StorageUtils.MoveTo(blobClient, "zip", "zipprocessed", name, name,log);
+                    logger.LogInformation($"ImportCompressedFiles: Completed Decompressing {name} extracted {filecnt} files...");
+                    await StorageUtils.MoveTo(blobClient, "zip", "zipprocessed", name, name,logger);
                 }
             }
             catch (Exception ex)
             {
-                log.LogInformation($"ImportCompressedFiles: Error! Something went wrong: {ex.Message}");
+                logger.LogInformation($"ImportCompressedFiles: Error! Something went wrong: {ex.Message}");
 
             }
         }
