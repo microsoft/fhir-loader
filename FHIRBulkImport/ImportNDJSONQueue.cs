@@ -16,7 +16,8 @@ namespace FHIRBulkImport
         public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] QueueMessage queueMessage,FunctionContext context)
         {
             var logger = context.GetLogger("ImportNDJSONQueue");
-            JObject blobCreatedEvent = JObject.Parse(queueMessage.Body.ToString());
+            string bodyText = queueMessage.Body.ToString();
+            JObject blobCreatedEvent = JObject.Parse(bodyText);
             string url = (string)blobCreatedEvent["data"]["url"];
             if (queueMessage.DequeueCount > 1)
             {

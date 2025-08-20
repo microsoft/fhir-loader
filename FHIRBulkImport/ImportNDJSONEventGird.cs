@@ -16,12 +16,13 @@ namespace FHIRBulkImport
       
         [Function("ImportNDJSON")]
         [QueueOutput("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")]
-        public static JObject Run([EventGridTrigger]JObject blobCreatedEvent,
+        public static JObject Run([EventGridTrigger]EventGridEvent eventGridEvent,
                                      FunctionContext context)
         {
             var logger = context.GetLogger("ImportNDJSON");
-            return blobCreatedEvent;
-
+            var eventJson = JObject.Parse(eventGridEvent.Data.ToString());
+            logger.LogInformation($"Full EventGrid received: {eventJson}");
+            return eventJson;
         }
        
        

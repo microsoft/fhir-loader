@@ -25,6 +25,6 @@ namespace FHIRBulkImport
         {
             var logger = context.GetLogger("ImportBundleBlobTrigger");
             await ImportUtils.ImportBundle(name, logger, _telemetryClient);
-        }
+        }   
     }
 }

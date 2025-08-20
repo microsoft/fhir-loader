@@ -31,9 +31,7 @@ public class Program
             logging.AddApplicationInsights();
         })
         .Build();
-        host.Run();
-        {
-
-        }
+         await host.RunAsync();
+        
         }
     }

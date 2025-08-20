@@ -26,9 +26,11 @@ namespace FHIRBulkImport
             
         }
         [Function("ImportBundleQueue")]
-        public async Task Run([QueueTrigger("bundlequeue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] JObject blobCreatedEvent, FunctionContext context)
+        public async Task Run([QueueTrigger("bundlequeue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] QueueMessage queueMessage, FunctionContext context)
         {
             var logger = context.GetLogger("ImportBundleQueue");
+            string bodyText = queueMessage.Body.ToString();
+            JObject blobCreatedEvent = JObject.Parse(bodyText);
             string url = (string)blobCreatedEvent["data"]["url"];
             logger.LogInformation($"ImportBundleEventGrid: Processing blob at {url}...");
             string container = Utils.GetEnvironmentVariable("FBI-CONTAINER-BUNDLES", "bundles");
