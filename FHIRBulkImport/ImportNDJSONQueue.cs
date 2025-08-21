@@ -16,9 +16,21 @@ namespace FHIRBulkImport
         public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] QueueMessage queueMessage,FunctionContext context)
         {
             var logger = context.GetLogger("ImportNDJSONQueue");
+            logger.LogInformation("Function triggered. Started Processing");
             string bodyText = queueMessage.Body.ToString();
-            JObject blobCreatedEvent = JObject.Parse(bodyText);
+            logger.LogInformation($"Queue Message Body: {bodyText}");
+            JObject blobCreatedEvent;
+            try
+            {
+                blobCreatedEvent = JObject.Parse(bodyText);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"Failed to parse queue message body: {ex.Message}");
+                return;
+            }
             string url = (string)blobCreatedEvent["data"]["url"];
+            logger.LogInformation($"Blob url extracted: {url}");
             if (queueMessage.DequeueCount > 1)
             {
                 logger.LogInformation($"ImportNDJSONQueue: Ignoring long running requeue of file {url} on dequeue {queueMessage.DequeueCount}");
@@ -28,6 +40,7 @@ namespace FHIRBulkImport
             var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI-STORAGEACCT"));
             string container = Utils.GetEnvironmentVariable("FBI-CONTAINER-NDJSON", "ndjson");
             string name = url.Substring(url.IndexOf($"/{container}/") + $"/{container}/".Length);
+            logger.LogInformation($"Blob name resolved: {name}");
             string mrbundlemax = System.Environment.GetEnvironmentVariable("FBI-MAXRESOURCESPERBUNDLE");
             if (!string.IsNullOrEmpty(mrbundlemax))
             {
@@ -47,14 +60,16 @@ namespace FHIRBulkImport
                 return;
             }
             StringBuilder errsb = new StringBuilder();
+            logger.LogInformation($"Starting to read blob stream for {name}");
             using (StreamReader reader = new StreamReader(myBlob))
             {
                 string line;
                 while ((line = reader.ReadLine()) != null)
                 {
 
-                    linecnt++;
+                    linecnt++;   
                     JObject res = null;
+                    logger.LogDebug($"Reading line {linecnt}");
                     try
                     {
                         res = JObject.Parse(line);
@@ -71,7 +86,9 @@ namespace FHIRBulkImport
 
                     if (bundlecnt >= maxresourcesperbundle)
                     {
+                        logger.LogInformation($"Writing bundle {name}--{fileno++}.json with {bundlecnt} resources");
                         await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{name}-{fileno++}.json", rv.ToString(), logger);
+                        
                         bundlecnt = 0;
                         rv = null;
                         rv = ImportUtils.initBundle();
@@ -79,11 +96,14 @@ namespace FHIRBulkImport
                 }
                 if (bundlecnt > 0)
                 {
+                    logger.LogInformation($"Writing final bundle {name}--{fileno++}.json with {bundlecnt} resources");
                     await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{name}-{fileno++}.json", rv.ToString(), logger);
                 }
+                logger.LogInformation($"Moving processed file to 'ndjsonprocessed'");
                 await StorageUtils.MoveTo(cbclient, "ndjson", "ndjsonprocessed", name, $"{name}.processed", logger);
                 if (errcnt > 0)
                 {
+                    logger.LogWarning($"Writing error file with {errcnt} errors");
                     await StorageUtils.WriteStringToBlob(cbclient, "ndjsonerr", $"{name}.err", errsb.ToString(), logger);
                 }
                 logger.LogInformation($"NDJSONConverter: Processing file {name} completed with {total} resources created in {fileno - 1} bundles with {errcnt} errors...");
