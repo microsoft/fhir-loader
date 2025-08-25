@@ -88,7 +88,7 @@ namespace FHIRBulkImport
             var log = context.GetLogger("CountFileLines");
             string instanceid = (string)ctx["instanceid"];
             string blob = (string)ctx["filename"];
-            return await FileHolderManager.CountLinesInBlob(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"),instanceid, blob,log);
+            return await FileHolderManager.CountLinesInBlob(Utils.GetEnvironmentVariable("FBI_STORAGEACCT"),instanceid, blob,log);
         }
         [Function("FileNames")]
         public async Task<List<string>> FileNames(
@@ -230,14 +230,14 @@ namespace FHIRBulkImport
             var log = context.GetLogger("AppendBlob");
             string instanceid = (string)ctx["instanceId"];
             string rm = (string)ctx["ids"];
-            var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceid}", "_completed_run.json");
+            var appendBlobClient = await StorageUtils.GetAppendBlobClient(Utils.GetEnvironmentVariable("FBI_STORAGEACCT"), $"export/{instanceid}", "_completed_run.json");
             using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(rm)))
             {
                 await appendBlobClient.AppendBlockAsync(ms);
             }
             return true;
         }
-        [Function("QueryFHIR")]
+        [Function("QueryFHIR")] 
         public  async Task<HashSet<string>> QueryFHIR(
             [ActivityTrigger] JToken input,
             FunctionContext context)
@@ -471,8 +471,8 @@ namespace FHIRBulkImport
                     var status = await entityclient.WaitForInstanceCompletionAsync(getInstanceId, CancellationToken.None);
                     int fileno = status?.SerializedOutput!= null ? JsonSerializer.Deserialize<int>(status.SerializedOutput) : 0;
                     var filename = resourceType + parallelizationModifierStr + "-" + (fileno + 1) + ".ndjson";                                  
-                    var blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
-                    long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI-MAXFILESIZEMB", "-1") * 1024000;
+                    var blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI_STORAGEACCT"), $"export/{instanceId}", filename);
+                    long maxfilesizeinbytes = Utils.GetIntEnvironmentVariable("FBI_MAXFILESIZEMB", "-1") * 1024000;
                     int bytestoadd = System.Text.ASCIIEncoding.UTF8.GetByteCount(sb.ToString());
                     var props = blobclient.GetProperties();
                     long filetotalbytes = props.Value.ContentLength + bytestoadd;
@@ -482,7 +482,7 @@ namespace FHIRBulkImport
                     {
                         fileno++;
                         filename = resourceType + parallelizationModifierStr + "-" + (fileno + 1) + ".ndjson";
-                        blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"), $"export/{instanceId}", filename);
+                        blobclient = StorageUtils.GetAppendBlobClientSync(Utils.GetEnvironmentVariable("FBI_STORAGEACCT"), $"export/{instanceId}", filename);
                         await entityclient.ScheduleNewOrchestrationInstanceAsync("FileTracker", (Operation: "set", Key: key, Value: fileno));
                     }
 
@@ -513,7 +513,7 @@ namespace FHIRBulkImport
             string config = await new StreamReader(req.Body).ReadToEndAsync();
             var state  = await runningInstances(starter, context);
             int running = state.Count();
-            int maxinstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
+            int maxinstances = Utils.GetIntEnvironmentVariable("FBI_MAXEXPORTS", "0");
             if (maxinstances > 0 && running >= maxinstances)
             {
                 string msg = $"Unable to start export there are {running} exports the max concurrent allowed is {maxinstances}";
@@ -575,7 +575,7 @@ namespace FHIRBulkImport
         }
 
         [Function("ExportBlobTrigger")]
-        public async Task RunBlobTrigger([BlobTrigger("export-trigger/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")] Stream myBlob, string name, [DurableClient] DurableTaskClient starter, FunctionContext context)
+        public async Task RunBlobTrigger([BlobTrigger("export-trigger/{name}", Connection = "FBI_STORAGEACCT_IDENTITY")] Stream myBlob, string name, [DurableClient] DurableTaskClient starter, FunctionContext context)
         {
             var log = context.GetLogger("ExportBlobTrigger");
 
@@ -583,7 +583,7 @@ namespace FHIRBulkImport
             var text = await reader.ReadToEndAsync();
             var state = await runningInstances(starter, context);
             int running = state.Count();
-            int maxinstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
+            int maxinstances = Utils.GetIntEnvironmentVariable("FBI_MAXEXPORTS", "0");
             if (maxinstances > 0 && running >= maxinstances)
             {
                 string msg = $"Unable to start export there are {running} exports the max concurrent allowed is {maxinstances}";
@@ -591,7 +591,7 @@ namespace FHIRBulkImport
                 return;
             }
             string instanceId = await starter.ScheduleNewOrchestrationInstanceAsync("ExportOrchestrator", text);
-            var bc = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+            var bc = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI_STORAGEACCT"));
             await StorageUtils.MoveTo(bc, "export-trigger", "export-trigger-processed", name, name, log);
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
         }
@@ -632,7 +632,7 @@ namespace FHIRBulkImport
         {
             var log = context.GetLogger("ExportHistoryCleanUp");
                 var createdTimeFrom = DateTime.MinValue;
-                var createdTimeTo = DateTime.UtcNow.Subtract(TimeSpan.FromDays(Utils.GetIntEnvironmentVariable("FBI-EXPORTPURGEAFTERDAYS", "30")));
+                var createdTimeTo = DateTime.UtcNow.Subtract(TimeSpan.FromDays(Utils.GetIntEnvironmentVariable("FBI_EXPORTPURGEAFTERDAYS", "30")));
                 var runtimeStatus = new List<OrchestrationRuntimeStatus>
                 {
                     OrchestrationRuntimeStatus.Completed,

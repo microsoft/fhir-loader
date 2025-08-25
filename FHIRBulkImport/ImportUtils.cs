@@ -20,16 +20,16 @@ namespace FHIRBulkImport
     {
         //Unahandeled Exceptions worth retrying
         public static string MESSAGE_RETRY_SETTING = "request was canceled due to the configured HttpClient.Timeout,target machine actively refused it,an error occurred while sending the request";
-        public static string[] EXCEPTION_MESSAGE_STRINGS_RETRY = Utils.GetEnvironmentVariable("FBI-UNHANDLED-RETRY-MESSAGES",MESSAGE_RETRY_SETTING).Split(',');
+        public static string[] EXCEPTION_MESSAGE_STRINGS_RETRY = Utils.GetEnvironmentVariable("FBI_UNHANDLED_RETRY_MESSAGES",MESSAGE_RETRY_SETTING).Split(',');
         
         public static async Task ImportBundle(string name, ILogger log, TelemetryClient telemetryClient)
         {
           
             // Setup for metrics
-            bool trbundles = Utils.GetBoolEnvironmentVariable("FBI-TRANSFORMBUNDLES", true);
+            bool trbundles = Utils.GetBoolEnvironmentVariable("FBI_TRANSFORMBUNDLES", true);
             log.LogInformation($"ImportFHIRBundles: Processing file Name:{name}...");
-            var cbclient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
-            string container = Utils.GetEnvironmentVariable("FBI-CONTAINER-BUNDLES", "bundles");
+            var cbclient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI_STORAGEACCT"));
+            string container = Utils.GetEnvironmentVariable("FBI_CONTAINER_BUNDLES", "bundles");
             Stream myBlob = await StorageUtils.GetStreamForBlob(cbclient, container, name, log);
             if (myBlob == null)
             {

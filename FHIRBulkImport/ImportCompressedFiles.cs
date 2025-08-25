@@ -21,7 +21,7 @@ namespace FHIRBulkImport
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
         }
         [Function("ImportCompressedFiles")]
-        public async Task Run([BlobTrigger("zip/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")]Stream myBlob, string name, FunctionContext context)
+        public async Task Run([BlobTrigger("zip/{name}", Connection = "FBI_STORAGEACCT_IDENTITY")]Stream myBlob, string name, FunctionContext context)
         {
             var logger = context.GetLogger("ImportCompressedFiles");
             try
@@ -30,7 +30,7 @@ namespace FHIRBulkImport
                 if (name.Split('.').Last().ToLower() == "zip")
                 {
 
-                    var blobClient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI-STORAGEACCT"));
+                    var blobClient = StorageUtils.GetCloudBlobClient(Utils.GetEnvironmentVariable("FBI_STORAGEACCT"));
                     var containerndjson = blobClient.GetBlobContainerClient("ndjson");
                     var containerbundles = blobClient.GetBlobContainerClient("bundles");
 
@@ -38,7 +38,7 @@ namespace FHIRBulkImport
                     {
                         logger.LogInformation($"ImportCompressedFiles: Decompressing {name} ...");
                         await myBlob.CopyToAsync(blobMemStream);
-                        
+                        blobMemStream.Position = 0;
                         using (ZipArchive archive = new ZipArchive(blobMemStream))
                         {
                             foreach (ZipArchiveEntry entry in archive.Entries)

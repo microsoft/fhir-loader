@@ -32,13 +32,13 @@ namespace FHIRBulkImport
     public static class FHIRUtils
     {
         //AD Settings
-        private static bool isMsi = Utils.GetBoolEnvironmentVariable("FS-ISMSI", false);
-        private static string resource = Utils.GetEnvironmentVariable("FS-RESOURCE");
-        private static string tenant = Utils.GetEnvironmentVariable("FS-TENANT-NAME");
-        private static string clientid = Utils.GetEnvironmentVariable("FS-CLIENT-ID");
-        private static string secret = Utils.GetEnvironmentVariable("FS-SECRET");
-        private static string authority = Utils.GetEnvironmentVariable("FS-AUTHORITY", "https://login.microsoftonline.com");
-        private static string fsurl = Utils.GetEnvironmentVariable("FS-URL");
+        private static bool isMsi = Utils.GetBoolEnvironmentVariable("FS_ISMSI", false);
+        private static string resource = Utils.GetEnvironmentVariable("FS_RESOURCE");
+        private static string tenant = Utils.GetEnvironmentVariable("FS_TENANT_NAME");
+        private static string clientid = Utils.GetEnvironmentVariable("FS_CLIENT_ID");
+        private static string secret = Utils.GetEnvironmentVariable("FS_SECRET");
+        private static string authority = Utils.GetEnvironmentVariable("FS_AUTHORITY", "https://login.microsoftonline.com");
+        private static string fsurl = Utils.GetEnvironmentVariable("FS_URL");
         private static ConcurrentDictionary<string,string> _tokens = new ConcurrentDictionary<string, string>();
         private static readonly HttpStatusCode[] httpStatusCodesWorthRetrying = {
             HttpStatusCode.RequestTimeout, // 408
@@ -51,10 +51,10 @@ namespace FHIRBulkImport
         private static HttpClient _fhirClient = new HttpClient(
             new SocketsHttpHandler()
             {
-                ResponseDrainTimeout = TimeSpan.FromSeconds(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-RESPONSEDRAINSECS", "60")),
-                PooledConnectionLifetime = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-LIFETIME", "5")),
-                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-IDLETO", "2")),
-                MaxConnectionsPerServer = Utils.GetIntEnvironmentVariable("FBI-POOLEDCON-MAXCONNECTIONS", "20"),
+                ResponseDrainTimeout = TimeSpan.FromSeconds(Utils.GetIntEnvironmentVariable("FBI_POOLEDCON_RESPONSEDRAINSECS", "60")),
+                PooledConnectionLifetime = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI_POOLEDCON_LIFETIME", "5")),
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(Utils.GetIntEnvironmentVariable("FBI_POOLEDCON_IDLETO", "2")),
+                MaxConnectionsPerServer = Utils.GetIntEnvironmentVariable("FBI_POOLEDCON_MAXCONNECTIONS", "20"),
                 
             });
         public static async System.Threading.Tasks.Task<FHIRResponse> CallFHIRServer(string path, string body, HttpMethod method, ILogger log, string customAudience = null)
@@ -77,17 +77,17 @@ namespace FHIRBulkImport
             var retryPolicy = Policy
                 .Handle<HttpRequestException>()
                 .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
-                .WaitAndRetryAsync(Utils.GetIntEnvironmentVariable("FBI-POLLY-MAXRETRIES","3"), retryAttempt =>
-                   TimeSpan.FromMilliseconds(Utils.GetIntEnvironmentVariable("FBI-POLLY-RETRYMS", "500")), (result, timeSpan, retryCount, context) =>
+                .WaitAndRetryAsync(Utils.GetIntEnvironmentVariable("FBI_POLLY_MAXRETRIES","3"), retryAttempt =>
+                   TimeSpan.FromMilliseconds(Utils.GetIntEnvironmentVariable("FBI_POLLY_RETRYMS", "500")), (result, timeSpan, retryCount, context) =>
                    {
                        log.LogWarning($"FHIR Request failed on a retryable status...Waiting {timeSpan} before next retry. Attempt {retryCount}");
                    }
                 );
 
-            if (Utils.GetBoolEnvironmentVariable("FBI-POLLY-EXPONENTIAL"))
+            if (Utils.GetBoolEnvironmentVariable("FBI_POLLY_EXPONENTIAL"))
             {
-                int maxRetries = Utils.GetIntEnvironmentVariable("FBI-POLLY-MAXRETRIES", "3");
-                double retryMs = Utils.GetIntEnvironmentVariable("FBI-POLLY-RETRYMS", "500");
+                int maxRetries = Utils.GetIntEnvironmentVariable("FBI_POLLY_MAXRETRIES", "3");
+                double retryMs = Utils.GetIntEnvironmentVariable("FBI_POLLY_RETRYMS", "500");
                 double jitterFactor = 0.2; // You can adjust this value as needed
                 Random jitterRandom = new Random();
 
@@ -107,7 +107,7 @@ namespace FHIRBulkImport
                     );
             }
 
-            string bundleProcessingLogic = Utils.GetEnvironmentVariable("FBI-FHIR-BUNDLEPROCESSINGLOGIC", "");
+            string bundleProcessingLogic = Utils.GetEnvironmentVariable("FBI_FHIR_BUNDLEPROCESSINGLOGIC", "");
 
             HttpResponseMessage _fhirResponse =
             await retryPolicy.ExecuteAsync(async () =>
@@ -188,7 +188,7 @@ namespace FHIRBulkImport
             if (rtt.Equals("Bundle"))
             {
                 JArray entries = (JArray)result["entry"];
-                int mbs = Utils.GetIntEnvironmentVariable("FBI-MAXBUNDLESIZE", "500");
+                int mbs = Utils.GetIntEnvironmentVariable("FBI_MAXBUNDLESIZE", "500");
                 if (entries.Count > mbs)
                 {
                     if (bt.Equals("batch"))
@@ -317,7 +317,7 @@ namespace FHIRBulkImport
                     {
                         string s_retry = null;
                         retVal.ResponseHeaders.TryGetValue("x-ms-retry-after-ms", out s_retry);
-                        if (s_retry==null) s_retry = Environment.GetEnvironmentVariable("FBI-DEFAULTRETRY");
+                        if (s_retry==null) s_retry = Environment.GetEnvironmentVariable("FBI_DEFAULTRETRY");
                         int i = 0;
                         if (!int.TryParse(s_retry, out i))
                         {

@@ -17,7 +17,7 @@ namespace FHIRBulkImport
     {
     
         [Function("ImportBundleEventGrid")]
-        [QueueOutput("bundlequeue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")]
+        [QueueOutput("bundlequeue", Connection = "FBI_STORAGEACCT_QUEUEURI_IDENTITY")]
         public JObject Run([EventGridTrigger]EventGridEvent eventGridEvent,
                                      FunctionContext context)
         {

@@ -17,13 +17,13 @@ namespace FHIRBulkImport
 {
     public class ExportAllOrchestrator
     {
-        private static int _exportResourceCount = Utils.GetIntEnvironmentVariable("FS-EXPORTRESOURCECOUNT", "1000");
-        private static string _storageAccount = Utils.GetEnvironmentVariable("FBI-STORAGEACCT");
-        private static int _maxInstances = Utils.GetIntEnvironmentVariable("FBI-MAXEXPORTS", "0");
+        private static int _exportResourceCount = Utils.GetIntEnvironmentVariable("FS_EXPORTRESOURCECOUNT", "1000");
+        private static string _storageAccount = Utils.GetEnvironmentVariable("FBI_STORAGEACCT");
+        private static int _maxInstances = Utils.GetIntEnvironmentVariable("FBI_MAXEXPORTS", "0");
         private static int _maxParallelizationCount = 100;
-        private static int _parallelSearchBundleSize = _maxInstances = Utils.GetIntEnvironmentVariable("FBI-PARALLELSEARCHBUNDLESIZE", "50");
-        private static RetryPolicy _exportAllRetryOptions = new RetryPolicy(firstRetryInterval: TimeSpan.FromSeconds(Utils.GetIntEnvironmentVariable("FBI-EXPORTALLRETRYINTERVAL", "30")), maxNumberOfAttempts: 5,
-          backoffCoefficient: Convert.ToDouble(Utils.GetIntEnvironmentVariable("FBI-EXPORTALLBACKCOEFFICIENT", "3")));
+        private static int _parallelSearchBundleSize = _maxInstances = Utils.GetIntEnvironmentVariable("FBI_PARALLELSEARCHBUNDLESIZE", "50");
+        private static RetryPolicy _exportAllRetryOptions = new RetryPolicy(firstRetryInterval: TimeSpan.FromSeconds(Utils.GetIntEnvironmentVariable("FBI_EXPORTALLRETRYINTERVAL", "30")), maxNumberOfAttempts: 5,
+          backoffCoefficient: Convert.ToDouble(Utils.GetIntEnvironmentVariable("FBI_EXPORTALLBACKCOEFFICIENT", "3")));
       
 
         [Function(nameof(ExportAllOrchestrator_HttpStart))]

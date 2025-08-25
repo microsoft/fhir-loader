@@ -13,7 +13,7 @@ namespace FHIRBulkImport
     public class ImportNDJSONQueue
     {
         [Function("ImportNDJSONQueue")]
-        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] QueueMessage queueMessage,FunctionContext context)
+        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI_STORAGEACCT_QUEUEURI_IDENTITY")] QueueMessage queueMessage,FunctionContext context)
         {
             var logger = context.GetLogger("ImportNDJSONQueue");
             logger.LogInformation("Function triggered. Started Processing");

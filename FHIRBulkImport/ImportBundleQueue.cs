@@ -26,7 +26,7 @@ namespace FHIRBulkImport
             
         }
         [Function("ImportBundleQueue")]
-        public async Task Run([QueueTrigger("bundlequeue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")] QueueMessage queueMessage, FunctionContext context)
+        public async Task Run([QueueTrigger("bundlequeue", Connection = "FBI_STORAGEACCT_QUEUEURI_IDENTITY")] QueueMessage queueMessage, FunctionContext context)
         {
             var logger = context.GetLogger("ImportBundleQueue");
             string bodyText = queueMessage.Body.ToString();
@@ -39,22 +39,22 @@ namespace FHIRBulkImport
         }
         [Function("PoisonQueueRetries")]
        public static async Task PoisonQueueRetries(
-       [TimerTrigger("%FBI-POISONQUEUE-TIMER-CRON%")] TimerInfo timerInfo,
+       [TimerTrigger("%FBI_POISONQUEUE_TIMER_CRON%")] TimerInfo timerInfo,
        FunctionContext context)
         {
             var logger = context.GetLogger("PoisonQueueRetries");
             logger.LogInformation($"PoisonQueueRetries:Checking for poison queue messages in bundlequeue-poison...");
-            var sourceQueue = new QueueClient(new Uri($"{Utils.GetEnvironmentVariable("FBI-STORAGEACCT-QUEUEURI")}/bundlequeue-poison"),new DefaultAzureCredential());
+            var sourceQueue = new QueueClient(new Uri($"{Utils.GetEnvironmentVariable("FBI_STORAGEACCT_QUEUEURI")}/bundlequeue-poison"),new DefaultAzureCredential());
             await sourceQueue.CreateIfNotExistsAsync();
-            var targetQueue = new QueueClient(new Uri($"{Utils.GetEnvironmentVariable("FBI-STORAGEACCT-QUEUEURI")}/bundlequeue"), new DefaultAzureCredential());
+            var targetQueue = new QueueClient(new Uri($"{Utils.GetEnvironmentVariable("FBI_STORAGEACCT_QUEUEURI")}/bundlequeue"), new DefaultAzureCredential());
             await targetQueue.CreateIfNotExistsAsync();
-            int maxrequeuemessages = Utils.GetIntEnvironmentVariable("FBI-MAXREQUEUE-MESSAGE-COUNT", "100");
+            int maxrequeuemessages = Utils.GetIntEnvironmentVariable("FBI_MAXREQUEUE_MESSAGE_COUNT", "100");
             int messagesrequeued = 0;
             if (await sourceQueue.ExistsAsync())
             {
                 QueueProperties properties = sourceQueue.GetProperties();
                 // Retrieve the cached approximate message count.
-                int cachedMessagesCount = properties.ApproximateMessagesCount;
+                 int cachedMessagesCount = properties.ApproximateMessagesCount;
                 logger.LogInformation($"PoisonQueueRetries:Found {cachedMessagesCount} messages in bundlequeue-poison....Re-queing upto {maxrequeuemessages}");
                 while(cachedMessagesCount > 0 && messagesrequeued < maxrequeuemessages) {
                     int batchsize = (maxrequeuemessages - messagesrequeued >= 32 ? 32 : maxrequeuemessages - messagesrequeued);

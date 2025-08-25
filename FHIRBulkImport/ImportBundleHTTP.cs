@@ -38,7 +38,7 @@ namespace FHIRBulkImport
                 var o = JObject.Parse(requestBody);
                 if (o["resourceType"] !=null && o["resourceType"].ToString().Equals("Bundle"))
                 {
-                    var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI-STORAGEACCT"));
+                    var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI_STORAGEACCT"));
                     await StorageUtils.WriteStringToBlob(cbclient, "bundles", filename, requestBody, logger);
                     response.StatusCode = System.Net.HttpStatusCode.Accepted;
                     response.Headers.Add("Content-Type", "application/json");

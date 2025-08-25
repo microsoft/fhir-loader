@@ -15,7 +15,7 @@ namespace FHIRBulkImport
     {
       
         [Function("ImportNDJSON")]
-        [QueueOutput("ndjsonqueue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")]
+        [QueueOutput("ndjsonqueue", Connection = "FBI_STORAGEACCT_QUEUEURI_IDENTITY")]
         public static JObject Run([EventGridTrigger]EventGridEvent eventGridEvent,
                                      FunctionContext context)
         {
