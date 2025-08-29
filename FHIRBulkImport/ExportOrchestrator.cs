@@ -632,7 +632,13 @@ namespace FHIRBulkImport
         {
             var log = context.GetLogger("ExportHistoryCleanUp");
                 var createdTimeFrom = DateTime.MinValue;
-                var createdTimeTo = DateTime.UtcNow.Subtract(TimeSpan.FromDays(Utils.GetIntEnvironmentVariable("FBI_EXPORTPURGEAFTERDAYS", "30")));
+
+            if (createdTimeFrom.Year < 1000)
+            {
+                createdTimeFrom = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            }
+
+            var createdTimeTo = DateTime.UtcNow.Subtract(TimeSpan.FromDays(Utils.GetIntEnvironmentVariable("FBI_EXPORTPURGEAFTERDAYS", "30")));
                 var runtimeStatus = new List<OrchestrationRuntimeStatus>
                 {
                     OrchestrationRuntimeStatus.Completed,

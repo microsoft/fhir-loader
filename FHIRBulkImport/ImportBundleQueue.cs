@@ -33,7 +33,7 @@ namespace FHIRBulkImport
             JObject blobCreatedEvent = JObject.Parse(bodyText);
             string url = (string)blobCreatedEvent["data"]["url"];
             logger.LogInformation($"ImportBundleEventGrid: Processing blob at {url}...");
-            string container = Utils.GetEnvironmentVariable("FBI-CONTAINER-BUNDLES", "bundles");
+            string container = Utils.GetEnvironmentVariable("FBI_CONTAINER_BUNDLES", "bundles");
             string name = url.Substring(url.IndexOf($"/{container}/") + $"/{container}/".Length);
             await ImportUtils.ImportBundle(name, logger, _telemetryClient);
         }

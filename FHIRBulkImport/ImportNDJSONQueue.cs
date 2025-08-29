@@ -13,7 +13,7 @@ namespace FHIRBulkImport
     public class ImportNDJSONQueue
     {
         [Function("ImportNDJSONQueue")]
-        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI_STORAGEACCT_QUEUEURI_IDENTITY")] QueueMessage queueMessage,FunctionContext context)
+        public static async Task Run([QueueTrigger("ndjsonqueue", Connection = "FBI_STORAGEACCT_QUEUEURI_IDENTITY")] QueueMessage queueMessage, FunctionContext context)
         {
             var logger = context.GetLogger("ImportNDJSONQueue");
             logger.LogInformation("Function triggered. Started Processing");
@@ -37,11 +37,11 @@ namespace FHIRBulkImport
                 return;
             }
             int maxresourcesperbundle = 200;
-            var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI-STORAGEACCT"));
-            string container = Utils.GetEnvironmentVariable("FBI-CONTAINER-NDJSON", "ndjson");
+            var cbclient = StorageUtils.GetCloudBlobClient(System.Environment.GetEnvironmentVariable("FBI_STORAGEACCT"));
+            string container = Utils.GetEnvironmentVariable("FBI_CONTAINER_NDJSON", "ndjson");
             string name = url.Substring(url.IndexOf($"/{container}/") + $"/{container}/".Length);
             logger.LogInformation($"Blob name resolved: {name}");
-            string mrbundlemax = System.Environment.GetEnvironmentVariable("FBI-MAXRESOURCESPERBUNDLE");
+            string mrbundlemax = System.Environment.GetEnvironmentVariable("FBI_MAXRESOURCESPERBUNDLE");
             if (!string.IsNullOrEmpty(mrbundlemax))
             {
                 if (!int.TryParse(mrbundlemax, out maxresourcesperbundle)) maxresourcesperbundle = 200;
@@ -53,8 +53,8 @@ namespace FHIRBulkImport
             int bundlecnt = 0;
             int errcnt = 0;
             int fileno = 1;
-            Stream myBlob = await StorageUtils.GetStreamForBlob(cbclient, container, name,logger);
-            if (myBlob==null)
+            Stream myBlob = await StorageUtils.GetStreamForBlob(cbclient, container, name, logger);
+            if (myBlob == null)
             {
                 logger.LogWarning($"ImportNDJSONQueue:The blob {name} in container {container} does not exist or cannot be read.");
                 return;
@@ -67,7 +67,7 @@ namespace FHIRBulkImport
                 while ((line = reader.ReadLine()) != null)
                 {
 
-                    linecnt++;   
+                    linecnt++;
                     JObject res = null;
                     logger.LogDebug($"Reading line {linecnt}");
                     try
@@ -88,7 +88,7 @@ namespace FHIRBulkImport
                     {
                         logger.LogInformation($"Writing bundle {name}--{fileno++}.json with {bundlecnt} resources");
                         await StorageUtils.WriteStringToBlob(cbclient, "bundles", $"{name}-{fileno++}.json", rv.ToString(), logger);
-                        
+
                         bundlecnt = 0;
                         rv = null;
                         rv = ImportUtils.initBundle();
@@ -110,6 +110,6 @@ namespace FHIRBulkImport
 
             }
         }
-       
+
     }
 }
