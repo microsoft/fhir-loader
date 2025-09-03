@@ -224,8 +224,8 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2021-03-01' = {
 
     // Storage account to setup import from
     'FBI_STORAGEACCT': storageAccountUri
-    'FBI_STORAGEACCT_QUEUEURI_IDENTITY': storageAccountQueueUri
-    'FBI_STORAGEACCT_IDENTITY': storageAccountUri
+    'FBI_STORAGEACCT_QUEUEURI_IDENTITY__queueServiceUri': storageAccountQueueUri
+    'FBI_STORAGEACCT_IDENTITY__blobServiceUri': storageAccountUri
     'FBI_STORAGEACCT_QUEUEURI': storageAccountQueueUri
 
     // URL for the FHIR endpoint

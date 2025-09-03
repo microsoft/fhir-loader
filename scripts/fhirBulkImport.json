@@ -365,8 +365,8 @@
         "AzureWebJobs.ImportBundleBlobTrigger.Disabled": "1",
         "AzureFunctionsJobHost__functionTimeout": "23:00:00",
         "FBI_STORAGEACCT": "[format('https://{0}.blob.core.windows.net/',variables('storageAccountName'))]",
-        "FBI_STORAGEACCT_QUEUEURI_IDENTITY": "[format('https://{0}.queue.core.windows.net/',variables('storageAccountName'))]",
-        "FBI_STORAGEACCT_IDENTITY": "[format('https://{0}.blob.core.windows.net/',variables('storageAccountName'))]",
+        "FBI_STORAGEACCT_QUEUEURI_IDENTITY__queueServiceUri": "[format('https://{0}.queue.core.windows.net/',variables('storageAccountName'))]",
+        "FBI_STORAGEACCT_IDENTITY__blobServiceUri": "[format('https://{0}.blob.core.windows.net/',variables('storageAccountName'))]",
         "FBI_STORAGEACCT_QUEUEURI": "[format('https://{0}.queue.core.windows.net/',variables('storageAccountName'))]",
         "FS_URL": "[variables('fhirUrl')]",
         "FS_RESOURCE": "[if(empty(parameters('fhirAudience')), variables('fhirUrl'), parameters('fhirAudience'))]",
@@ -400,7 +400,7 @@
       "name": "[format('{0}/{1}', format('{0}-func', variables('prefixNameCleanShort')), 'web')]",
       "properties": {
         "repoUrl": "[variables('repoUrl')]",
-        "branch": "personal/v-shanarang/isolatedworker",
+        "branch": "main",
         "isManualIntegration": true
       },
       "dependsOn": [
