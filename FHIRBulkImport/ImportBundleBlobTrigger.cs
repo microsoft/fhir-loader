@@ -1,11 +1,12 @@
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs;
+using Microsoft.Extensions.Logging;
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Extensions.Logging;
 
 namespace FHIRBulkImport
 {
@@ -16,12 +17,14 @@ namespace FHIRBulkImport
         public ImportBundleBlobTrigger(TelemetryConfiguration telemetryConfiguration)
         {
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
-        }
-        [Disable("FBI-DISABLE-BLOBTRIGGER")]
-        [FunctionName("ImportBundleBlobTrigger")]
-        public async Task Run([BlobTrigger("bundles/{name}", Connection = "FBI-STORAGEACCT-IDENTITY")]Stream myBlob, string name, ILogger log)
+        } 
+       
+        [Function("ImportBundleBlobTrigger")]
+       
+        public async Task Run([BlobTrigger("bundles/{name}", Connection = "FBI_STORAGEACCT_IDENTITY")]Stream myBlob, string name, FunctionContext context)
         {
-            await ImportUtils.ImportBundle(name, log, _telemetryClient);
-        }
+            var logger = context.GetLogger("ImportBundleBlobTrigger");
+            await ImportUtils.ImportBundle(name, logger, _telemetryClient);
+        }   
     }
 }

@@ -223,54 +223,54 @@ resource fhirProxyAppSettings 'Microsoft.Web/sites/config@2021-03-01' = {
     AzureFunctionsJobHost__functionTimeout: '23:00:00'
 
     // Storage account to setup import from
-    'FBI-STORAGEACCT': storageAccountUri
-    'FBI-STORAGEACCT-QUEUEURI-IDENTITY__queueServiceUri': storageAccountQueueUri
-    'FBI-STORAGEACCT-IDENTITY__blobServiceUri': storageAccountUri
-    'FBI-STORAGEACCT-QUEUEURI': storageAccountQueueUri
+    'FBI_STORAGEACCT': storageAccountUri
+    'FBI_STORAGEACCT_QUEUEURI_IDENTITY__queueServiceUri': storageAccountQueueUri
+    'FBI_STORAGEACCT_IDENTITY__blobServiceUri': storageAccountUri
+    'FBI_STORAGEACCT_QUEUEURI': storageAccountQueueUri
 
     // URL for the FHIR endpoint
-    'FS-URL': fhirUrl
+    'FS_URL': fhirUrl
 
     // Resource for the FHIR endpoint.
-    'FS-RESOURCE': empty(fhirAudience) ? fhirUrl : fhirAudience
+    'FS_RESOURCE': empty(fhirAudience) ? fhirUrl : fhirAudience
 
     // Tenant of FHIR Server
-    'FS-TENANT-NAME': tenantId
+    'FS_TENANT_NAME': tenantId
 
-    'FS-ISMSI': authenticationType == 'managedIdentity' ? 'true' : 'false'
+    'FS_ISMSI': authenticationType == 'managedIdentity' ? 'true' : 'false'
 
-    'FS-CLIENT-ID': authenticationType == 'servicePrincipal' ? serviceAccountClientId : ''
+    'FS_CLIENT_ID': authenticationType == 'servicePrincipal' ? serviceAccountClientId : ''
 
-    'FS-SECRET': authenticationType == 'servicePrincipal' ? serviceAccountSecret : ''
+    'FS_SECRET': authenticationType == 'servicePrincipal' ? serviceAccountSecret : ''
 
     // When loading bundles, convert transaction to batch bundles. Transform UUIDs and resolve ifNoneExist
     TRANSFORMBUNDLES: '${transformTransactionBundles}'
 
     // ADVANCED
     // Max number of resources in a bundle
-    'FBI-MAXBUNDLESIZE': '500'
+    'FBI_MAXBUNDLESIZE': '500'
     // When loading NDJSON, how many resources to put in a single bundle
-    'FBI-MAXRESOURCESPERBUNDLE': '500'
+    'FBI_MAXRESOURCESPERBUNDLE': '500'
     // Max HTTP retries on the FHIR Server
-    'FBI-POLLY-MAXRETRIES': '3'
+    'FBI_POLLY_MAXRETRIES': '3'
     // Retry delay for FHIR Server requests
-    'FBI-POLLY-RETRYMS': '500'
+    'FBI_POLLY_RETRYMS': '500'
     // ResponseDrainTimeout
-    'FBI-POOLEDCON-RESPONSEDRAINSECS': '60'
+    'FBI_POOLEDCON_RESPONSEDRAINSECS': '60'
     // PooledConnectionLifetime
-    'FBI-POOLEDCON-LIFETIME': '5'
+    'FBI_POOLEDCON_LIFETIME': '5'
     // PooledConnectionIdleTimeout
-    'FBI-POOLEDCON-IDLETO': '2'
+    'FBI_POOLEDCON_IDLETO': '2'
     // MaxConnectionsPerServer
-    'FBI-POOLEDCON-MAXCONNECTIONS': '20'
+    'FBI_POOLEDCON_MAXCONNECTIONS': '20'
     // Max file size to load. -1 disables this.
-    'FBI-MAXFILESIZEMB': '-1'
+    'FBI_MAXFILESIZEMB': '-1'
     // Max number of concurrent exports
-    'FBI-MAXEXPORTS': '-1'
+    'FBI_MAXEXPORTS': '-1'
     // How long to leave exports on the storage account
-    'FBI-EXPORTPURGEAFTERDAYS': '30'
+    'FBI_EXPORTPURGEAFTERDAYS': '30'
     // Period to run the poision queue function.
-    'FBI-POISONQUEUE-TIMER-CRON': '0 */2 * * * *'
+    'FBI_POISONQUEUE_TIMER_CRON': '0 */2 * * * *'
   }
 }
 

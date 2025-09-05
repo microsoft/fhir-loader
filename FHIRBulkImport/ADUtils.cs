@@ -49,7 +49,7 @@ namespace FHIRBulkImport
             catch (Exception e)
             {
                 log.LogError($"GetAADAccessToken: Exception getting access token: {e.Message}");
-                return null;
+                 return null;
             }
 
         }

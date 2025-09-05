@@ -4,10 +4,11 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.EventGrid;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Extensions.EventGrid;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using Azure.Messaging.EventGrid;
 
 namespace FHIRBulkImport
 {
@@ -15,13 +16,15 @@ namespace FHIRBulkImport
     public class ImportBundleEventGrid
     {
     
-        [FunctionName("ImportBundleEventGrid")]
-        [return: Queue("bundlequeue", Connection = "FBI-STORAGEACCT-QUEUEURI-IDENTITY")]
-        public static JObject Run([EventGridTrigger] JObject blobCreatedEvent,
-                                     ILogger log)
+        [Function("ImportBundleEventGrid")]
+        [QueueOutput("bundlequeue", Connection = "FBI_STORAGEACCT_QUEUEURI_IDENTITY")]
+        public JObject Run([EventGridTrigger]EventGridEvent eventGridEvent,
+                                     FunctionContext context)
         {
             {
-
+                var logger = context.GetLogger("ImportBundleEventGrid");
+                var blobCreatedEvent = JObject.Parse(eventGridEvent.Data.ToString());
+                logger.LogInformation("EventGrid trigger recieved event.");
                 return blobCreatedEvent;
 
             }
